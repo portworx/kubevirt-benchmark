@@ -31,6 +31,18 @@ LABEL_MAP = {
     "vmim_time_sec": "VMIM Time",
 }
 
+# FIO metric labels for display
+FIO_LABEL_MAP = {
+    "read_iops": "Read IOPS",
+    "write_iops": "Write IOPS",
+    "read_bw_mibps": "Read Bandwidth (MiB/s)",
+    "write_bw_mibps": "Write Bandwidth (MiB/s)",
+    "read_lat_mean_ms": "Read Latency Mean (ms)",
+    "write_lat_mean_ms": "Write Latency Mean (ms)",
+    "read_lat_p99_ms": "Read Latency P99 (ms)",
+    "write_lat_p99_ms": "Write Latency P99 (ms)",
+}
+
 # ---------------- Utility Functions ----------------
 def load_json(path: Path):
     """Safely load JSON file; return None if not found or invalid."""
@@ -495,6 +507,511 @@ def build_capacity_content(folder: Path, uid: str) -> str:
     """
 
 
+def build_fio_content(folder: Path, uid: str) -> str:
+    """FIO Benchmark section - displays storage I/O performance metrics."""
+    fio_summary = load_json(folder / "summary_fio_benchmark.json")
+    fio_results = load_json(folder / "fio_benchmark_results.json")
+
+    if not fio_summary and not fio_results:
+        return "<p>No FIO benchmark data found.</p>"
+
+    data = fio_summary or {}
+
+    # Check if this is multi-VM format (has test_type: fio_benchmark)
+    is_multi_vm = data.get("test_type") == "fio_benchmark"
+
+    if is_multi_vm:
+        return build_fio_multi_vm_content(folder, uid, data, fio_results)
+    else:
+        return build_fio_single_vm_content(folder, uid, data)
+
+
+def build_fio_multi_vm_content(folder: Path, uid: str, summary: dict, per_vm_results: list) -> str:
+    """Build FIO content for multi-VM benchmark results."""
+    config = summary.get("config", {})
+    metrics = summary.get("metrics", [])
+
+    # Header
+    total_vms = summary.get("total_vms", 0)
+    successful = summary.get("successful", 0)
+    failed = summary.get("failed", 0)
+    duration = summary.get("total_test_duration_sec", 0)
+    timestamp = summary.get("timestamp", "N/A")
+
+    header_html = f"""
+    <h6><strong>Results Directory:</strong> {folder.name}</h6>
+    <h6><strong>Timestamp:</strong> {timestamp}</h6>
+    <h6><strong>Total VMs:</strong> {total_vms} (Success: {successful}, Failed: {failed})</h6>
+    <h6><strong>Test Duration:</strong> {duration:.1f} s</h6>
+    """
+
+    # Config table
+    config_rows = "".join([
+        f"<tr><th>Block Size</th><td>{config.get('bs', 'N/A')}</td></tr>",
+        f"<tr><th>I/O Pattern</th><td>{config.get('rw', 'N/A')}</td></tr>",
+        f"<tr><th>I/O Depth</th><td>{config.get('iodepth', 'N/A')}</td></tr>",
+        f"<tr><th>Num Jobs</th><td>{config.get('numjobs', 'N/A')}</td></tr>",
+        f"<tr><th>Runtime</th><td>{config.get('runtime', 'N/A')} s</td></tr>",
+        f"<tr><th>File Size</th><td>{config.get('size', 'N/A')}</td></tr>",
+    ])
+    config_table = f'<table class="table table-bordered w-auto"><tbody>{config_rows}</tbody></table>'
+
+    # Format metric names properly
+    def format_metric_name(metric: str) -> str:
+        name_map = {
+            "read_iops": "Read IOPS",
+            "write_iops": "Write IOPS",
+            "read_bw_mibps": "Read BW (MiB/s)",
+            "write_bw_mibps": "Write BW (MiB/s)",
+            "read_lat_ms": "Read Latency (ms)",
+            "write_lat_ms": "Write Latency (ms)",
+        }
+        return name_map.get(metric, metric.replace("_", " ").title())
+
+    # Summary metrics table (Avg/Max/Min)
+    metrics_rows = ""
+    for m in metrics:
+        metric_key = m.get("metric", "")
+        metric_name = format_metric_name(metric_key)
+        avg_val = m.get("avg", 0)
+        max_val = m.get("max", 0)
+        min_val = m.get("min", 0)
+
+        # Format based on metric type
+        if "iops" in metric_key:
+            metrics_rows += f"<tr><th>{metric_name}</th><td>{avg_val:,.0f}</td><td>{max_val:,.0f}</td><td>{min_val:,.0f}</td></tr>"
+        elif "bw" in metric_key:
+            metrics_rows += f"<tr><th>{metric_name}</th><td>{avg_val:,.2f}</td><td>{max_val:,.2f}</td><td>{min_val:,.2f}</td></tr>"
+        else:
+            metrics_rows += f"<tr><th>{metric_name}</th><td>{avg_val:,.3f}</td><td>{max_val:,.3f}</td><td>{min_val:,.3f}</td></tr>"
+
+    metrics_table = f"""
+    <table class="table table-bordered table-striped w-auto">
+      <thead class="table-dark"><tr><th>Metric</th><th>Avg</th><th>Max</th><th>Min</th></tr></thead>
+      <tbody>{metrics_rows}</tbody>
+    </table>
+    """
+
+    # Per-VM results table (collapsible) with clickable namespaces
+    per_vm_rows = ""
+    per_vm_data_js = []
+    if isinstance(per_vm_results, list):
+        for idx, r in enumerate(per_vm_results):
+            ns = r.get("namespace", "N/A")
+            success = r.get("success", False)
+            status_badge = '<span class="badge bg-success">✓</span>' if success else '<span class="badge bg-danger">✗</span>'
+            read_iops = r.get('read_iops', 0)
+            write_iops = r.get('write_iops', 0)
+            read_bw = r.get('read_bw_mibps', 0)
+            write_bw = r.get('write_bw_mibps', 0)
+            read_lat = r.get('read_lat_ms', 0)
+            write_lat = r.get('write_lat_ms', 0)
+
+            per_vm_data_js.append({
+                "ns": ns, "read_iops": read_iops, "write_iops": write_iops,
+                "read_bw": read_bw, "write_bw": write_bw, "read_lat": read_lat, "write_lat": write_lat
+            })
+
+            per_vm_rows += f"""
+            <tr class="vm-row-clickable" style="cursor: pointer;" onclick="showVmChart_{uid}({idx})">
+              <td>{status_badge} <a href="#" onclick="event.preventDefault(); showVmChart_{uid}({idx});">{ns}</a></td>
+              <td>{read_iops:,.0f}</td>
+              <td>{write_iops:,.0f}</td>
+              <td>{read_bw:,.2f}</td>
+              <td>{write_bw:,.2f}</td>
+              <td>{read_lat:,.3f}</td>
+              <td>{write_lat:,.3f}</td>
+            </tr>
+            """
+
+    import json
+    per_vm_data_json = json.dumps(per_vm_data_js)
+
+    per_vm_table = f"""
+    <div class="accordion" id="perVmAccordion_{uid}">
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                  data-bs-target="#perVmCollapse_{uid}">
+            Per-VM Results ({total_vms} VMs) - Click namespace to view chart
+          </button>
+        </h2>
+        <div id="perVmCollapse_{uid}" class="accordion-collapse collapse">
+          <div class="accordion-body">
+            <table class="table table-sm table-hover table-striped">
+              <thead class="table-light">
+                <tr>
+                  <th>Namespace</th>
+                  <th>Read IOPS</th>
+                  <th>Write IOPS</th>
+                  <th>Read BW (MiB/s)</th>
+                  <th>Write BW (MiB/s)</th>
+                  <th>Read Latency (ms)</th>
+                  <th>Write Latency (ms)</th>
+                </tr>
+              </thead>
+              <tbody>{per_vm_rows}</tbody>
+            </table>
+            <!-- Per-VM Chart Modal -->
+            <div id="vmChartModal_{uid}" class="modal fade" tabindex="-1">
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="vmChartTitle_{uid}">VM Performance</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="row">
+                      <div class="col-md-6"><canvas id="vmIopsChart_{uid}" height="200"></canvas></div>
+                      <div class="col-md-6"><canvas id="vmBwChart_{uid}" height="200"></canvas></div>
+                    </div>
+                    <div class="row mt-3">
+                      <div class="col-12"><canvas id="vmLatChart_{uid}" height="150"></canvas></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <script>
+              var perVmData_{uid} = {per_vm_data_json};
+              var vmIopsChartInstance_{uid} = null;
+              var vmBwChartInstance_{uid} = null;
+              var vmLatChartInstance_{uid} = null;
+
+              function showVmChart_{uid}(idx) {{
+                var vm = perVmData_{uid}[idx];
+                document.getElementById('vmChartTitle_{uid}').innerText = vm.ns + ' Performance';
+
+                // Destroy existing charts
+                if (vmIopsChartInstance_{uid}) vmIopsChartInstance_{uid}.destroy();
+                if (vmBwChartInstance_{uid}) vmBwChartInstance_{uid}.destroy();
+                if (vmLatChartInstance_{uid}) vmLatChartInstance_{uid}.destroy();
+
+                // IOPS Chart
+                vmIopsChartInstance_{uid} = new Chart(document.getElementById('vmIopsChart_{uid}'), {{
+                  type: 'bar',
+                  data: {{
+                    labels: ['Read', 'Write'],
+                    datasets: [{{ data: [vm.read_iops, vm.write_iops], backgroundColor: ['#2196F3', '#f44336'] }}]
+                  }},
+                  options: {{ responsive: true, plugins: {{ legend: {{ display: false }}, title: {{ display: true, text: 'IOPS' }} }} }}
+                }});
+
+                // Bandwidth Chart
+                vmBwChartInstance_{uid} = new Chart(document.getElementById('vmBwChart_{uid}'), {{
+                  type: 'bar',
+                  data: {{
+                    labels: ['Read', 'Write'],
+                    datasets: [{{ data: [vm.read_bw, vm.write_bw], backgroundColor: ['#2196F3', '#f44336'] }}]
+                  }},
+                  options: {{ responsive: true, plugins: {{ legend: {{ display: false }}, title: {{ display: true, text: 'Bandwidth (MiB/s)' }} }} }}
+                }});
+
+                // Latency Chart
+                vmLatChartInstance_{uid} = new Chart(document.getElementById('vmLatChart_{uid}'), {{
+                  type: 'bar',
+                  data: {{
+                    labels: ['Read Latency', 'Write Latency'],
+                    datasets: [{{ data: [vm.read_lat, vm.write_lat], backgroundColor: ['#4CAF50', '#FF9800'] }}]
+                  }},
+                  options: {{ responsive: true, plugins: {{ legend: {{ display: false }}, title: {{ display: true, text: 'Latency (ms)' }} }} }}
+                }});
+
+                var modal = new bootstrap.Modal(document.getElementById('vmChartModal_{uid}'));
+                modal.show();
+              }}
+            </script>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+    # Extract metrics for charts
+    read_iops = write_iops = read_bw = write_bw = read_lat = write_lat = 0
+    for m in metrics:
+        metric = m.get("metric", "")
+        avg = m.get("avg", 0)
+        if metric == "read_iops": read_iops = avg
+        elif metric == "write_iops": write_iops = avg
+        elif metric == "read_bw_mibps": read_bw = avg
+        elif metric == "write_bw_mibps": write_bw = avg
+        elif metric == "read_lat_ms": read_lat = avg
+        elif metric == "write_lat_ms": write_lat = avg
+
+    total_iops = read_iops + write_iops
+    total_bw = read_bw + write_bw
+
+    # Config subtitle (fio-plot style)
+    io_pattern = config.get('rw', 'N/A')
+    block_size = config.get('bs', 'N/A')
+    io_depth = config.get('iodepth', 'N/A')
+    num_jobs = config.get('numjobs', 'N/A')
+    runtime = config.get('runtime', 'N/A')
+
+    config_subtitle = f"| rw {io_pattern} | bs {block_size} | iodepth {io_depth} | numjobs {num_jobs} | runtime {runtime}s |"
+
+    chart_html = f"""
+    <div class="text-center mb-4" style="font-family: monospace; font-size: 0.95rem; background: #f8f9fa; padding: 10px; border-radius: 6px;">
+      <strong>FIO Config:</strong> {config_subtitle}
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Total IOPS</div>
+            <div class="text-white fw-bold fs-4">{total_iops:,.0f}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Total BW</div>
+            <div class="text-white fw-bold fs-4">{total_bw:,.1f} <small>MiB/s</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Read Latency</div>
+            <div class="text-white fw-bold fs-4">{read_lat:,.2f} <small>ms</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Write Latency</div>
+            <div class="text-white fw-bold fs-4">{write_lat:,.2f} <small>ms</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Performance Chart - IOPS with Latency overlay -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-dark text-white">
+        <strong>Performance Overview</strong> <span class="text-muted small">— IOPS (bars) &amp; Latency (line)</span>
+      </div>
+      <div class="card-body">
+        <canvas id="fioMainChart_{uid}" height="120"></canvas>
+      </div>
+    </div>
+
+    <!-- Bandwidth Chart -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-light"><strong>IOPS Breakdown</strong></div>
+          <div class="card-body">
+            <canvas id="fioIopsChart_{uid}" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-light"><strong>Bandwidth Breakdown</strong></div>
+          <div class="card-body">
+            <canvas id="fioBwChart_{uid}" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Main dual-axis chart (IOPS bars + Latency line)
+      new Chart(document.getElementById('fioMainChart_{uid}'), {{
+        type: 'bar',
+        data: {{
+          labels: ['Read', 'Write'],
+          datasets: [
+            {{
+              label: 'IOPS',
+              data: [{read_iops}, {write_iops}],
+              backgroundColor: ['rgba(52, 152, 219, 0.85)', 'rgba(231, 76, 60, 0.85)'],
+              borderColor: ['#2980b9', '#c0392b'],
+              borderWidth: 2,
+              borderRadius: 4,
+              yAxisID: 'y'
+            }},
+            {{
+              label: 'Latency (ms)',
+              data: [{read_lat}, {write_lat}],
+              type: 'line',
+              borderColor: '#f39c12',
+              backgroundColor: 'rgba(243, 156, 18, 0.2)',
+              borderWidth: 3,
+              pointRadius: 6,
+              pointBackgroundColor: '#f39c12',
+              fill: false,
+              yAxisID: 'y1'
+            }}
+          ]
+        }},
+        options: {{
+          responsive: true,
+          interaction: {{ mode: 'index', intersect: false }},
+          plugins: {{
+            legend: {{ position: 'top' }},
+            tooltip: {{ callbacks: {{ label: function(ctx) {{ return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString(); }} }} }}
+          }},
+          scales: {{
+            y: {{ type: 'linear', position: 'left', beginAtZero: true, title: {{ display: true, text: 'IOPS', font: {{ weight: 'bold' }} }}, grid: {{ color: 'rgba(0,0,0,0.05)' }} }},
+            y1: {{ type: 'linear', position: 'right', beginAtZero: true, title: {{ display: true, text: 'Latency (ms)', font: {{ weight: 'bold' }} }}, grid: {{ drawOnChartArea: false }} }}
+          }}
+        }}
+      }});
+
+      // IOPS horizontal bar
+      new Chart(document.getElementById('fioIopsChart_{uid}'), {{
+        type: 'bar',
+        data: {{
+          labels: ['Read', 'Write'],
+          datasets: [{{ data: [{read_iops}, {write_iops}], backgroundColor: ['#3498db', '#e74c3c'], borderRadius: 4 }}]
+        }},
+        options: {{
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {{ legend: {{ display: false }} }},
+          scales: {{ x: {{ beginAtZero: true, title: {{ display: true, text: 'IOPS' }} }} }}
+        }},
+        plugins: [{{
+          afterDatasetsDraw: function(chart) {{
+            var ctx = chart.ctx;
+            chart.data.datasets.forEach(function(dataset, i) {{
+              var meta = chart.getDatasetMeta(i);
+              meta.data.forEach(function(bar, index) {{
+                var data = dataset.data[index].toLocaleString();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 13px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(data, bar.x - 10, bar.y + 5);
+              }});
+            }});
+          }}
+        }}]
+      }});
+
+      // Bandwidth horizontal bar
+      new Chart(document.getElementById('fioBwChart_{uid}'), {{
+        type: 'bar',
+        data: {{
+          labels: ['Read', 'Write'],
+          datasets: [{{ data: [{read_bw}, {write_bw}], backgroundColor: ['#3498db', '#e74c3c'], borderRadius: 4 }}]
+        }},
+        options: {{
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {{ legend: {{ display: false }} }},
+          scales: {{ x: {{ beginAtZero: true, title: {{ display: true, text: 'MiB/s' }} }} }}
+        }},
+        plugins: [{{
+          afterDatasetsDraw: function(chart) {{
+            var ctx = chart.ctx;
+            chart.data.datasets.forEach(function(dataset, i) {{
+              var meta = chart.getDatasetMeta(i);
+              meta.data.forEach(function(bar, index) {{
+                var data = dataset.data[index].toFixed(2);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 13px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(data, bar.x - 10, bar.y + 5);
+              }});
+            }});
+          }}
+        }}]
+      }});
+    </script>
+    """
+
+    return f"""
+    <div class="mb-4">
+      {header_html}
+      <h4 class="mt-4">FIO Configuration</h4>
+      {config_table}
+      <h4 class="mt-4">Aggregated Results (Across All VMs)</h4>
+      {metrics_table}
+      {chart_html}
+      <h4 class="mt-4">Per-VM Details</h4>
+      {per_vm_table}
+    </div>
+    """
+
+
+def build_fio_single_vm_content(folder: Path, uid: str, data: dict) -> str:
+    """Build FIO content for single-VM benchmark results."""
+    config = data.get("config", {})
+    job_config = data.get("job_config", config)
+    metrics = data.get("metrics", {})
+    read_metrics = metrics.get("read", {})
+    write_metrics = metrics.get("write", {})
+
+    test_name = data.get("test_name", "FIO Benchmark")
+    timestamp = data.get("timestamp", "N/A")
+    runtime = data.get("runtime_sec", config.get("runtime", "N/A"))
+
+    header_html = f"""
+    <h6><strong>Results Directory:</strong> {folder.name}</h6>
+    <h6><strong>Test Name:</strong> {test_name}</h6>
+    <h6><strong>Timestamp:</strong> {timestamp}</h6>
+    <h6><strong>Runtime:</strong> {runtime} s</h6>
+    """
+
+    config_rows = ""
+    config_items = [
+        ("Block Size", job_config.get("bs", config.get("bs", "N/A"))),
+        ("I/O Pattern", job_config.get("rw", config.get("rw", "N/A"))),
+        ("I/O Engine", job_config.get("ioengine", config.get("ioengine", "libaio"))),
+        ("I/O Depth", job_config.get("iodepth", config.get("iodepth", "N/A"))),
+        ("Num Jobs", job_config.get("numjobs", config.get("numjobs", "N/A"))),
+        ("Direct I/O", "Yes" if job_config.get("direct", config.get("direct", 1)) else "No"),
+        ("File Size", job_config.get("size", config.get("size", "N/A"))),
+    ]
+    for label, value in config_items:
+        config_rows += f"<tr><th>{label}</th><td>{value}</td></tr>"
+
+    config_table = f'<table class="table table-bordered w-auto"><tbody>{config_rows}</tbody></table>'
+
+    perf_rows = ""
+    if read_metrics:
+        read_iops = read_metrics.get("iops", 0)
+        read_bw = read_metrics.get("bw_mibps", 0)
+        read_lat = read_metrics.get("lat_mean_ms", 0)
+        if read_iops or read_bw:
+            perf_rows += f"<tr><th>Read IOPS</th><td>{read_iops:,.2f}</td></tr>"
+            perf_rows += f"<tr><th>Read Bandwidth</th><td>{read_bw:,.2f} MiB/s</td></tr>"
+            perf_rows += f"<tr><th>Read Latency</th><td>{read_lat:,.3f} ms</td></tr>"
+
+    if write_metrics:
+        write_iops = write_metrics.get("iops", 0)
+        write_bw = write_metrics.get("bw_mibps", 0)
+        write_lat = write_metrics.get("lat_mean_ms", 0)
+        if write_iops or write_bw:
+            perf_rows += f"<tr><th>Write IOPS</th><td>{write_iops:,.2f}</td></tr>"
+            perf_rows += f"<tr><th>Write Bandwidth</th><td>{write_bw:,.2f} MiB/s</td></tr>"
+            perf_rows += f"<tr><th>Write Latency</th><td>{write_lat:,.3f} ms</td></tr>"
+
+    perf_table = f'<table class="table table-bordered w-auto"><tbody>{perf_rows}</tbody></table>' if perf_rows else "<p>No metrics.</p>"
+
+    status = data.get("status", "completed")
+    status_html = '<span class="badge bg-success">Completed</span>' if status == "completed" else f'<span class="badge bg-info">{status}</span>'
+
+    return f"""
+    <div class="mb-4">
+      {header_html}
+      <p><strong>Status:</strong> {status_html}</p>
+      <h4 class="mt-4">Job Configuration</h4>
+      {config_table}
+      <h4 class="mt-4">Performance Results</h4>
+      {perf_table}
+    </div>
+    """
+
+
 # ---------------- Disk and PX Builders ----------------
 def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
     """Disk-level tab with charts and nested VM-size tabs."""
@@ -566,10 +1083,18 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
             for f in by_vms[vm_count] if (f / "summary_chaos_benchmark.json").exists()
         ) or "<p>No Chaos Benchmark data for this VM size.</p>"
 
+        fio_sections = "".join(
+            build_fio_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
+            for f in by_vms[vm_count] if (f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists()
+        ) or "<p>No FIO Benchmark data for this VM size.</p>"
+
+        # Check if we have capacity/fio data to show the tabs
+        has_capacity_data = any((f / "summary_capacity_benchmark.json").exists() for f in by_vms[vm_count])
+        has_fio_data = any((f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists() for f in by_vms[vm_count])
         # Check if we have chaos data to show the tab
         has_capacity_data = any((f / "summary_chaos_benchmark.json").exists() for f in by_vms[vm_count])
 
-        # Build tab navigation - include capacity tab only if data exists
+        # Build tab navigation - include capacity/fio tabs only if data exists
         tab_nav_items = [
             f'<li class="nav-item"><button class="nav-link active" id="tab-{vm_id}_cb-tab" data-bs-toggle="tab" data-bs-target="#tab_{vm_id}_cb" type="button" role="tab">Creation + Boot Storm</button></li>',
             f'<li class="nav-item"><button class="nav-link" id="tab-{vm_id}_mig-tab" data-bs-toggle="tab" data-bs-target="#tab_{vm_id}_mig" type="button" role="tab">Live Migration</button></li>',
@@ -585,6 +1110,14 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
             )
             tab_content_items.append(
                 f'<div class="tab-pane fade" id="tab_{vm_id}_cap" role="tabpanel">{cap_sections}</div>'
+            )
+
+        if has_fio_data:
+            tab_nav_items.append(
+                f'<li class="nav-item"><button class="nav-link" id="tab-{vm_id}_fio-tab" data-bs-toggle="tab" data-bs-target="#tab_{vm_id}_fio" type="button" role="tab">FIO Benchmark</button></li>'
+            )
+            tab_content_items.append(
+                f'<div class="tab-pane fade" id="tab_{vm_id}_fio" role="tabpanel">{fio_sections}</div>'
             )
 
         vm_tabs_body.append(
@@ -638,6 +1171,7 @@ def build_html_page(px_nav, px_body):
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 body {{ margin: 20px; }}
 h3 {{ margin-top: 30px; }}

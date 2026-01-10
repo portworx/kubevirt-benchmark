@@ -13,6 +13,7 @@ from virtbench.commands import (
     migration,
     chaos,
     failure_recovery,
+    fio,
     validate,
     version,
 )
@@ -108,6 +109,7 @@ cli.add_command(datasource_clone.datasource_clone)
 cli.add_command(migration.migration)
 cli.add_command(chaos.chaos_benchmark)
 cli.add_command(failure_recovery.failure_recovery)
+cli.add_command(fio.fio)
 cli.add_command(validate.validate_cluster)
 cli.add_command(version.version)
 
