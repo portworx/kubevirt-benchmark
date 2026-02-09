@@ -1,0 +1,2201 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="KubeVirt Benchmark Suite - Performance testing toolkit for KubeVirt VMs">
+      
+      
+        <meta name="author" content="KubeVirt Benchmark Suite Contributors">
+      
+      
+        <link rel="canonical" href="https://portworx.github.io/virtbench/reference/troubleshooting/">
+      
+      
+        <link rel="prev" href="../user-guide/cleanup-guide/">
+      
+      
+        <link rel="next" href="../best-practices/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Troubleshooting - virtbench</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#troubleshooting" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="virtbench" class="md-header__button md-logo" aria-label="virtbench" data-md-component="logo">
+      
+  <img src="../../virtbench-transparent.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            virtbench
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Troubleshooting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/portworx/kubevirt-benchmark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="virtbench" class="md-nav__button md-logo" aria-label="virtbench" data-md-component="logo">
+      
+  <img src="../../virtbench-transparent.png" alt="logo">
+
+    </a>
+    virtbench
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/portworx/kubevirt-benchmark" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/repository-structure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1" id="__nav_2_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Scenarios
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Test Scenarios
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/datasource-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datasource Clone
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/capacity-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/failure-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Failure Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/cluster-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cluster Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/boot-storm-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm Testing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/vm-template-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Template Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/output-and-results/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output and Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/results-dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Results Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/cleanup-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleanup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#general-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="General Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#python-version-too-old" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Version Too Old
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kubectl-not-found-or-not-configured" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        kubectl Not Found or Not Configured
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#virtbench-command-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        virtbench Command Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vm-creation-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VM Creation Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VM Creation Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#datasource-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DataSource Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-class-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Class Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vms-stuck-in-provisioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VMs Stuck in Provisioning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vms-not-reaching-running-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VMs Not Reaching Running State
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#permission-denied-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Permission Denied Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#golden-image-pvcs-not-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Golden Image PVCs Not Ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capacity-benchmark-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capacity Benchmark Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Capacity Benchmark Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#volume-resize-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Volume Resize Fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snapshot-creation-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snapshot Creation Fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#out-of-resources-vm-creation-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of Resources (VM Creation Fails)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migration Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#migration-stuck-or-timeout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Stuck or Timeout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migration-fails-immediately" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Fails Immediately
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debug-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug Mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-baselines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Baselines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Baselines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#expected-performance-ranges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Performance Ranges
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Expected Performance Ranges">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vm-creation-datasource-clone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VM Creation (DataSource Clone)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#live-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boot-storm-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boot Storm Impact
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../best-practices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Best Practices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Community
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Community
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../community/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Community
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../community/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/portworx/kubevirt-benchmark/issues" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Search Issues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/portworx/kubevirt-benchmark/issues/new/choose" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Open an Issue
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../community/support/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../community/code-of-conduct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code of Conduct
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#general-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="General Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#python-version-too-old" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Version Too Old
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kubectl-not-found-or-not-configured" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        kubectl Not Found or Not Configured
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#virtbench-command-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        virtbench Command Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#vm-creation-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VM Creation Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="VM Creation Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#datasource-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DataSource Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-class-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Class Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vms-stuck-in-provisioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VMs Stuck in Provisioning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vms-not-reaching-running-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VMs Not Reaching Running State
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#permission-denied-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Permission Denied Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#golden-image-pvcs-not-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Golden Image PVCs Not Ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#capacity-benchmark-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Capacity Benchmark Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Capacity Benchmark Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#volume-resize-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Volume Resize Fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snapshot-creation-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snapshot Creation Fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#out-of-resources-vm-creation-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of Resources (VM Creation Fails)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migration Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#migration-stuck-or-timeout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Stuck or Timeout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migration-fails-immediately" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration Fails Immediately
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debug-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug Mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-baselines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Baselines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Baselines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#expected-performance-ranges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Performance Ranges
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Expected Performance Ranges">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vm-creation-datasource-clone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VM Creation (DataSource Clone)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#live-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boot-storm-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boot Storm Impact
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="troubleshooting">Troubleshooting</h1>
+<p>This guide helps you diagnose and resolve common issues when running virtbench performance tests.</p>
+<h2 id="general-issues">General Issues</h2>
+<h3 id="python-version-too-old">Python Version Too Old</h3>
+<p><strong>Symptoms</strong>: Script exits with "Python 3.8+ is required"</p>
+<p><strong>Solutions</strong>:
+- Upgrade Python to 3.8 or higher
+- On RHEL/CentOS: <code>sudo yum install python3.8</code>
+- On Ubuntu/Debian: <code>sudo apt-get install python3.8</code>
+- On macOS: <code>brew install python@3.8</code></p>
+<h3 id="kubectl-not-found-or-not-configured">kubectl Not Found or Not Configured</h3>
+<p><strong>Symptoms</strong>: "kubectl: command not found" or "The connection to the server was refused"</p>
+<p><strong>Solutions</strong>:
+- Install kubectl: Follow <a href="https://kubernetes.io/docs/tasks/tools/">Kubernetes documentation</a>
+- Configure kubectl: <code>export KUBECONFIG=/path/to/kubeconfig</code>
+- Test connection: <code>kubectl get nodes</code></p>
+<h3 id="virtbench-command-not-found">virtbench Command Not Found</h3>
+<p><strong>Symptoms</strong>: "virtbench: command not found" after installation</p>
+<p><strong>Solutions</strong>:
+- Add <code>~/.local/bin</code> to PATH: <code>export PATH="$HOME/.local/bin:$PATH"</code>
+- Make it permanent: Add to <code>~/.bashrc</code> or <code>~/.zshrc</code>
+- If using venv: Activate it first: <code>source venv/bin/activate</code>
+- Reinstall: <code>pip3 install -e .</code></p>
+<h2 id="vm-creation-issues">VM Creation Issues</h2>
+<h3 id="datasource-not-found">DataSource Not Found</h3>
+<p><strong>Symptoms</strong>: VM creation fails with "DataSource 'rhel9' not found"</p>
+<p><strong>Solutions</strong>:
+- List available DataSources: <code>kubectl get datasource -n openshift-virtualization-os-images</code>
+- Check DataSource name in template matches available DataSources
+- Verify OpenShift Virtualization is properly installed
+- Wait for DataSources to be created (may take a few minutes after installation)</p>
+<h3 id="storage-class-not-found">Storage Class Not Found</h3>
+<p><strong>Symptoms</strong>: PVC creation fails with "StorageClass not found"</p>
+<p><strong>Solutions</strong>:
+- List available storage classes: <code>kubectl get storageclass</code>
+- Verify storage class name is correct
+- Ensure storage class is properly configured
+- Check if storage backend is healthy</p>
+<h3 id="vms-stuck-in-provisioning">VMs Stuck in Provisioning</h3>
+<p><strong>Symptoms</strong>: VMs remain in "Provisioning" state for extended time</p>
+<p><strong>Solutions</strong>:
+- Check DataVolume status: <code>kubectl get dv -n &lt;namespace&gt;</code>
+- Check CDI logs: <code>kubectl logs -n openshift-cnv -l app=cdi-deployment</code>
+- Verify storage backend is healthy
+- Check for resource constraints on nodes
+- Increase timeout values if storage is slow</p>
+<h3 id="vms-not-reaching-running-state">VMs Not Reaching Running State</h3>
+<p><strong>Symptoms</strong>: VMs stuck in "Starting" or other non-Running states</p>
+<p><strong>Solutions</strong>:
+- Check VM events: <code>kubectl describe vm &lt;vm-name&gt; -n &lt;namespace&gt;</code>
+- Check VMI status: <code>kubectl get vmi &lt;vm-name&gt; -n &lt;namespace&gt;</code>
+- Check virt-launcher pod logs: <code>kubectl logs virt-launcher-&lt;vm-name&gt;-xxx -n &lt;namespace&gt;</code>
+- Verify node has sufficient resources
+- Check VM console for boot errors: <code>virtctl console &lt;vm-name&gt; -n &lt;namespace&gt;</code></p>
+<h3 id="permission-denied-errors">Permission Denied Errors</h3>
+<p><strong>Symptoms</strong>: Cannot create namespaces, VMs, or other resources</p>
+<p><strong>Solutions</strong>:
+- Ensure your user has cluster-admin or equivalent permissions
+- Check RBAC policies: <code>kubectl auth can-i create vm --all-namespaces</code>
+- Verify service account permissions if running in a pod</p>
+<h3 id="golden-image-pvcs-not-ready">Golden Image PVCs Not Ready</h3>
+<p><strong>Symptoms</strong>: DataSource or DataVolume not found</p>
+<p><strong>Solutions</strong>:
+- Check DataVolume status: <code>kubectl get dv -n openshift-virtualization-os-images</code>
+- Verify registry image stream exists: <code>kubectl get imagestream -n openshift-virtualization-os-images</code>
+- Check CDI operator logs: <code>kubectl logs -n openshift-cnv -l name=cdi-operator</code></p>
+<h2 id="capacity-benchmark-issues">Capacity Benchmark Issues</h2>
+<h3 id="volume-resize-fails">Volume Resize Fails</h3>
+<p><strong>Symptoms</strong>: Resize phase fails with error</p>
+<p><strong>Solutions</strong>:
+- Check if your storage class supports volume expansion:
+  <code>bash
+  kubectl get storageclass YOUR-STORAGE-CLASS -o jsonpath='{.allowVolumeExpansion}'</code>
+- If <code>false</code>, use <code>--skip-resize-job</code> to skip this phase
+- Check storage backend limits and quotas</p>
+<h3 id="snapshot-creation-fails">Snapshot Creation Fails</h3>
+<p><strong>Symptoms</strong>: Snapshot phase fails</p>
+<p><strong>Solutions</strong>:
+- Check if VolumeSnapshotClass is configured:
+  <code>bash
+  kubectl get volumesnapshotclass</code>
+- If not available, use <code>--skip-snapshot-job</code> to skip this phase
+- Verify storage backend supports CSI snapshots</p>
+<h3 id="out-of-resources-vm-creation-fails">Out of Resources (VM Creation Fails)</h3>
+<p><strong>Symptoms</strong>: VMs stuck in Scheduling state, capacity limit reached</p>
+<p><strong>Solutions</strong>:
+- This indicates you've reached capacity limits. Check:
+  ```bash
+  # Check node resources
+  kubectl top nodes</p>
+<p># Check node status
+  kubectl describe node node-name
+  ```
+- Review cluster resource quotas
+- Add more worker nodes or increase node resources</p>
+<h2 id="migration-issues">Migration Issues</h2>
+<h3 id="migration-stuck-or-timeout">Migration Stuck or Timeout</h3>
+<p><strong>Symptoms</strong>: Migration doesn't complete within timeout</p>
+<p><strong>Solutions</strong>:
+- Increase <code>--migration-timeout</code> value
+- Check network bandwidth between nodes
+- Verify storage backend supports live migration
+- Check virt-handler logs on source and target nodes</p>
+<h3 id="migration-fails-immediately">Migration Fails Immediately</h3>
+<p><strong>Symptoms</strong>: Migration fails right after starting</p>
+<p><strong>Solutions</strong>:
+- Verify VM is in Running state before migration
+- Check if VM has any conditions preventing migration
+- Review VMIM resource for error details: <code>kubectl describe vmim -n &lt;namespace&gt;</code></p>
+<h2 id="debug-mode">Debug Mode</h2>
+<p>Enable debug logging for detailed troubleshooting:</p>
+<pre><code class="language-bash"># Using virtbench CLI
+virtbench datasource-clone --log-level DEBUG --start 1 --end 5
+
+# Using Python script
+python3 measure-vm-creation-time.py --log-level DEBUG --start 1 --end 5
+</code></pre>
+<h2 id="performance-baselines">Performance Baselines</h2>
+<h3 id="expected-performance-ranges">Expected Performance Ranges</h3>
+<p>These are general guidelines. Actual performance depends on your infrastructure:</p>
+<h4 id="vm-creation-datasource-clone">VM Creation (DataSource Clone)</h4>
+<table>
+<thead>
+<tr>
+<th>Storage Type</th>
+<th>Time to Running</th>
+<th>Time to Ping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Local SSD</td>
+<td>10-20s</td>
+<td>30-45s</td>
+</tr>
+<tr>
+<td>Network SSD (Portworx, Ceph)</td>
+<td>15-30s</td>
+<td>40-60s</td>
+</tr>
+<tr>
+<td>Network HDD</td>
+<td>30-60s</td>
+<td>60-120s</td>
+</tr>
+</tbody>
+</table>
+<h4 id="live-migration">Live Migration</h4>
+<table>
+<thead>
+<tr>
+<th>VM Size</th>
+<th>Migration Duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Small (2GB RAM)</td>
+<td>10-30s</td>
+</tr>
+<tr>
+<td>Medium (4-8GB RAM)</td>
+<td>30-60s</td>
+</tr>
+<tr>
+<td>Large (16GB+ RAM)</td>
+<td>60-180s</td>
+</tr>
+</tbody>
+</table>
+<h4 id="boot-storm-impact">Boot Storm Impact</h4>
+<p>Expect 1.5-3x slower performance during boot storm compared to sequential creation.</p>
+<h2 id="getting-help">Getting Help</h2>
+<p>If you're still experiencing issues:</p>
+<ol>
+<li><strong>Check Logs</strong>: Review test logs with <code>--log-level DEBUG</code></li>
+<li><strong>Search Issues</strong>: <a href="https://github.com/portworx/kubevirt-benchmark/issues">Search existing GitHub issues</a></li>
+<li><strong>Open an Issue</strong>: <a href="https://github.com/portworx/kubevirt-benchmark/issues/new/choose">Create a new issue</a> with:</li>
+<li>virtbench version</li>
+<li>Cluster details (OCP version, KubeVirt version)</li>
+<li>Storage backend</li>
+<li>Full error messages and logs</li>
+<li>Steps to reproduce</li>
+</ol>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../user-guide/test-scenarios/cluster-validation/">Cluster Validation</a> - Pre-flight checks</li>
+<li><a href="../user-guide/configuration/">Configuration Options</a> - All available options</li>
+<li><a href="../best-practices/">Best Practices</a> - Recommended practices</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,48 @@
+/* Custom header bar color */
+.md-header {
+  background-color: #1c1c1c !important;
+}
+
+/* Make header text white for visibility on dark background */
+.md-header__title,
+.md-header__button,
+.md-header__topic,
+.md-header-nav__button {
+  color: #ffffff !important;
+}
+
+/* Style header links */
+.md-header a {
+  color: #ffffff !important;
+}
+
+.md-header a:hover {
+  color: #cccccc !important;
+}
+
+/* Increase logo size */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 3rem !important;
+  width: auto !important;
+}
+
+/* Adjust header height to accommodate larger logo */
+.md-header {
+  height: 4rem !important;
+}
+
+.md-header__inner {
+  padding: 0.2rem 0.4rem !important;
+}
+
+/* Fix search icon color */
+.md-search__icon {
+  color: #ffffff !important;
+}
+
+/* Fix navigation icons */
+.md-nav__icon {
+  color: #ffffff !important;
+}
+
