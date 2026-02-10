@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 site_name: virtbench
-site_url: https://portworx.github.io/virtbench
+site_url: https://portworx.github.io/kubevirt-benchmark
 site_description: KubeVirt Benchmark Suite - Performance testing toolkit for KubeVirt VMs
 docs_dir: docs
 site_author: KubeVirt Benchmark Suite Contributors

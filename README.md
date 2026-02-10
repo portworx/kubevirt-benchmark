@@ -11,7 +11,7 @@ A comprehensive, vendor-neutral performance testing toolkit for KubeVirt virtual
 
 ## Documentation
 
-For detailed documentation, please refer to the [documentation](https://portworx.github.io/virtbench/) website.
+For detailed documentation, please refer to the [documentation](https://portworx.github.io/kubevirt-benchmark/) website.
 
 ## Overview
 
