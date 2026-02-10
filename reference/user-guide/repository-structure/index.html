@@ -938,14 +938,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/capacity-benchmark/" class="md-nav__link">
+      <a href="../test-scenarios/chaos-benchmark/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Capacity Benchmark
+    Chaos Benchmark
   
 
     
@@ -1762,7 +1762,7 @@
 │   ├── commands/                # Individual command implementations
 │   │   ├── datasource_clone.py # DataSource clone benchmark
 │   │   ├── migration.py         # Migration benchmark
-│   │   ├── capacity_benchmark.py# Capacity benchmark
+│   │   ├── chaos.py              # Chaos benchmark
 │   │   ├── failure_recovery.py  # Failure recovery benchmark
 │   │   └── validate_cluster.py  # Cluster validation
 │   └── utils/                   # Shared utilities
@@ -1773,7 +1773,7 @@
 ├── scripts/                     # Legacy Python scripts (deprecated)
 │   ├── measure-vm-creation-time.py
 │   ├── measure-migration-time.py
-│   ├── measure-capacity-benchmark.py
+│   ├── measure-chaos.py
 │   └── measure-failure-recovery.py
 │
 ├── dashboard/                   # Dashboard generation
@@ -1848,7 +1848,7 @@
 <h3 id="test-results">Test Results</h3>
 <ul>
 <li><strong>Timestamp format</strong>: <code>YYYYMMDD-HHMMSS</code></li>
-<li><strong>Test names</strong>: <code>vm_creation</code>, <code>boot_storm</code>, <code>migration</code>, <code>capacity_benchmark</code>, <code>failure_recovery</code></li>
+<li><strong>Test names</strong>: <code>vm_creation</code>, <code>boot_storm</code>, <code>migration</code>, <code>chaos_benchmark</code>, <code>failure_recovery</code></li>
 <li><strong>VM range</strong>: <code>{start}-{end}</code> (e.g., <code>1-50</code>)</li>
 </ul>
 <p>Example: <code>20250105-143052_vm_creation_1-50vms/</code></p>

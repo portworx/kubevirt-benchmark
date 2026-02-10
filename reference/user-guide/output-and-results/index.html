@@ -671,14 +671,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/capacity-benchmark/" class="md-nav__link">
+      <a href="../test-scenarios/chaos-benchmark/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Capacity Benchmark
+    Chaos Benchmark
   
 
     
@@ -1130,15 +1130,15 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#capacity-benchmark-issues" class="md-nav__link">
+  <a href="#chaos-benchmark-issues" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Capacity Benchmark Issues
+        Chaos Benchmark Issues
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Capacity Benchmark Issues">
+    <nav class="md-nav" aria-label="Chaos Benchmark Issues">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1931,15 +1931,15 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#capacity-benchmark-issues" class="md-nav__link">
+  <a href="#chaos-benchmark-issues" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Capacity Benchmark Issues
+        Chaos Benchmark Issues
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Capacity Benchmark Issues">
+    <nav class="md-nav" aria-label="Chaos Benchmark Issues">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2204,10 +2204,10 @@ Statistics:
 │   │   │   ├── migration_results.json
 │   │   │   ├── migration_results.csv
 │   │   │   └── summary_migration.json
-│   │   └── {timestamp}_capacity_benchmark_{total_vms}vms/
-│   │       ├── capacity_benchmark_results.json
-│   │       ├── capacity_benchmark_results.csv
-│   │       └── summary_capacity_benchmark.json
+│   │   └── {timestamp}_chaos_benchmark_{total_vms}vms/
+│   │       ├── chaos_benchmark_results.json
+│   │       ├── chaos_benchmark_results.csv
+│   │       └── summary_chaos_benchmark.json
 </code></pre>
 <h3 id="json-results-format">JSON Results Format</h3>
 <pre><code class="language-json">{
@@ -2292,7 +2292,7 @@ kubevirt-perf-test-3,rhel-9-vm,8.89,11.98,Success
 - Check DataVolume status: <code>kubectl get dv -n openshift-virtualization-os-images</code>
 - Verify registry image stream exists: <code>kubectl get imagestream -n openshift-virtualization-os-images</code>
 - Check CDI operator logs: <code>kubectl logs -n openshift-cnv -l name=cdi-operator</code></p>
-<h3 id="capacity-benchmark-issues">Capacity Benchmark Issues</h3>
+<h3 id="chaos-benchmark-issues">Chaos Benchmark Issues</h3>
 <h4 id="volume-resize-fails">Volume resize fails</h4>
 <p><strong>Symptoms</strong>: Resize phase fails with error</p>
 <p><strong>Solutions</strong>:

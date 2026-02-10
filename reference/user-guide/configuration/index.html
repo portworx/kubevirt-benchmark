@@ -671,14 +671,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/capacity-benchmark/" class="md-nav__link">
+      <a href="../test-scenarios/chaos-benchmark/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Capacity Benchmark
+    Chaos Benchmark
   
 
     
@@ -912,15 +912,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#capacity-benchmark-tests" class="md-nav__link">
+  <a href="#chaos-benchmark-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Capacity Benchmark Tests
+        Chaos Benchmark Tests
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Capacity Benchmark Tests">
+    <nav class="md-nav" aria-label="Chaos Benchmark Tests">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1601,15 +1601,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#capacity-benchmark-tests" class="md-nav__link">
+  <a href="#chaos-benchmark-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Capacity Benchmark Tests
+        Chaos Benchmark Tests
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Capacity Benchmark Tests">
+    <nav class="md-nav" aria-label="Chaos Benchmark Tests">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2225,8 +2225,8 @@
 </tr>
 </tbody>
 </table>
-<h2 id="capacity-benchmark-tests">Capacity Benchmark Tests</h2>
-<p>Configuration options for capacity benchmark testing.</p>
+<h2 id="chaos-benchmark-tests">Chaos Benchmark Tests</h2>
+<p>Configuration options for chaos benchmark testing.</p>
 <h3 id="required-options">Required Options</h3>
 <table>
 <thead>
@@ -2239,6 +2239,10 @@
 <tr>
 <td><code>--storage-class</code></td>
 <td>Storage class name (comma-separated for multiple)</td>
+</tr>
+<tr>
+<td><code>--concurrency</code></td>
+<td>Number of concurrent operations (<strong>REQUIRED</strong>)</td>
 </tr>
 </tbody>
 </table>
@@ -2254,7 +2258,7 @@
 <tbody>
 <tr>
 <td><code>--namespace</code></td>
-<td><code>virt-capacity-benchmark</code></td>
+<td><code>virt-chaos-benchmark</code></td>
 <td>Namespace for test resources</td>
 </tr>
 <tr>
@@ -2269,18 +2273,18 @@
 </tr>
 <tr>
 <td><code>--data-volume-count</code></td>
-<td><code>9</code></td>
+<td><code>1</code></td>
 <td>Number of data volumes per VM</td>
 </tr>
 <tr>
 <td><code>--min-vol-size</code></td>
 <td><code>30Gi</code></td>
-<td>Initial volume size</td>
+<td>Initial volume size (must include unit, e.g., <code>30Gi</code>)</td>
 </tr>
 <tr>
 <td><code>--min-vol-inc-size</code></td>
 <td><code>10Gi</code></td>
-<td>Volume size increment for resize</td>
+<td>Volume size increment for resize (must include unit, e.g., <code>10Gi</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -2336,15 +2340,19 @@
 </thead>
 <tbody>
 <tr>
-<td><code>--skip-resize-job</code></td>
+<td><code>--skip-resize</code></td>
 <td>Skip volume resize phase</td>
 </tr>
 <tr>
-<td><code>--skip-snapshot-job</code></td>
+<td><code>--skip-clone</code></td>
+<td>Skip volume clone phase</td>
+</tr>
+<tr>
+<td><code>--skip-snapshot</code></td>
 <td>Skip snapshot phase</td>
 </tr>
 <tr>
-<td><code>--skip-restart-job</code></td>
+<td><code>--skip-restart</code></td>
 <td>Skip restart phase</td>
 </tr>
 </tbody>
@@ -2423,7 +2431,7 @@
 </tbody>
 </table>
 <p>Results are saved in the standard folder structure:</p>
-<pre><code>results/{storage-version}/{num-disks}-disk/{timestamp}_capacity_benchmark_{total_vms}vms/
+<pre><code>results/{storage-version}/{num-disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
 </code></pre>
 <h3 id="logging-options">Logging Options</h3>
 <table>

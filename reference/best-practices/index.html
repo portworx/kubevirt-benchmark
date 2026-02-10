@@ -669,14 +669,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../user-guide/test-scenarios/capacity-benchmark/" class="md-nav__link">
+      <a href="../user-guide/test-scenarios/chaos-benchmark/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Capacity Benchmark
+    Chaos Benchmark
   
 
     
@@ -1208,15 +1208,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#capacity-benchmark-testing" class="md-nav__link">
+  <a href="#chaos-benchmark-testing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Capacity Benchmark Testing
+        Chaos Benchmark Testing
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Capacity Benchmark Testing">
+    <nav class="md-nav" aria-label="Chaos Benchmark Testing">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1966,15 +1966,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#capacity-benchmark-testing" class="md-nav__link">
+  <a href="#chaos-benchmark-testing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Capacity Benchmark Testing
+        Chaos Benchmark Testing
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Capacity Benchmark Testing">
+    <nav class="md-nav" aria-label="Chaos Benchmark Testing">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2400,16 +2400,17 @@ kubectl exec -it ssh-test-pod -- ping &lt;vm-ip&gt;
   --migration-timeout 600 \  # 10 minutes for large VMs
   --source-node worker-1
 </code></pre>
-<h2 id="capacity-benchmark-testing">Capacity Benchmark Testing</h2>
+<h2 id="chaos-benchmark-testing">Chaos Benchmark Testing</h2>
 <h3 id="1-understand-your-goals">1. Understand Your Goals</h3>
 <ul>
-<li><strong>Find Maximum Capacity</strong>: Run without <code>--max-iterations</code></li>
+<li><strong>Stress Test Cluster</strong>: Run concurrent chaos operations</li>
 <li><strong>Test Specific Scenarios</strong>: Use <code>--max-iterations</code> to limit test duration</li>
-<li><strong>Skip Unsupported Features</strong>: Use <code>--skip-resize-job</code> or <code>--skip-snapshot-job</code> if needed</li>
+<li><strong>Skip Unsupported Features</strong>: Use <code>--skip-resize</code>, <code>--skip-clone</code>, or <code>--skip-snapshot</code> if needed</li>
 </ul>
 <h3 id="2-start-with-conservative-settings">2. Start with Conservative Settings</h3>
-<pre><code class="language-bash">virtbench capacity-benchmark \
+<pre><code class="language-bash">virtbench chaos-benchmark \
   --storage-class YOUR-STORAGE-CLASS \
+  --concurrency 2 \
   --vms 5 \
   --max-iterations 5
 </code></pre>

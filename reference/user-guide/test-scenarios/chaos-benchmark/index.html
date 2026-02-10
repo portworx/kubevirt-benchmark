@@ -12,7 +12,7 @@
         <meta name="author" content="KubeVirt Benchmark Suite Contributors">
       
       
-        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/capacity-benchmark/">
+        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/chaos-benchmark/">
       
       
         <link rel="prev" href="../migration/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Capacity Benchmark - virtbench</title>
+        <title>Chaos Benchmark - virtbench</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#capacity-benchmark-testing" class="md-skip">
+        <a href="#chaos-benchmark-testing" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Capacity Benchmark
+              Chaos Benchmark
             
           </span>
         </div>
@@ -689,7 +689,7 @@
   <span class="md-ellipsis">
     
   
-    Capacity Benchmark
+    Chaos Benchmark
   
 
     
@@ -707,7 +707,7 @@
   <span class="md-ellipsis">
     
   
-    Capacity Benchmark
+    Chaos Benchmark
   
 
     
@@ -744,15 +744,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#basic-capacity-test" class="md-nav__link">
+  <a href="#basic-chaos-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Capacity Test
+        Basic Chaos Test
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Basic Capacity Test">
+    <nav class="md-nav" aria-label="Basic Chaos Test">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -783,6 +783,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#full-example-with-all-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Example with All Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#skip-specific-phases" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -791,7 +802,29 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Skip Specific Phases">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#save-results-to-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Save Results to Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cleanup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cleanup">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -822,195 +855,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#save-results-to-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Save Results to Files
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Save Results to Files">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-virtbench-cli_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced Configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Advanced Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#custom-vm-template" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom VM Template
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-datasource" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom DataSource
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-vm-resources" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom VM Resources
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-data-volume-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom Data Volume Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#concurrency-and-timeouts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Concurrency and Timeouts
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cleanup
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Cleanup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-virtbench-cli_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#understanding-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Understanding Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Understanding Results">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#interpreting-capacity-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Interpreting Capacity Limits
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Best Practices
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1023,10 +867,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#vms-stuck-in-scheduling" class="md-nav__link">
+  <a href="#volume-resize-failures" class="md-nav__link">
     <span class="md-ellipsis">
       
-        VMs Stuck in Scheduling
+        Volume Resize Failures
       
     </span>
   </a>
@@ -1034,10 +878,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#volume-resize-failures" class="md-nav__link">
+  <a href="#volume-clone-failures" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Volume Resize Failures
+        Volume Clone Failures
       
     </span>
   </a>
@@ -1643,15 +1487,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#basic-capacity-test" class="md-nav__link">
+  <a href="#basic-chaos-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Capacity Test
+        Basic Chaos Test
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Basic Capacity Test">
+    <nav class="md-nav" aria-label="Basic Chaos Test">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1682,6 +1526,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#full-example-with-all-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Example with All Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#skip-specific-phases" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1690,7 +1545,29 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Skip Specific Phases">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#save-results-to-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Save Results to Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cleanup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cleanup">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1721,195 +1598,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#save-results-to-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Save Results to Files
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Save Results to Files">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-virtbench-cli_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advanced Configuration
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Advanced Configuration">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#custom-vm-template" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom VM Template
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-datasource" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom DataSource
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-vm-resources" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom VM Resources
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#custom-data-volume-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Custom Data Volume Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#concurrency-and-timeouts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Concurrency and Timeouts
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cleanup
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Cleanup">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#using-virtbench-cli_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#understanding-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Understanding Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Understanding Results">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#interpreting-capacity-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Interpreting Capacity Limits
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Best Practices
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1922,10 +1610,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#vms-stuck-in-scheduling" class="md-nav__link">
+  <a href="#volume-resize-failures" class="md-nav__link">
     <span class="md-ellipsis">
       
-        VMs Stuck in Scheduling
+        Volume Resize Failures
       
     </span>
   </a>
@@ -1933,10 +1621,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#volume-resize-failures" class="md-nav__link">
+  <a href="#volume-clone-failures" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Volume Resize Failures
+        Volume Clone Failures
       
     </span>
   </a>
@@ -1990,213 +1678,113 @@
   
 
 
-<h1 id="capacity-benchmark-testing">Capacity Benchmark Testing</h1>
-<p>Tests cluster capacity limits by running comprehensive VM operations in a loop until failure.</p>
-<p><strong>Use Case</strong>: Discover maximum VM capacity, test volume expansion limits, validate snapshot functionality, and stress-test the cluster.</p>
+<h1 id="chaos-benchmark-testing">Chaos Benchmark Testing</h1>
+<p>Tests cluster resilience by running concurrent chaos operations including VM creation, volume resize, volume clone, VM restart, and snapshots.</p>
+<p><strong>Use Case</strong>: Stress-test the cluster with concurrent operations, validate volume cloning, and measure performance under load.</p>
 <h2 id="how-it-works">How It Works</h2>
-<p>The capacity benchmark test runs in iterations, with each iteration performing:</p>
+<p>The chaos benchmark test runs in iterations, with each iteration performing:</p>
 <ol>
-<li><strong>Phase 1</strong>: Creates VMs with multiple data volumes</li>
-<li><strong>Phase 2</strong>: Resizes root and data volumes (tests volume expansion)</li>
-<li><strong>Phase 3</strong>: Restarts VMs (tests VM lifecycle)</li>
-<li><strong>Phase 4</strong>: Creates VM snapshots (tests snapshot functionality)</li>
-<li>Repeats until failure or max iterations reached</li>
+<li><strong>Phase 1: Create VMs</strong> - Creates VMs with data volumes (concurrent)</li>
+<li><strong>Phase 2: Resize Volumes</strong> - Expands volume sizes (concurrent)</li>
+<li><strong>Phase 3: Clone Volumes</strong> - Clones PVCs from source volumes (concurrent)</li>
+<li><strong>Phase 4: Restart VMs</strong> - Restarts VMs and waits for Running state (concurrent)</li>
+<li><strong>Phase 5: Create Snapshots</strong> - Creates VM snapshots (concurrent)</li>
 </ol>
-<h2 id="basic-capacity-test">Basic Capacity Test</h2>
+<p>Repeats until failure or max iterations reached.</p>
+<h2 id="basic-chaos-test">Basic Chaos Test</h2>
 <h3 id="using-virtbench-cli">Using virtbench CLI</h3>
-<pre><code class="language-bash"># Run capacity test with default settings (5 VMs per iteration)
-virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS
+<pre><code class="language-bash"># Run chaos test with mandatory concurrency
+virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 2
 
 # Run with custom VM count
-virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS --vms 10
+virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 5 --vms 10
 
 # Run with maximum iterations limit
-virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS --max-iterations 5
+virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 2 --max-iterations 5
 </code></pre>
 <h3 id="using-python-script">Using Python Script</h3>
-<pre><code class="language-bash">cd capacity-benchmark
+<pre><code class="language-bash">cd chaos-benchmark
 
-# Run capacity test with default settings (5 VMs per iteration)
-python3 measure-capacity.py --storage-class YOUR-STORAGE-CLASS
+# Run chaos test with mandatory concurrency
+python3 measure-chaos.py --storage-class YOUR-STORAGE-CLASS --concurrency 2
 
 # Run with custom VM count
-python3 measure-capacity.py --storage-class YOUR-STORAGE-CLASS --vms 10
-
-# Run with maximum iterations limit
-python3 measure-capacity.py --storage-class YOUR-STORAGE-CLASS --max-iterations 5
+python3 measure-chaos.py --storage-class YOUR-STORAGE-CLASS --concurrency 5 --vms 10
 </code></pre>
+<h2 id="full-example-with-all-options">Full Example with All Options</h2>
+<pre><code class="language-bash">virtbench chaos-benchmark \
+  --storage-class px-fa-direct-access \
+  --concurrency 2 \
+  --vms 5 \
+  --data-volume-count 1 \
+  --max-iterations 1 \
+  --min-vol-size 40Gi \
+  --min-vol-inc-size 10Gi \
+  --vm-memory 2Gi \
+  --vm-cpu-cores 1 \
+  --datasource-name rhel9 \
+  --datasource-namespace openshift-virtualization-os-images \
+  --save-results
+</code></pre>
+<blockquote>
+<p><strong>Note</strong>: Volume sizes must include units (e.g., <code>40Gi</code>, <code>100Mi</code>). Using just <code>40</code> without a unit will fail.</p>
+</blockquote>
 <h2 id="skip-specific-phases">Skip Specific Phases</h2>
-<p>You can skip specific test phases to focus on particular aspects of capacity testing.</p>
-<h3 id="using-virtbench-cli_1">Using virtbench CLI</h3>
-<pre><code class="language-bash"># Test only VM creation capacity (skip resize, restart, snapshot, migration)
-virtbench capacity-benchmark \
+<pre><code class="language-bash"># Skip volume clone phase
+virtbench chaos-benchmark \
   --storage-class YOUR-STORAGE-CLASS \
-  --vms 10 \
-  --skip-resize-job \
-  --skip-restart-job \
-  --skip-snapshot-job
+  --concurrency 2 \
+  --skip-clone
 
-# Test volume expansion limits
-virtbench capacity-benchmark \
+# Skip multiple phases
+virtbench chaos-benchmark \
   --storage-class YOUR-STORAGE-CLASS \
-  --vms 5 \
-  --min-vol-size 30Gi \
-  --min-vol-inc-size 20Gi \
-  --max-iterations 10
-</code></pre>
-<h3 id="using-python-script_1">Using Python Script</h3>
-<pre><code class="language-bash">cd capacity-benchmark
-
-# Test only VM creation capacity (skip resize, restart, snapshot)
-python3 measure-capacity.py \
-  --storage-class YOUR-STORAGE-CLASS \
-  --vms 10 \
-  --skip-resize-job \
-  --skip-restart-job \
-  --skip-snapshot-job
-
-# Test volume expansion limits
-python3 measure-capacity.py \
-  --storage-class YOUR-STORAGE-CLASS \
-  --vms 5 \
-  --min-vol-size 30Gi \
-  --min-vol-inc-size 20Gi \
-  --max-iterations 10
+  --concurrency 2 \
+  --skip-resize \
+  --skip-clone \
+  --skip-snapshot
 </code></pre>
 <h2 id="save-results-to-files">Save Results to Files</h2>
-<h3 id="using-virtbench-cli_2">Using virtbench CLI</h3>
-<pre><code class="language-bash"># Run capacity test and save results
-virtbench capacity-benchmark \
+<pre><code class="language-bash"># Run chaos test and save results
+virtbench chaos-benchmark \
   --storage-class YOUR-STORAGE-CLASS \
-  --vms 5 \
-  --save-results
-
-# Save results with storage version for dashboard organization
-virtbench capacity-benchmark \
-  --storage-class YOUR-STORAGE-CLASS \
+  --concurrency 2 \
   --vms 5 \
   --save-results \
   --storage-version 3.2.0
 </code></pre>
 <p>Results will be saved to:</p>
-<pre><code>results/{storage-version}/{num-disks}-disk/{timestamp}_capacity_benchmark_{total_vms}vms/
-</code></pre>
-<p>Example:</p>
-<pre><code>results/3.2.0/10-disk/20251207-083451_capacity_benchmark_22vms/
-</code></pre>
-<p>Files created:
-- <code>capacity_benchmark_results.json</code> (detailed results)
-- <code>summary_capacity_benchmark.json</code> (summary for dashboard)
-- <code>capacity_benchmark_results.csv</code> (key metrics)</p>
-<h3 id="using-python-script_2">Using Python Script</h3>
-<pre><code class="language-bash">cd capacity-benchmark
-python3 measure-capacity.py \
-  --storage-class YOUR-STORAGE-CLASS \
-  --vms 5 \
-  --save-results \
-  --storage-version 3.2.0
-</code></pre>
-<h2 id="advanced-configuration">Advanced Configuration</h2>
-<h3 id="custom-vm-template">Custom VM Template</h3>
-<pre><code class="language-bash"># Use custom VM template
-virtbench capacity-benchmark \
-  --storage-class YOUR-STORAGE-CLASS \
-  --vm-yaml /path/to/custom-vm-template.yaml \
-  --vms 5
-</code></pre>
-<h3 id="custom-datasource">Custom DataSource</h3>
-<pre><code class="language-bash"># Use different DataSource
-virtbench capacity-benchmark \
-  --storage-class YOUR-STORAGE-CLASS \
-  --datasource-name fedora \
-  --datasource-namespace openshift-virtualization-os-images \
-  --vms 5
-</code></pre>
-<h3 id="custom-vm-resources">Custom VM Resources</h3>
-<pre><code class="language-bash"># Configure VM memory and CPU
-virtbench capacity-benchmark \
-  --storage-class YOUR-STORAGE-CLASS \
-  --vm-memory 4Gi \
-  --vm-cpu-cores 2 \
-  --vms 5
-</code></pre>
-<h3 id="custom-data-volume-configuration">Custom Data Volume Configuration</h3>
-<pre><code class="language-bash"># Configure number of data volumes and sizes
-virtbench capacity-benchmark \
-  --storage-class YOUR-STORAGE-CLASS \
-  --data-volume-count 5 \
-  --min-vol-size 50Gi \
-  --min-vol-inc-size 25Gi \
-  --vms 3
-</code></pre>
-<h3 id="concurrency-and-timeouts">Concurrency and Timeouts</h3>
-<pre><code class="language-bash"># Configure parallel operations and timeouts
-virtbench capacity-benchmark \
-  --storage-class YOUR-STORAGE-CLASS \
-  --concurrency 20 \
-  --poll-interval 10 \
-  --scheduling-timeout 180 \
-  --vms 5
+<pre><code>results/{storage-version}/{num-disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
 </code></pre>
 <h2 id="cleanup">Cleanup</h2>
-<h3 id="using-virtbench-cli_3">Using virtbench CLI</h3>
+<h3 id="using-virtbench-cli_1">Using virtbench CLI</h3>
 <pre><code class="language-bash"># Cleanup resources after test
-virtbench capacity-benchmark --cleanup-only
+virtbench chaos-benchmark --cleanup-only --concurrency 1
 </code></pre>
-<h3 id="using-python-script_3">Using Python Script</h3>
-<pre><code class="language-bash">cd capacity-benchmark
-python3 measure-capacity.py --cleanup-only
+<h3 id="using-python-script_1">Using Python Script</h3>
+<pre><code class="language-bash">cd chaos-benchmark
+python3 measure-chaos.py --cleanup-only --concurrency 1
 </code></pre>
-<h2 id="understanding-results">Understanding Results</h2>
-<p>The capacity benchmark provides detailed metrics for each iteration:</p>
-<ul>
-<li><strong>VMs Created</strong>: Number of VMs successfully created</li>
-<li><strong>Volumes Resized</strong>: Number of volumes successfully expanded</li>
-<li><strong>VMs Restarted</strong>: Number of VMs successfully restarted</li>
-<li><strong>Snapshots Created</strong>: Number of snapshots successfully created</li>
-<li><strong>Time per Phase</strong>: Duration of each phase</li>
-<li><strong>Failure Point</strong>: Which phase failed and why (if applicable)</li>
-</ul>
-<h3 id="interpreting-capacity-limits">Interpreting Capacity Limits</h3>
-<p>The test stops when:</p>
-<ol>
-<li><strong>Scheduling Timeout</strong>: VMs stuck in "Scheduling" state (resource exhaustion)</li>
-<li><strong>Volume Resize Failure</strong>: Storage backend cannot expand volumes</li>
-<li><strong>Snapshot Failure</strong>: Snapshot creation fails</li>
-<li><strong>Max Iterations Reached</strong>: Configured limit reached</li>
-</ol>
-<h2 id="best-practices">Best Practices</h2>
-<ol>
-<li><strong>Start Small</strong>: Begin with 5 VMs per iteration to understand baseline</li>
-<li><strong>Monitor Resources</strong>: Watch cluster resource utilization during tests</li>
-<li><strong>Storage Limits</strong>: Be aware of storage quota and IOPS limits</li>
-<li><strong>Cleanup</strong>: Always cleanup after tests to free resources</li>
-<li><strong>Save Results</strong>: Use <code>--save-results</code> to track capacity over time</li>
-</ol>
 <h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="vms-stuck-in-scheduling">VMs Stuck in Scheduling</h3>
-<p><strong>Cause</strong>: Insufficient cluster resources (CPU, memory, or storage)</p>
-<p><strong>Solution</strong>:
-- Check node resource availability
-- Reduce VM count per iteration
-- Add more worker nodes</p>
 <h3 id="volume-resize-failures">Volume Resize Failures</h3>
 <p><strong>Cause</strong>: Storage class doesn't support volume expansion</p>
 <p><strong>Solution</strong>:
 - Verify <code>AllowVolumeExpansion: true</code> in StorageClass
-- Use <code>--skip-resize-job</code> to skip this phase
-- Check storage backend limits</p>
+- Use <code>--skip-resize</code> to skip this phase</p>
+<h3 id="volume-clone-failures">Volume Clone Failures</h3>
+<p><strong>Cause</strong>: Storage class doesn't support cloning</p>
+<p><strong>Solution</strong>:
+- Use <code>--skip-clone</code> to skip this phase</p>
 <h3 id="snapshot-failures">Snapshot Failures</h3>
 <p><strong>Cause</strong>: Storage provisioner doesn't support CSI snapshots</p>
 <p><strong>Solution</strong>:
 - Verify VolumeSnapshotClass exists
-- Use <code>--skip-snapshot-job</code> to skip this phase
-- Check storage backend snapshot support</p>
+- Use <code>--skip-snapshot</code> to skip this phase</p>
 <h2 id="see-also">See Also</h2>
 <ul>
 <li><a href="../../configuration/">Configuration Options</a> - Detailed configuration reference</li>
 <li><a href="../../output-and-results/">Output and Results</a> - Understanding test output</li>
-<li><a href="../../results-dashboard/">Results Dashboard</a> - Visualize capacity results</li>
+<li><a href="../../results-dashboard/">Results Dashboard</a> - Visualize chaos benchmark results</li>
 </ul>
 
 

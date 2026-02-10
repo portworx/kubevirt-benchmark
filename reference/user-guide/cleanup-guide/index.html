@@ -671,14 +671,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/capacity-benchmark/" class="md-nav__link">
+      <a href="../test-scenarios/chaos-benchmark/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Capacity Benchmark
+    Chaos Benchmark
   
 
     
@@ -1019,10 +1019,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#capacity-benchmark-tests" class="md-nav__link">
+  <a href="#chaos-benchmark-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Capacity Benchmark Tests
+        Chaos Benchmark Tests
       
     </span>
   </a>
@@ -1080,10 +1080,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#clean-up-after-capacity-benchmark" class="md-nav__link">
+  <a href="#clean-up-after-chaos-benchmark" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Clean up after Capacity Benchmark
+        Clean up after Chaos Benchmark
       
     </span>
   </a>
@@ -1602,10 +1602,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#capacity-benchmark-tests" class="md-nav__link">
+  <a href="#chaos-benchmark-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Capacity Benchmark Tests
+        Chaos Benchmark Tests
       
     </span>
   </a>
@@ -1663,10 +1663,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#clean-up-after-capacity-benchmark" class="md-nav__link">
+  <a href="#clean-up-after-chaos-benchmark" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Clean up after Capacity Benchmark
+        Clean up after Chaos Benchmark
       
     </span>
   </a>
@@ -1869,7 +1869,7 @@
 <li>Uncordon nodes that were marked as failed</li>
 <li>Optionally: VMs, DataVolumes, PVCs, and namespaces (with <code>--cleanup-vms</code>)</li>
 </ul>
-<h3 id="capacity-benchmark-tests">Capacity Benchmark Tests</h3>
+<h3 id="chaos-benchmark-tests">Chaos Benchmark Tests</h3>
 <ul>
 <li>All VMs in the test namespace</li>
 <li>All DataVolumes and PVCs</li>
@@ -1934,22 +1934,16 @@ python3 measure-recovery-time.py --start 1 --end 10 --cleanup
 # Clean up FAR resources and VMs
 python3 measure-recovery-time.py --start 1 --end 10 --cleanup --cleanup-vms
 </code></pre>
-<h3 id="clean-up-after-capacity-benchmark">Clean up after Capacity Benchmark</h3>
+<h3 id="clean-up-after-chaos-benchmark">Clean up after Chaos Benchmark</h3>
 <p><strong>virtbench CLI:</strong></p>
-<pre><code class="language-bash"># Clean up after test
-virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS --cleanup
-
-# Cleanup only (from previous run)
-virtbench capacity-benchmark --cleanup-only
+<pre><code class="language-bash"># Cleanup only (from previous run)
+virtbench chaos-benchmark --cleanup-only --concurrency 1
 </code></pre>
 <p><strong>Python Script:</strong></p>
-<pre><code class="language-bash">cd capacity-benchmark
-
-# Clean up after test
-python3 measure-capacity.py --storage-class YOUR-STORAGE-CLASS --cleanup
+<pre><code class="language-bash">cd chaos-benchmark
 
 # Cleanup only (from previous run)
-python3 measure-capacity.py --cleanup-only
+python3 measure-chaos.py --cleanup-only --concurrency 1
 </code></pre>
 <h2 id="manual-cleanup">Manual Cleanup</h2>
 <p>If automated cleanup fails or you need to clean up manually:</p>
