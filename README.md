@@ -71,5 +71,5 @@ Use the GitHub [issues][gh-issues] to report bugs or suggest features and enhanc
 monitored and prioritized by the maintainers.
 
 
-[docs-module]: https://portworx.github.io/virtbench
+[docs-module]: https://portworx.github.io/kubevirt-benchmark
 [gh-issues]: https://github.com/portworx/kubevirt-benchmark/issues
