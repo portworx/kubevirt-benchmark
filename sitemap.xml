@@ -1,95 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://portworx.github.io/virtbench/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/install/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/install/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/license/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/license/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/release-notes/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/release-notes/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/community/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/community/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/community/code-of-conduct/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/community/code-of-conduct/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/community/contributing/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/community/contributing/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/community/support/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/community/support/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/best-practices/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/best-practices/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/troubleshooting/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/troubleshooting/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/boot-storm-guide/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/boot-storm-guide/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/cleanup-guide/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/cleanup-guide/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/configuration/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/configuration/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/output-and-results/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/output-and-results/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/repository-structure/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/repository-structure/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/results-dashboard/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/results-dashboard/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/vm-template-guide/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/vm-template-guide/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/test-scenarios/capacity-benchmark/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/capacity-benchmark/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/test-scenarios/cluster-validation/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/cluster-validation/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/test-scenarios/datasource-clone/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/datasource-clone/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/test-scenarios/failure-recovery/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/failure-recovery/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/test-scenarios/migration/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/migration/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
     <url>
-         <loc>https://portworx.github.io/virtbench/reference/user-guide/test-scenarios/overview/</loc>
+         <loc>https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/overview/</loc>
          <lastmod>2026-02-10</lastmod>
     </url>
 </urlset>
