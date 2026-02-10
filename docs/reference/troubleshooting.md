@@ -95,7 +95,7 @@ This guide helps you diagnose and resolve common issues when running virtbench p
 - Verify registry image stream exists: `kubectl get imagestream -n openshift-virtualization-os-images`
 - Check CDI operator logs: `kubectl logs -n openshift-cnv -l name=cdi-operator`
 
-## Capacity Benchmark Issues
+## Chaos Benchmark Issues
 
 ### Volume Resize Fails
 

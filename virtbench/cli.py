@@ -11,7 +11,7 @@ from virtbench.common import find_repo_root
 from virtbench.commands import (
     datasource_clone,
     migration,
-    capacity,
+    chaos,
     failure_recovery,
     validate,
     version,
@@ -38,9 +38,9 @@ class Context:
             raise click.Abort()
 
 
-@click.group()
+@click.group(context_settings={'help_option_names': ['-h', '--help']})
 @click.version_option(version='1.0.0', prog_name='virtbench')
-@click.option('--log-level', 
+@click.option('--log-level',
               default='info',
               type=click.Choice(['debug', 'info', 'warn', 'error'], case_sensitive=False),
               help='Log level')
@@ -67,7 +67,7 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
     Available Commands:
       datasource-clone     Run DataSource clone benchmark
       migration            Run VM migration benchmark
-      capacity-benchmark   Run capacity benchmark
+      chaos-benchmark      Run chaos benchmark (concurrent VM/volume operations)
       failure-recovery     Run failure recovery benchmark
       validate-cluster     Validate cluster prerequisites
       version              Print version information
@@ -106,7 +106,7 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
 # Register subcommands
 cli.add_command(datasource_clone.datasource_clone)
 cli.add_command(migration.migration)
-cli.add_command(capacity.capacity_benchmark)
+cli.add_command(chaos.chaos_benchmark)
 cli.add_command(failure_recovery.failure_recovery)
 cli.add_command(validate.validate_cluster)
 cli.add_command(version.version)

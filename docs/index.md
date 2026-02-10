@@ -15,7 +15,7 @@ This suite provides automated performance testing tools to measure and validate 
 - **VM Creation Performance Testing**: Measure VM provisioning and boot times at scale
 - **Boot Storm Testing**: Test VM startup performance when powering on multiple VMs simultaneously
 - **Live Migration Testing**: Measure VM live migration performance across different scenarios
-- **Capacity Benchmark Testing**: Test cluster capacity limits with comprehensive VM operations (create, resize, restart, snapshot, migrate)
+- **Chaos Benchmark Testing**: Stress-test the cluster with concurrent chaos operations (VM creation, volume resize, volume clone, VM restart, snapshots)
 - **Single Node Testing**: Pin all VMs to a single node for node-level capacity testing
 - **Failure and Recovery Testing**: Validate VM recovery times after node failures
 - **VM Snapshot Testing**: Test VM snapshot creation and readiness

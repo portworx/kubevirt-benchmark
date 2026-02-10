@@ -1979,13 +1979,13 @@ def save_migration_results(args, results, base_dir="results", logger=None, total
 
 def save_capacity_results(results: dict, base_dir: str = "results", storage_version: str = None, logger=None) -> str:
     """
-    Save capacity benchmark results to JSON and CSV files.
+    Save chaos benchmark results to JSON and CSV files.
 
     Directory structure follows the same pattern as other tests:
-        results/{storage_version}/{num_disks}-disk/{timestamp}_capacity_benchmark_{total_vms}vms/
+        results/{storage_version}/{num_disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
 
     Args:
-        results: Dictionary containing capacity benchmark results with keys:
+        results: Dictionary containing chaos benchmark results with keys:
             - storage_classes: Storage class(es) used
             - vms_per_iteration: VMs created per iteration
             - data_volumes_per_vm: Data volumes per VM
@@ -2009,7 +2009,7 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_vers
     from datetime import datetime
 
     # Create timestamped output directory following the standard structure:
-    # results/{storage_version}/{num_disks}-disk/{timestamp}_capacity_benchmark_{total_vms}vms/
+    # results/{storage_version}/{num_disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     total_vms = results.get('total_vms', 0)
 
@@ -2020,22 +2020,22 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_vers
     # Build directory path
     version_dir = storage_version if storage_version else "default"
     disk_dir = f"{num_disks}-disk"
-    run_dir = f"{timestamp}_capacity_benchmark_{total_vms}vms"
+    run_dir = f"{timestamp}_chaos_benchmark_{total_vms}vms"
 
     output_dir = os.path.join(base_dir, version_dir, disk_dir, run_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     if logger:
-        logger.info(f"Saving capacity benchmark results to: {output_dir}")
+        logger.info(f"Saving chaos benchmark results to: {output_dir}")
 
     # File paths
-    json_path = os.path.join(output_dir, "capacity_benchmark_results.json")
-    summary_json_path = os.path.join(output_dir, "summary_capacity_benchmark.json")
-    csv_path = os.path.join(output_dir, "capacity_benchmark_results.csv")
+    json_path = os.path.join(output_dir, "chaos_benchmark_results.json")
+    summary_json_path = os.path.join(output_dir, "summary_chaos_benchmark.json")
+    csv_path = os.path.join(output_dir, "chaos_benchmark_results.csv")
 
     # Build detailed results JSON
     detailed_results = {
-        "test_type": "capacity_benchmark",
+        "test_type": "chaos_benchmark",
         "timestamp": timestamp,
         "config": {
             "storage_classes": results.get('storage_classes', 'N/A'),
@@ -2073,7 +2073,7 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_vers
             pass
 
     summary = {
-        "test_type": "capacity_benchmark",
+        "test_type": "chaos_benchmark",
         "total_vms": results.get('total_vms', 0),
         "total_pvcs": results.get('total_pvcs', 0),
         "iterations_completed": results.get('iterations_completed', 0),

@@ -76,10 +76,10 @@ results/
 │   │   │   ├── migration_results.json
 │   │   │   ├── migration_results.csv
 │   │   │   └── summary_migration.json
-│   │   └── {timestamp}_capacity_benchmark_{total_vms}vms/
-│   │       ├── capacity_benchmark_results.json
-│   │       ├── capacity_benchmark_results.csv
-│   │       └── summary_capacity_benchmark.json
+│   │   └── {timestamp}_chaos_benchmark_{total_vms}vms/
+│   │       ├── chaos_benchmark_results.json
+│   │       ├── chaos_benchmark_results.csv
+│   │       └── summary_chaos_benchmark.json
 ```
 
 ### JSON Results Format
@@ -183,7 +183,7 @@ kubevirt-perf-test-3,rhel-9-vm,8.89,11.98,Success
 - Verify registry image stream exists: `kubectl get imagestream -n openshift-virtualization-os-images`
 - Check CDI operator logs: `kubectl logs -n openshift-cnv -l name=cdi-operator`
 
-### Capacity Benchmark Issues
+### Chaos Benchmark Issues
 
 #### Volume resize fails
 

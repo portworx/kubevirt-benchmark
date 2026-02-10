@@ -32,7 +32,7 @@ All test scripts support comprehensive cleanup with multiple options for differe
 - Uncordon nodes that were marked as failed
 - Optionally: VMs, DataVolumes, PVCs, and namespaces (with `--cleanup-vms`)
 
-### Capacity Benchmark Tests
+### Chaos Benchmark Tests
 
 - All VMs in the test namespace
 - All DataVolumes and PVCs
@@ -113,26 +113,20 @@ python3 measure-recovery-time.py --start 1 --end 10 --cleanup
 python3 measure-recovery-time.py --start 1 --end 10 --cleanup --cleanup-vms
 ```
 
-### Clean up after Capacity Benchmark
+### Clean up after Chaos Benchmark
 
 **virtbench CLI:**
 ```bash
-# Clean up after test
-virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS --cleanup
-
 # Cleanup only (from previous run)
-virtbench capacity-benchmark --cleanup-only
+virtbench chaos-benchmark --cleanup-only --concurrency 1
 ```
 
 **Python Script:**
 ```bash
-cd capacity-benchmark
-
-# Clean up after test
-python3 measure-capacity.py --storage-class YOUR-STORAGE-CLASS --cleanup
+cd chaos-benchmark
 
 # Cleanup only (from previous run)
-python3 measure-capacity.py --cleanup-only
+python3 measure-chaos.py --cleanup-only --concurrency 1
 ```
 
 ## Manual Cleanup

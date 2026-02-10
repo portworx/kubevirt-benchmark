@@ -32,21 +32,21 @@ def find_repo_root() -> Path:
     repo = os.getenv('VIRTBENCH_REPO')
     if repo:
         repo_path = Path(repo)
-        if repo_path.exists() and (repo_path / 'capacity-benchmark').exists():
+        if repo_path.exists() and (repo_path / 'chaos-benchmark').exists():
             return repo_path.resolve()
-    
+
     # Check current directory
     cwd = Path.cwd()
-    if (cwd / 'capacity-benchmark').exists():
+    if (cwd / 'chaos-benchmark').exists():
         return cwd.resolve()
-    
+
     # Check parent directory
-    if (cwd.parent / 'capacity-benchmark').exists():
+    if (cwd.parent / 'chaos-benchmark').exists():
         return cwd.parent.resolve()
-    
+
     # Check script location
     script_dir = Path(__file__).parent.parent
-    if (script_dir / 'capacity-benchmark').exists():
+    if (script_dir / 'chaos-benchmark').exists():
         return script_dir.resolve()
     
     raise RuntimeError(

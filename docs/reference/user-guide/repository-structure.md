@@ -12,7 +12,7 @@ kubevirt-benchmark/
 │   ├── commands/                # Individual command implementations
 │   │   ├── datasource_clone.py # DataSource clone benchmark
 │   │   ├── migration.py         # Migration benchmark
-│   │   ├── capacity_benchmark.py# Capacity benchmark
+│   │   ├── chaos.py              # Chaos benchmark
 │   │   ├── failure_recovery.py  # Failure recovery benchmark
 │   │   └── validate_cluster.py  # Cluster validation
 │   └── utils/                   # Shared utilities
@@ -23,7 +23,7 @@ kubevirt-benchmark/
 ├── scripts/                     # Legacy Python scripts (deprecated)
 │   ├── measure-vm-creation-time.py
 │   ├── measure-migration-time.py
-│   ├── measure-capacity-benchmark.py
+│   ├── measure-chaos.py
 │   └── measure-failure-recovery.py
 │
 ├── dashboard/                   # Dashboard generation
@@ -110,7 +110,7 @@ results/
 ### Test Results
 
 - **Timestamp format**: `YYYYMMDD-HHMMSS`
-- **Test names**: `vm_creation`, `boot_storm`, `migration`, `capacity_benchmark`, `failure_recovery`
+- **Test names**: `vm_creation`, `boot_storm`, `migration`, `chaos_benchmark`, `failure_recovery`
 - **VM range**: `{start}-{end}` (e.g., `1-50`)
 
 Example: `20250105-143052_vm_creation_1-50vms/`

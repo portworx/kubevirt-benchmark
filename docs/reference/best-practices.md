@@ -135,19 +135,20 @@ virtbench migration \
   --source-node worker-1
 ```
 
-## Capacity Benchmark Testing
+## Chaos Benchmark Testing
 
 ### 1. Understand Your Goals
 
-- **Find Maximum Capacity**: Run without `--max-iterations`
+- **Stress Test Cluster**: Run concurrent chaos operations
 - **Test Specific Scenarios**: Use `--max-iterations` to limit test duration
-- **Skip Unsupported Features**: Use `--skip-resize-job` or `--skip-snapshot-job` if needed
+- **Skip Unsupported Features**: Use `--skip-resize`, `--skip-clone`, or `--skip-snapshot` if needed
 
 ### 2. Start with Conservative Settings
 
 ```bash
-virtbench capacity-benchmark \
+virtbench chaos-benchmark \
   --storage-class YOUR-STORAGE-CLASS \
+  --concurrency 2 \
   --vms 5 \
   --max-iterations 5
 ```

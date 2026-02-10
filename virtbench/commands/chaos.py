@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Capacity benchmark command
+Chaos benchmark command
 """
 import click
 import subprocess
@@ -13,31 +13,29 @@ from virtbench.common import print_banner, build_python_command, generate_log_fi
 console = Console()
 
 
-@click.command('capacity-benchmark')
+@click.command('chaos-benchmark')
 @click.option('--storage-class', required=False, help='Storage class name (required unless --cleanup-only)')
-@click.option('--namespace', '-n', default='virt-capacity-benchmark', help='Namespace for test resources')
+@click.option('--concurrency', '-c', required=True, type=int, help='Number of concurrent operations (REQUIRED)')
+@click.option('--namespace', '-n', default='virt-chaos-benchmark', help='Namespace for test resources')
 @click.option('--vms', default=5, type=int, help='Number of VMs to create per iteration')
 @click.option('--max-iterations', default=0, type=int, help='Maximum number of iterations (0 for unlimited)')
-@click.option('--data-volume-count', default=9, type=int, help='Number of data volumes per VM')
-@click.option('--min-vol-size', default='30Gi', help='Minimum volume size')
-@click.option('--min-vol-inc-size', default='10Gi', help='Minimum volume size increment')
-@click.option('--vm-yaml', default='examples/vm-templates/vm-template.yaml',
-              help='Path to VM YAML template')
+@click.option('--data-volume-count', default=1, type=int, help='Number of data volumes per VM (default: 1)')
+@click.option('--min-vol-size', default='30Gi', help='Minimum volume size (e.g., 30Gi, 100Mi)')
+@click.option('--min-vol-inc-size', default='10Gi', help='Volume size increment for resize (e.g., 10Gi, 50Mi)')
+@click.option('--vm-yaml', default='examples/vm-templates/vm-template.yaml', help='Path to VM YAML template')
 @click.option('--vm-name', default='rhel-9-vm', help='Base VM name')
 @click.option('--datasource-name', default='rhel9', help='DataSource name')
-@click.option('--datasource-namespace', default='openshift-virtualization-os-images',
-              help='DataSource namespace')
+@click.option('--datasource-namespace', default='openshift-virtualization-os-images', help='DataSource namespace')
 @click.option('--vm-memory', default='2048M', help='VM memory')
 @click.option('--vm-cpu-cores', default=1, type=int, help='VM CPU cores')
-@click.option('--skip-resize-job', is_flag=True, help='Skip volume resize job')
-@click.option('--skip-snapshot-job', is_flag=True, help='Skip snapshot job')
-@click.option('--skip-restart-job', is_flag=True, help='Skip restart job')
-@click.option('--concurrency', '-c', default=10, type=int, help='Max parallel threads')
-@click.option('--poll-interval', default=5, type=int, help='Seconds between status checks')
+@click.option('--skip-resize', is_flag=True, help='Skip volume resize phase')
+@click.option('--skip-clone', is_flag=True, help='Skip volume clone phase')
+@click.option('--skip-snapshot', is_flag=True, help='Skip VM snapshot phase')
+@click.option('--skip-restart', is_flag=True, help='Skip VM restart phase')
 @click.option('--scheduling-timeout', default=120, type=int,
-              help='Seconds to wait in Scheduling state before declaring capacity reached (default: 120)')
-@click.option('--max-create-retries', default=5, type=int,
-              help='Maximum retries for VM creation on transient errors (default: 5)')
+              help='Seconds to wait in Scheduling/Provisioning state before failing (default: 120)')
+@click.option('--vm-timeout', default=1800, type=int, help='Total timeout for VM to reach Running state (default: 1800)')
+@click.option('--max-create-retries', default=5, type=int, help='Maximum retries for VM creation (default: 5)')
 @click.option('--cleanup/--no-cleanup', default=False, help='Delete test resources after completion')
 @click.option('--cleanup-only', is_flag=True, help='Only cleanup resources from previous runs')
 @click.option('--save-results', is_flag=True, help='Save results to JSON/CSV files in results directory')
@@ -47,36 +45,29 @@ console = Console()
 @click.option('--log-level', default='INFO', type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR']),
               help='Logging level')
 @click.pass_context
-def capacity_benchmark(ctx, **kwargs):
+def chaos_benchmark(ctx, **kwargs):
     """
-    Run capacity benchmark
+    Run chaos benchmark
 
-    This workload tests cluster capacity by iteratively creating VMs until
-    resource limits are reached or max iterations is hit.
+    This workload tests cluster resilience by running concurrent chaos operations
+    including VM creation, volume resize, volume clone, VM restart, and snapshots.
 
     \b
     Examples:
-      # Run capacity test with 5 VMs per iteration
-      virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS --vms 5
+      # Run chaos test with 5 VMs per iteration
+      virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 2 --vms 5
 
       # Run with custom max iterations
-      virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS --vms 5 --max-iterations 20
+      virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 5 --max-iterations 20
 
-      # Skip specific jobs
-      virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS --skip-resize-job --skip-snapshot-job
-
-      # Save results to files
-      virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS --vms 5 --save-results
-
-      # Save results with storage version for folder hierarchy
-      virtbench capacity-benchmark --storage-class YOUR-STORAGE-CLASS --vms 5 --save-results --storage-version 3.2.0
+      # Skip specific phases
+      virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 2 --skip-clone
 
       # Cleanup only mode
-      virtbench capacity-benchmark --cleanup-only
+      virtbench chaos-benchmark --cleanup-only --concurrency 1
     """
-    print_banner("Capacity Benchmark")
+    print_banner("Chaos Benchmark")
 
-    # Get repo root from context
     repo_root = ctx.obj.repo_root
 
     # Validate: storage-class is required unless cleanup-only
@@ -84,8 +75,7 @@ def capacity_benchmark(ctx, **kwargs):
         console.print("[red]Error: --storage-class is required unless using --cleanup-only[/red]")
         sys.exit(1)
 
-    # Build Python script command
-    script_path = repo_root / 'capacity-benchmark' / 'measure-capacity.py'
+    script_path = repo_root / 'chaos-benchmark' / 'measure-chaos.py'
 
     if not script_path.exists():
         console.print(f"[red]Error: Script not found: {script_path}[/red]")
@@ -95,17 +85,16 @@ def capacity_benchmark(ctx, **kwargs):
     if kwargs['cleanup_only']:
         python_args = {
             'namespace': kwargs['namespace'],
+            'concurrency': kwargs['concurrency'],
             'log-level': kwargs['log_level'],
+            'cleanup-only': True,
         }
-        python_args['cleanup-only'] = True
-
-        # Add log-file
         if kwargs.get('log_file'):
             python_args['log-file'] = kwargs['log_file']
         elif ctx.obj.log_file:
             python_args['log-file'] = ctx.obj.log_file
         else:
-            python_args['log-file'] = generate_log_filename('capacity-benchmark')
+            python_args['log-file'] = generate_log_filename('chaos-benchmark')
 
         cmd = build_python_command(script_path, python_args)
         console.print(f"[dim]Running: {' '.join(cmd[:2])} ...[/dim]")
@@ -131,10 +120,12 @@ def capacity_benchmark(ctx, **kwargs):
         sys.exit(1)
 
     console.print(f"[cyan]Using storage class: {kwargs['storage_class']}[/cyan]")
+    console.print(f"[cyan]Concurrency: {kwargs['concurrency']}[/cyan]")
 
     # Map CLI args to Python script args
     python_args = {
         'storage-class': kwargs['storage_class'],
+        'concurrency': kwargs['concurrency'],
         'namespace': kwargs['namespace'],
         'vms': kwargs['vms'],
         'max-iterations': kwargs['max_iterations'],
@@ -147,20 +138,21 @@ def capacity_benchmark(ctx, **kwargs):
         'datasource-namespace': kwargs['datasource_namespace'],
         'vm-memory': kwargs['vm_memory'],
         'vm-cpu-cores': kwargs['vm_cpu_cores'],
-        'concurrency': kwargs['concurrency'],
-        'poll-interval': kwargs['poll_interval'],
         'scheduling-timeout': kwargs['scheduling_timeout'],
+        'vm-timeout': kwargs['vm_timeout'],
         'max-create-retries': kwargs['max_create_retries'],
         'log-level': kwargs['log_level'],
     }
 
     # Add skip flags
-    if kwargs['skip_resize_job']:
-        python_args['skip-resize-job'] = True
-    if kwargs['skip_snapshot_job']:
-        python_args['skip-snapshot-job'] = True
-    if kwargs['skip_restart_job']:
-        python_args['skip-restart-job'] = True
+    if kwargs['skip_resize']:
+        python_args['skip-resize'] = True
+    if kwargs['skip_clone']:
+        python_args['skip-clone'] = True
+    if kwargs['skip_snapshot']:
+        python_args['skip-snapshot'] = True
+    if kwargs['skip_restart']:
+        python_args['skip-restart'] = True
 
     # Add cleanup flag
     if kwargs['cleanup']:
@@ -173,13 +165,13 @@ def capacity_benchmark(ctx, **kwargs):
         if kwargs.get('storage_version'):
             python_args['storage-version'] = kwargs['storage_version']
 
-    # Add log-file (prefer subcommand option, then global context, then auto-generate)
+    # Add log-file
     if kwargs.get('log_file'):
         python_args['log-file'] = kwargs['log_file']
     elif ctx.obj.log_file:
         python_args['log-file'] = ctx.obj.log_file
     else:
-        python_args['log-file'] = generate_log_filename('capacity-benchmark')
+        python_args['log-file'] = generate_log_filename('chaos-benchmark')
 
     # Build and run command
     cmd = build_python_command(script_path, python_args)

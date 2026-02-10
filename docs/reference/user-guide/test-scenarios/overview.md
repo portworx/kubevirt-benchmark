@@ -18,12 +18,12 @@ Tests VM live migration with existing VMs or by creating new VMs across differen
 
 [Learn more →](migration.md)
 
-### 3. Capacity Benchmark Testing
-Tests cluster capacity limits by running comprehensive VM operations in a loop until failure.
+### 3. Chaos Benchmark Testing
+Tests cluster resilience by running concurrent chaos operations including VM creation, volume resize, volume clone, VM restart, and snapshots.
 
-**Use Case**: Discover maximum VM capacity, test volume expansion limits, validate snapshot functionality, and stress-test the cluster.
+**Use Case**: Stress-test the cluster with concurrent operations, validate volume cloning, and measure performance under load.
 
-[Learn more →](capacity-benchmark.md)
+[Learn more →](chaos-benchmark.md)
 
 ### 4. Failure and Recovery Testing
 Tests VM recovery time after simulated node failures using Fence Agents Remediation (FAR).

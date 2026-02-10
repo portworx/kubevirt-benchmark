@@ -87,26 +87,27 @@ Configuration options for failure and recovery testing with FAR.
 | `--log-file` | Output log file path | stdout |
 | `--log-level` | Logging level | INFO |
 
-## Capacity Benchmark Tests
+## Chaos Benchmark Tests
 
-Configuration options for capacity benchmark testing.
+Configuration options for chaos benchmark testing.
 
 ### Required Options
 
 | Option | Description |
 |--------|-------------|
 | `--storage-class` | Storage class name (comma-separated for multiple) |
+| `--concurrency` | Number of concurrent operations (**REQUIRED**) |
 
 ### Test Configuration
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--namespace` | `virt-capacity-benchmark` | Namespace for test resources |
+| `--namespace` | `virt-chaos-benchmark` | Namespace for test resources |
 | `--max-iterations` | `0` (unlimited) | Maximum number of iterations |
 | `--vms` | `5` | Number of VMs per iteration |
-| `--data-volume-count` | `9` | Number of data volumes per VM |
-| `--min-vol-size` | `30Gi` | Initial volume size |
-| `--min-vol-inc-size` | `10Gi` | Volume size increment for resize |
+| `--data-volume-count` | `1` | Number of data volumes per VM |
+| `--min-vol-size` | `30Gi` | Initial volume size (must include unit, e.g., `30Gi`) |
+| `--min-vol-inc-size` | `10Gi` | Volume size increment for resize (must include unit, e.g., `10Gi`) |
 
 ### VM Template Configuration
 
@@ -123,9 +124,10 @@ Configuration options for capacity benchmark testing.
 
 | Option | Description |
 |--------|-------------|
-| `--skip-resize-job` | Skip volume resize phase |
-| `--skip-snapshot-job` | Skip snapshot phase |
-| `--skip-restart-job` | Skip restart phase |
+| `--skip-resize` | Skip volume resize phase |
+| `--skip-clone` | Skip volume clone phase |
+| `--skip-snapshot` | Skip snapshot phase |
+| `--skip-restart` | Skip restart phase |
 
 ### Execution Options
 
@@ -152,7 +154,7 @@ Configuration options for capacity benchmark testing.
 
 Results are saved in the standard folder structure:
 ```
-results/{storage-version}/{num-disks}-disk/{timestamp}_capacity_benchmark_{total_vms}vms/
+results/{storage-version}/{num-disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
 ```
 
 ### Logging Options

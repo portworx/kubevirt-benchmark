@@ -69,9 +69,9 @@ python3 dashboard/generate_dashboard.py \
 - **Success Rates**: Migration completion statistics
 - **Detailed Metrics**: Observed vs VMIM timestamps, downtime measurements
 
-### Capacity Benchmark Results
+### Chaos Benchmark Results
 
-- **Capacity Limits**: Maximum VMs created before failure
+- **Chaos Operations**: Concurrent VM operations and their results
 - **Phase Analysis**: Performance of each phase (create, resize, restart, snapshot)
 - **Iteration Metrics**: Results across multiple iterations
 
@@ -158,10 +158,10 @@ Migration performance analysis:
 - Success rate tracking
 - Detailed migration metrics
 
-### 6. Capacity Benchmark Results
+### 6. Chaos Benchmark Results
 
-Capacity testing outcomes:
-- Maximum capacity reached
+Chaos testing outcomes:
+- Concurrent operations performance
 - Phase-by-phase performance
 - Failure point analysis
 

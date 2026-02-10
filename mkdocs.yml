@@ -36,7 +36,7 @@ nav:
           - Overview: reference/user-guide/test-scenarios/overview.md
           - Datasource Clone: reference/user-guide/test-scenarios/datasource-clone.md
           - Migration: reference/user-guide/test-scenarios/migration.md
-          - Capacity Benchmark: reference/user-guide/test-scenarios/capacity-benchmark.md
+          - Chaos Benchmark: reference/user-guide/test-scenarios/chaos-benchmark.md
           - Failure Recovery: reference/user-guide/test-scenarios/failure-recovery.md
           - Cluster Validation: reference/user-guide/test-scenarios/cluster-validation.md
       - Boot Storm Testing Guide: reference/user-guide/boot-storm-guide.md

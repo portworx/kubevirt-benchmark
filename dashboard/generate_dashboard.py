@@ -208,12 +208,12 @@ def get_vm_count_from_folder(folder_name: str) -> int:
 
     Handles formats:
     - 20251014-165952_kubevirt-perf-test_1-50 → 50 VMs
-    - 20251207-123456_capacity_benchmark_15vms → 15 VMs
+    - 20251207-123456_chaos_benchmark_15vms → 15 VMs
     """
     try:
         vm_range = folder_name.split("_")[-1]
 
-        # Handle capacity benchmark format: "15vms"
+        # Handle chaos benchmark format: "15vms"
         if vm_range.endswith("vms"):
             return int(vm_range[:-3])
 
@@ -398,12 +398,12 @@ def build_migration_content(folder: Path, uid: str) -> str:
 
 
 def build_capacity_content(folder: Path, uid: str) -> str:
-    """Capacity Benchmark section."""
-    capacity_summary = load_json(folder / "summary_capacity_benchmark.json")
-    capacity_results = load_json(folder / "capacity_benchmark_results.json")
+    """Chaos Benchmark section."""
+    capacity_summary = load_json(folder / "summary_chaos_benchmark.json")
+    capacity_results = load_json(folder / "chaos_benchmark_results.json")
 
     if not capacity_summary and not capacity_results:
-        return "<p>No capacity benchmark data found.</p>"
+        return "<p>No chaos benchmark data found.</p>"
 
     # Build header info
     total_vms = capacity_summary.get("total_vms", 0) if capacity_summary else 0
@@ -507,7 +507,7 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
         csum = load_json(folder / "summary_vm_creation_results.json")
         bsum = load_json(folder / "summary_boot_storm_results.json")
         msum = load_json(folder / "summary_migration_results.json")
-        capsum = load_json(folder / "summary_capacity_benchmark.json")
+        capsum = load_json(folder / "summary_chaos_benchmark.json")
         if csum and csum.get("total_test_duration_sec"):
             creation_rec.append({"VMs": csum.get("total_vms", vms), "Seconds": csum["total_test_duration_sec"], "Folder": folder.name})
         if bsum and bsum.get("total_test_duration_sec"):
@@ -525,7 +525,7 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
         build_bar_chart_mmss(mig_rec, "Live Migration Duration", "rgb(255,99,71)", f"chart_{px_version}_{disk_name}_mig"),
     ]
     if cap_rec:
-        chart_items.append(build_bar_chart_mmss(cap_rec, "Capacity Benchmark Duration", "rgb(153,102,255)", f"chart_{px_version}_{disk_name}_cap"))
+        chart_items.append(build_bar_chart_mmss(cap_rec, "Chaos Benchmark Duration", "rgb(153,102,255)", f"chart_{px_version}_{disk_name}_cap"))
 
     charts_html = f"""
     <div class="container-fluid mt-3">
@@ -563,11 +563,11 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
 
         cap_sections = "".join(
             build_capacity_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "summary_capacity_benchmark.json").exists()
-        ) or "<p>No Capacity Benchmark data for this VM size.</p>"
+            for f in by_vms[vm_count] if (f / "summary_chaos_benchmark.json").exists()
+        ) or "<p>No Chaos Benchmark data for this VM size.</p>"
 
-        # Check if we have capacity data to show the tab
-        has_capacity_data = any((f / "summary_capacity_benchmark.json").exists() for f in by_vms[vm_count])
+        # Check if we have chaos data to show the tab
+        has_capacity_data = any((f / "summary_chaos_benchmark.json").exists() for f in by_vms[vm_count])
 
         # Build tab navigation - include capacity tab only if data exists
         tab_nav_items = [
@@ -581,7 +581,7 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
 
         if has_capacity_data:
             tab_nav_items.append(
-                f'<li class="nav-item"><button class="nav-link" id="tab-{vm_id}_cap-tab" data-bs-toggle="tab" data-bs-target="#tab_{vm_id}_cap" type="button" role="tab">Capacity Benchmark</button></li>'
+                f'<li class="nav-item"><button class="nav-link" id="tab-{vm_id}_cap-tab" data-bs-toggle="tab" data-bs-target="#tab_{vm_id}_cap" type="button" role="tab">Chaos Benchmark</button></li>'
             )
             tab_content_items.append(
                 f'<div class="tab-pane fade" id="tab_{vm_id}_cap" role="tabpanel">{cap_sections}</div>'
