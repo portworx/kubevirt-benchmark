@@ -21,10 +21,12 @@ console = Console()
 @click.option('--vm-template',
               default='examples/vm-templates/rhel9-vm-datasource.yaml',
               help='Path to VM template YAML')
+@click.option('--secret-yaml', type=click.Path(exists=True),
+              help='Path to cloudinit secret YAML file (optional)')
 @click.option('--storage-class', help='Storage class name (overrides template value)')
 @click.option('--namespace-prefix', default='datasource-clone', help='Namespace prefix')
-@click.option('--concurrency', '-c', default=10, type=int, help='Max parallel threads for monitoring')
-@click.option('--poll-interval', default=5, type=int, help='Seconds between status checks')
+@click.option('--concurrency', '-c', default=50, type=int, help='Max parallel threads for monitoring')
+@click.option('--poll-interval', default=1, type=int, help='Seconds between status checks')
 @click.option('--ping-timeout', default=300, type=int, help='Timeout for ping tests in seconds')
 @click.option('--ssh-pod', default='ssh-test-pod', help='Pod name for ping tests')
 @click.option('--ssh-pod-ns', default='default', help='Namespace for SSH test pod')
@@ -38,13 +40,13 @@ console = Console()
               help='Skip namespace creation (use existing namespaces)')
 @click.option('--boot-storm', is_flag=True,
               help='After initial test, shutdown all VMs and test boot storm')
-@click.option('--namespace-batch-size', default=5, type=int,
+@click.option('--namespace-batch-size', default=20, type=int,
               help='Number of namespaces to create in parallel')
 @click.option('--single-node', is_flag=True, help='Run all VMs on a single node')
 @click.option('--node-name', help='Specific node name for single-node testing')
 @click.option('--save-results', is_flag=True,
               help='Save detailed results (JSON and CSV) to results folder')
-@click.option('--results-folder', default='../results',
+@click.option('--results-folder', default='results',
               help='Base directory to store test results')
 @click.option('--storage-version', help='Storage version to include in results path (optional)')
 @click.option('--log-file', type=click.Path(), help='Log file path (auto-generated if not specified)')
@@ -82,11 +84,22 @@ def datasource_clone(ctx, **kwargs):
     template_path = Path(kwargs['vm_template'])
     if not template_path.is_absolute():
         template_path = repo_root / template_path
-    
+
     if not template_path.exists():
         console.print(f"[red]Error: Template file not found: {template_path}[/red]")
         sys.exit(1)
-    
+
+    # Resolve secret YAML path if provided
+    secret_yaml_path = None
+    if kwargs.get('secret_yaml'):
+        secret_yaml_path = Path(kwargs['secret_yaml'])
+        if not secret_yaml_path.is_absolute():
+            secret_yaml_path = repo_root / secret_yaml_path
+
+        if not secret_yaml_path.exists():
+            console.print(f"[red]Error: Secret YAML file not found: {secret_yaml_path}[/red]")
+            sys.exit(1)
+
     # Handle storage class modification
     if kwargs['storage_class']:
         console.print(f"[cyan]Using storage class: {kwargs['storage_class']}[/cyan]")
@@ -143,7 +156,9 @@ def datasource_clone(ctx, **kwargs):
         python_args['node-name'] = kwargs['node_name']
     if kwargs.get('storage_version'):
         python_args['storage-version'] = kwargs['storage_version']
-    
+    if secret_yaml_path:
+        python_args['secret-yaml'] = str(secret_yaml_path)
+
     # Add log-file (prefer subcommand option, then global context, then auto-generate)
     if kwargs.get('log_file'):
         python_args['log-file'] = kwargs['log_file']

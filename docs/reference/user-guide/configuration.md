@@ -27,8 +27,8 @@ Configuration options for DataSource-based VM provisioning and boot storm tests.
 | `--cleanup-on-failure`   | Clean up even if tests fail                                                            | false              |
 | `--dry-run-cleanup`      | Show what would be deleted without deleting                                            | false              |
 | `--yes`                  | Skip confirmation prompt for cleanup                                                   | false              |
-| `--save_results`         | Save detailed results (JSON and CSV) inside a timestamped folder under results/ folder | false              |
-| `--results_folder`       | Base directory to store test results                                                   | ../results         |
+| `--save-results`         | Save detailed results (JSON and CSV) inside a timestamped folder under results/ folder | false              |
+| `--results-folder`       | Base directory to store test results                                                   | ../results         |
 | `--storage-version`      | Storage version to include in results path (optional)                                  | -                  |
 
 ## Live Migration Tests
@@ -133,9 +133,9 @@ Configuration options for chaos benchmark testing.
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--concurrency` | `10` | Number of concurrent operations |
-| `--poll-interval` | `5` | Polling interval in seconds |
-| `--scheduling-timeout` | `120` | Seconds to wait in Scheduling state before declaring capacity reached |
+| `--concurrency` | `50`    | Number of concurrent operations |
+| `--poll-interval` | `1`     | Polling interval in seconds |
+| `--scheduling-timeout` | `120`   | Seconds to wait in Scheduling state before declaring capacity reached |
 
 ### Cleanup Options
 

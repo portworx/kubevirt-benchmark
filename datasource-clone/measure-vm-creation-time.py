@@ -64,7 +64,7 @@ Examples:
   %(prog)s --start 1 --end 20 --cleanup
         """
     )
-    
+
     # Test range
     parser.add_argument(
         '-s', '--start',
@@ -78,7 +78,7 @@ Examples:
         default=10,
         help=f'End index for test namespaces, inclusive (default: 10)'
     )
-    
+
     # VM configuration
     parser.add_argument(
         '-n', '--vm-name',
@@ -91,6 +91,12 @@ Examples:
         type=str,
         default=DEFAULT_VM_YAML,
         help=f'Path to VM template YAML (default: {DEFAULT_VM_YAML})'
+    )
+    parser.add_argument(
+        '--secret-yaml',
+        type=str,
+        default=None,
+        help='Path to cloudinit secret YAML file (optional)'
     )
     parser.add_argument(
         '--namespace-prefix',
@@ -225,7 +231,7 @@ Examples:
 
     
     args = parser.parse_args()
-    
+
     # Validation
     if args.start < 1:
         parser.error("--start must be >= 1")
@@ -235,7 +241,9 @@ Examples:
         parser.error("--concurrency must be >= 1")
     if not os.path.exists(args.vm_template):
         parser.error(f"VM template file not found: {args.vm_template}")
-    
+    if args.secret_yaml and not os.path.exists(args.secret_yaml):
+        parser.error(f"Secret YAML file not found: {args.secret_yaml}")
+
     return args
 
 
@@ -270,7 +278,78 @@ def ensure_namespaces(start: int, end: int, prefix: str, batch_size: int, logger
     return namespaces
 
 
+def create_secret(ns: str, secret_yaml: str, logger,
+                  max_retries: int = 3, initial_delay: float = 1.0) -> bool:
+    """
+    Create a Kubernetes secret in the specified namespace with retry logic.
+
+    Args:
+        ns: Namespace name
+        secret_yaml: Path to secret YAML file
+        logger: Logger instance
+        max_retries: Maximum number of retry attempts (default: 3)
+        initial_delay: Initial delay between retries in seconds (default: 1.0)
+
+    Returns:
+        True if secret created successfully, False otherwise
+    """
+    logger.info(f"[{ns}] Creating secret from {secret_yaml}")
+
+    # List of retryable error patterns
+    retryable_errors = [
+        'context deadline exceeded',
+        'webhook',
+        'Internal error',
+        'InternalError',
+        'connection refused',
+        'timeout',
+        'temporarily unavailable'
+    ]
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            returncode, stdout, stderr = run_kubectl_command(
+                ['create', '-f', secret_yaml, '-n', ns],
+                check=False,
+                logger=logger
+            )
+
+            if returncode == 0:
+                logger.info(f"[{ns}] Secret created successfully")
+                return True
+            else:
+                if 'AlreadyExists' in stderr:
+                    logger.warning(f"[{ns}] Secret already exists, continuing")
+                    return True
+
+                # Check if it's a retryable error
+                is_retryable = any(err in stderr for err in retryable_errors)
+
+                if is_retryable and attempt < max_retries:
+                    delay = initial_delay * (2 ** (attempt - 1))  # Exponential backoff
+                    logger.warning(f"[{ns}] Retryable error creating secret (attempt {attempt}/{max_retries}): {stderr.strip()}")
+                    logger.info(f"[{ns}] Retrying in {delay:.1f}s...")
+                    time.sleep(delay)
+                    continue
+                else:
+                    logger.error(f"[{ns}] Failed to create secret: {stderr}")
+                    return False
+
+        except Exception as e:
+            if attempt < max_retries:
+                delay = initial_delay * (2 ** (attempt - 1))
+                logger.warning(f"[{ns}] Exception creating secret (attempt {attempt}/{max_retries}): {e}")
+                logger.info(f"[{ns}] Retrying in {delay:.1f}s...")
+                time.sleep(delay)
+            else:
+                logger.error(f"[{ns}] Exception after {max_retries} attempts: {e}")
+                return False
+
+    return False
+
+
 def create_vm(ns: str, vm_yaml: str, node_name: Optional[str], logger,
+              secret_yaml: Optional[str] = None,
               max_retries: int = 5, initial_delay: float = 2.0) -> Tuple[str, datetime]:
     """
     Create a VM in the specified namespace with retry logic.
@@ -280,6 +359,7 @@ def create_vm(ns: str, vm_yaml: str, node_name: Optional[str], logger,
         vm_yaml: Path to VM YAML file
         node_name: Optional node name to pin VM to
         logger: Logger instance
+        secret_yaml: Optional path to secret YAML file to create before VM
         max_retries: Maximum number of retry attempts (default: 5)
         initial_delay: Initial delay between retries in seconds (default: 2.0)
                       Uses exponential backoff: delay * 2^attempt
@@ -287,6 +367,12 @@ def create_vm(ns: str, vm_yaml: str, node_name: Optional[str], logger,
     Returns:
         Tuple of (namespace, creation_timestamp)
     """
+    # Create secret first if provided
+    if secret_yaml:
+        if not create_secret(ns, secret_yaml, logger):
+            logger.error(f"[{ns}] Failed to create secret, aborting VM creation")
+            raise RuntimeError(f"Failed to create secret in {ns}")
+
     logger.info(f"[{ns}] Creating VM from {vm_yaml}")
     start_ts = datetime.now()
 
@@ -464,7 +550,8 @@ def wait_for_ping(ns: str, ip: str, start_ts: datetime, ssh_pod: str, ssh_pod_ns
 
 
 def monitor_vm(ns: str, vm_name: str, start_ts: datetime, ssh_pod: str, ssh_pod_ns: str,
-               poll_interval: int, ping_timeout: int, logger, skip_dv_clone_tracking=False) -> Tuple[str, float, float, float, bool]:
+               poll_interval: int, ping_timeout: int, logger, skip_dv_clone_tracking=False,
+               vm_template_path: Optional[str] = None) -> Tuple[str, float, float, float, bool]:
     """
     Monitor a single VM through its lifecycle and record clone timing.
 
@@ -478,13 +565,16 @@ def monitor_vm(ns: str, vm_name: str, start_ts: datetime, ssh_pod: str, ssh_pod_
         ping_timeout: Ping timeout
         logger: Logger instance
         skip_dv_clone_tracking: Flag to control DataVolume Clone
+        vm_template_path: Path to VM template YAML (optional, for DV name extraction)
     Returns:
         Tuple of (namespace, running_time, ping_time, clone_duration, success)
     """
     try:
         # Track clone timing
         if not skip_dv_clone_tracking:
-            clone_start, clone_end, clone_duration = track_clone_progress(ns, vm_name, start_ts, poll_interval, logger)
+            clone_start, clone_end, clone_duration = track_clone_progress(
+                ns, vm_name, start_ts, poll_interval, logger, vm_template_path=vm_template_path
+            )
         else:
             clone_duration = None
         # Wait for VM to become Running
@@ -506,9 +596,76 @@ def monitor_vm(ns: str, vm_name: str, start_ts: datetime, ssh_pod: str, ssh_pod_
 
 
 
-def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interval: int, logger, timeout: int = 1800):
+def extract_datavolume_name_from_yaml(vm_template_path: str, logger) -> Optional[str]:
     """
-    Track DataVolume clone timing for a given VM, including inferred clone start logic.
+    Extract the boot disk DataVolume name from the VM template YAML.
+
+    Follows the reference chain:
+    1. Find disk with bootOrder: 1 -> get its name (e.g., 'rootdisk')
+    2. Find matching volume with that name -> get dataVolume.name (e.g., 'rhel-root-disk-1')
+
+    Args:
+        vm_template_path: Path to the VM template YAML file
+        logger: Logger instance
+
+    Returns:
+        DataVolume name if found, None otherwise
+    """
+    try:
+        with open(vm_template_path, 'r') as f:
+            docs = list(yaml.safe_load_all(f))
+
+        for doc in docs:
+            if not doc:
+                continue
+
+            if doc.get('kind') == 'VirtualMachine':
+                template_spec = doc.get('spec', {}).get('template', {}).get('spec', {})
+
+                # Step 1: Find disk with bootOrder: 1, or use first disk as fallback
+                disks = template_spec.get('domain', {}).get('devices', {}).get('disks', [])
+                boot_disk_name = None
+                for disk in disks:
+                    if disk.get('bootOrder') == 1:
+                        boot_disk_name = disk.get('name')
+                        break
+
+                if not boot_disk_name and disks:
+                    # Fallback to first disk if no bootOrder: 1 found
+                    boot_disk_name = disks[0].get('name')
+                    logger.debug(f"No bootOrder: 1 found, using first disk: {boot_disk_name}")
+
+                if not boot_disk_name:
+                    logger.debug(f"No disks found in template")
+                    continue
+
+                # Step 2: Find volume with matching name and get dataVolume.name or PVC claimName
+                # Prefer dataVolume, fallback to persistentVolumeClaim
+                volumes = template_spec.get('volumes', [])
+                for volume in volumes:
+                    if volume.get('name') == boot_disk_name:
+                        if 'dataVolume' in volume:
+                            dv_name = volume.get('dataVolume', {}).get('name')
+                            if dv_name:
+                                logger.debug(f"Found boot disk DataVolume: {dv_name}")
+                                return dv_name
+                        elif 'persistentVolumeClaim' in volume:
+                            pvc_name = volume.get('persistentVolumeClaim', {}).get('claimName')
+                            if pvc_name:
+                                logger.debug(f"Found boot disk PVC: {pvc_name}")
+                                return pvc_name
+
+        logger.debug(f"No boot disk DataVolume found in template: {vm_template_path}")
+        return None
+    except Exception as e:
+        logger.debug(f"Error parsing VM template YAML: {e}")
+        return None
+
+
+def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interval: int, logger,
+                        vm_template_path: Optional[str] = None, timeout: int = 1800):
+    """
+    Track DataVolume/PVC clone timing for a given VM, including inferred clone start logic.
 
     Args:
         ns: Namespace
@@ -516,6 +673,7 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
         start_ts: Time when VM creation was initiated
         poll_interval: Poll interval in seconds
         logger: Logger instance
+        vm_template_path: Path to VM template YAML (optional, for boot disk name extraction)
         timeout: Timeout in seconds
 
     Returns:
@@ -523,19 +681,43 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
         or (None, None, None) if not detected
     """
 
-    # Match the DV name from your spec
-    dv_name = f"{vm_name}-volume"
-    logger.info(f"[{ns}] Tracking DataVolume clone progress for {dv_name}")
+    # Try to get boot disk name from the VM template YAML
+    dv_name = None
+    if vm_template_path:
+        dv_name = extract_datavolume_name_from_yaml(vm_template_path, logger)
+        if dv_name:
+            logger.info(f"[{ns}] Extracted boot disk name from template: {dv_name}")
+
+    # Fallback to standard naming pattern if not found in template
+    if not dv_name:
+        dv_name = f"{vm_name}-volume"
+        logger.debug(f"[{ns}] Using standard naming pattern: {dv_name}")
+
+    # Check if it's a DataVolume or PVC
+    # First try DataVolume, then fall back to PVC
+    result = subprocess.run(
+        ["kubectl", "get", "dv", dv_name, "-n", ns, "--no-headers"],
+        capture_output=True, text=True, check=False
+    )
+    is_datavolume = result.returncode == 0
+
+    if is_datavolume:
+        logger.info(f"[{ns}] Tracking DataVolume clone progress for {dv_name}")
+    else:
+        logger.info(f"[{ns}] Tracking PVC clone progress for {dv_name}")
 
     clone_start = None
     clone_end = None
     clone_inferred = False
     elapsed = 0
 
+    # Use appropriate resource type for kubectl commands
+    resource_type = "dv" if is_datavolume else "pvc"
+
     while elapsed < timeout:
         try:
             result = subprocess.run(
-                ["kubectl", "get", "dv", dv_name, "-n", ns, "-o", "json"],
+                ["kubectl", "get", resource_type, dv_name, "-n", ns, "-o", "json"],
                 capture_output=True, text=True, check=False
             )
             if result.returncode != 0 or not result.stdout:
@@ -544,28 +726,51 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
                 continue
 
             data = json.loads(result.stdout)
-            phase = data.get("status", {}).get("phase", "").lower()
+
+            # Get phase - DataVolume uses status.phase, PVC uses annotations
+            if is_datavolume:
+                phase = data.get("status", {}).get("phase", "").lower()
+            else:
+                # For PVC, check if it's bound (clone complete)
+                pvc_phase = data.get("status", {}).get("phase", "").lower()
+                if pvc_phase == "bound":
+                    phase = "succeeded"
+                else:
+                    phase = pvc_phase
 
             # CloneScheduled observed
             if phase == "clonescheduled" and not clone_start:
                 clone_start = datetime.now()
-                logger.info(f"[{ns}] {dv_name} entered CloneScheduled at {(clone_start - start_ts).total_seconds():.2f}s")
+                logger.info(f"[{ns}] {dv_name} entered CloneScheduled ({(clone_start - start_ts).total_seconds():.2f}s after VM creation)")
 
             # Clone in progress but no CloneScheduled observed (inferred)
             elif phase == "csicloneinprogress" and not clone_start:
-                clone_start = datetime.now() - timedelta(seconds=poll_interval)
+                # Infer clone started shortly after VM creation
+                current_time = datetime.now()
+                elapsed_now = (current_time - start_ts).total_seconds()
+                if elapsed_now > poll_interval:
+                    # Infer it started one poll interval ago
+                    clone_start = current_time - timedelta(seconds=poll_interval)
+                else:
+                    # Started right after VM creation
+                    clone_start = start_ts
                 clone_inferred = True
-                logger.info(f"[{ns}] {dv_name} likely skipped CloneScheduled (inferred start at {(clone_start - start_ts).total_seconds():.2f}s)")
+                clone_start_delta = (clone_start - start_ts).total_seconds()
+                logger.info(f"[{ns}] {dv_name} in CSICloneInProgress (inferred clone start: {clone_start_delta:.2f}s after VM creation)")
 
-            # Clone succeeded
+            # Clone succeeded (DataVolume) or Bound (PVC)
             elif phase == "succeeded":
-                if not clone_start:
-                    # infer that clone started just before success
-                    clone_start = datetime.now() - timedelta(seconds=poll_interval)
-                    clone_inferred = True
-                    logger.info(f"[{ns}] {dv_name} clone was likely too fast; inferring CloneScheduled at {(clone_start - start_ts).total_seconds():.2f}s")
                 clone_end = datetime.now()
-                logger.info(f"[{ns}] {dv_name} clone succeeded at {(clone_end - start_ts).total_seconds():.2f}s")
+                if not clone_start:
+                    # Infer clone started one poll interval ago, but not before VM creation
+                    inferred_start = clone_end - timedelta(seconds=poll_interval)
+                    if inferred_start < start_ts:
+                        clone_start = start_ts
+                    else:
+                        clone_start = inferred_start
+                    clone_inferred = True
+                    logger.info(f"[{ns}] {dv_name} clone was fast (inferred clone start: {(clone_start - start_ts).total_seconds():.2f}s after VM creation)")
+                logger.info(f"[{ns}] {dv_name} clone succeeded ({(clone_end - start_ts).total_seconds():.2f}s after VM creation)")
                 break
 
             elif phase == "failed":
@@ -720,12 +925,14 @@ def main():
     logger.info(f"\nPhase 1: Creating {len(namespaces)} VMs in parallel...")
     if target_node:
         logger.info(f"Target node: {target_node}")
+    if args.secret_yaml:
+        logger.info(f"Using secret YAML: {args.secret_yaml}")
     create_start = datetime.now()
     start_times = {}
 
     with ThreadPoolExecutor(max_workers=len(namespaces)) as executor:
         futures = {
-            executor.submit(create_vm, ns, args.vm_template, target_node, logger): ns
+            executor.submit(create_vm, ns, args.vm_template, target_node, logger, args.secret_yaml): ns
             for ns in namespaces
         }
 
@@ -749,7 +956,7 @@ def main():
         futures = {
             executor.submit(
                 monitor_vm, ns, args.vm_name, ts, args.ssh_pod, args.ssh_pod_ns,
-                args.poll_interval, args.ping_timeout, logger
+                args.poll_interval, args.ping_timeout, logger, False, args.vm_template
             ): ns
             for ns, ts in start_times.items()
         }
@@ -880,7 +1087,8 @@ def main():
             boot_futures = {
                 executor.submit(
                     monitor_vm, ns, args.vm_name, ts, args.ssh_pod, args.ssh_pod_ns,
-                    args.poll_interval, args.ping_timeout, logger, skip_dv_clone_tracking=True
+                    args.poll_interval, args.ping_timeout, logger, skip_dv_clone_tracking=True,
+                    vm_template_path=args.vm_template
                 ): ns
                 for ns, ts in boot_start_times.items()
             }

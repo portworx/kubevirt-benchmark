@@ -9,12 +9,22 @@ Tests VM creation using KubeVirt DataSource cloning for efficient VM provisionin
 ### Using virtbench CLI
 
 ```bash
-# Run performance test with your storage class
+# Run performance test using the vm template
+virtbench datasource-clone \
+  --start 1 \
+  --end 100 \
+  --vm-name rhel-9-vm \
+  --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
+  --save-results 
+```
+
+```bash
+# Run performance test using your storage class using default templates
 virtbench datasource-clone \
   --start 1 \
   --end 100 \
   --storage-class YOUR-STORAGE-CLASS \
-  --log-file results-$(date +%Y%m%d-%H%M%S).log
+  --save-results 
 ```
 
 ### Using Python Script
@@ -28,8 +38,7 @@ python3 measure-vm-creation-time.py \
   --end 100 \
   --vm-name rhel-9-vm \
   --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
-  --save-results \
-  --log-file results-$(date +%Y%m%d-%H%M%S).log
+  --save-results 
 ```
 
 ## Boot Storm Testing
@@ -89,6 +98,7 @@ virtbench datasource-clone \
   --storage-class YOUR-STORAGE-CLASS \
   --single-node \
   --boot-storm \
+  --save-results \ 
   --log-file single-node-boot-storm-$(date +%Y%m%d-%H%M%S).log
 
 # Or specify a specific node
@@ -101,6 +111,18 @@ virtbench datasource-clone \
   --boot-storm \
   --log-file single-node-boot-storm-$(date +%Y%m%d-%H%M%S).log
 ```
+
+```bash
+# Run bootstorm test using vm template
+virtbench datasource-clone \
+  --start 1 \
+  --end 100 \
+  --vm-name rhel-9-vm \
+  --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
+  --boot-storm
+  --save-results 
+```
+
 
 ### Using Python Script
 
