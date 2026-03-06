@@ -1873,12 +1873,20 @@
 <p><strong>Use Case</strong>: Measure VM provisioning performance with your storage backend.</p>
 <h2 id="basic-vm-creation-test">Basic VM Creation Test</h2>
 <h3 id="using-virtbench-cli">Using virtbench CLI</h3>
-<pre><code class="language-bash"># Run performance test with your storage class
+<pre><code class="language-bash"># Run performance test using the vm template
+virtbench datasource-clone \
+  --start 1 \
+  --end 100 \
+  --vm-name rhel-9-vm \
+  --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
+  --save-results 
+</code></pre>
+<pre><code class="language-bash"># Run performance test using your storage class using default templates
 virtbench datasource-clone \
   --start 1 \
   --end 100 \
   --storage-class YOUR-STORAGE-CLASS \
-  --log-file results-$(date +%Y%m%d-%H%M%S).log
+  --save-results 
 </code></pre>
 <h3 id="using-python-script">Using Python Script</h3>
 <pre><code class="language-bash">cd datasource-clone
@@ -1889,8 +1897,7 @@ python3 measure-vm-creation-time.py \
   --end 100 \
   --vm-name rhel-9-vm \
   --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
-  --save-results \
-  --log-file results-$(date +%Y%m%d-%H%M%S).log
+  --save-results 
 </code></pre>
 <h2 id="boot-storm-testing">Boot Storm Testing</h2>
 <p>A "boot storm" occurs when many VMs start simultaneously, creating high demand on storage I/O, network resources, compute resources, and hypervisor scheduling.</p>
@@ -1934,6 +1941,7 @@ virtbench datasource-clone \
   --storage-class YOUR-STORAGE-CLASS \
   --single-node \
   --boot-storm \
+  --save-results \ 
   --log-file single-node-boot-storm-$(date +%Y%m%d-%H%M%S).log
 
 # Or specify a specific node
@@ -1945,6 +1953,15 @@ virtbench datasource-clone \
   --node-name worker-node-1 \
   --boot-storm \
   --log-file single-node-boot-storm-$(date +%Y%m%d-%H%M%S).log
+</code></pre>
+<pre><code class="language-bash"># Run bootstorm test using vm template
+virtbench datasource-clone \
+  --start 1 \
+  --end 100 \
+  --vm-name rhel-9-vm \
+  --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
+  --boot-storm
+  --save-results 
 </code></pre>
 <h3 id="using-python-script_1">Using Python Script</h3>
 <pre><code class="language-bash">cd datasource-clone
