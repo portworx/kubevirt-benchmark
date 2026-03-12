@@ -39,6 +39,13 @@ Validates that your OpenShift cluster is properly configured and ready to run Ku
 
 [Learn more →](cluster-validation.md)
 
+### 6. FIO Storage I/O Benchmark
+Tests storage I/O performance by running FIO benchmarks across multiple VMs in parallel.
+
+**Use Case**: Measure storage IOPS, bandwidth, and latency under various workload patterns.
+
+[Learn more →](fio-benchmark.md)
+
 ## Next Steps
 
 1. [Install virtbench](../../../install.md) - Get started with installation

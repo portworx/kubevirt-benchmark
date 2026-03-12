@@ -39,6 +39,7 @@ nav:
           - Chaos Benchmark: reference/user-guide/test-scenarios/chaos-benchmark.md
           - Failure Recovery: reference/user-guide/test-scenarios/failure-recovery.md
           - Cluster Validation: reference/user-guide/test-scenarios/cluster-validation.md
+          - FIO Benchmark: reference/user-guide/test-scenarios/fio-benchmark.md
       - Boot Storm Testing Guide: reference/user-guide/boot-storm-guide.md
       - VM Template Guide: reference/user-guide/vm-template-guide.md
       - Configuration Options: reference/user-guide/configuration.md
