@@ -12,31 +12,31 @@
         <meta name="author" content="KubeVirt Benchmark Suite Contributors">
       
       
-        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/community/support/">
+        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/fio-benchmark/">
       
       
-        <link rel="prev" href="../contributing/">
+        <link rel="prev" href="../cluster-validation/">
       
       
-        <link rel="next" href="../code-of-conduct/">
+        <link rel="next" href="../../boot-storm-guide/">
       
       
         
       
       
-      <link rel="icon" href="../../favicon.png">
+      <link rel="icon" href="../../../../favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
-        <title>Support - virtbench</title>
+        <title>FIO Benchmark - virtbench</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -55,9 +55,9 @@
       
     
     
-      <link rel="stylesheet" href="../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#support" class="md-skip">
+        <a href="#fio-storage-io-benchmark" class="md-skip">
           Skip to content
         </a>
       
@@ -98,9 +98,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="virtbench" class="md-header__button md-logo" aria-label="virtbench" data-md-component="logo">
+    <a href="../../../.." title="virtbench" class="md-header__button md-logo" aria-label="virtbench" data-md-component="logo">
       
-  <img src="../../virtbench-transparent.png" alt="logo">
+  <img src="../../../../virtbench-transparent.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Support
+              FIO Benchmark
             
           </span>
         </div>
@@ -219,9 +219,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="virtbench" class="md-nav__button md-logo" aria-label="virtbench" data-md-component="logo">
+    <a href="../../../.." title="virtbench" class="md-nav__button md-logo" aria-label="virtbench" data-md-component="logo">
       
-  <img src="../../virtbench-transparent.png" alt="logo">
+  <img src="../../../../virtbench-transparent.png" alt="logo">
 
     </a>
     virtbench
@@ -295,7 +295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../.." class="md-nav__link">
         
   
   
@@ -323,7 +323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../install/" class="md-nav__link">
+      <a href="../../../../install/" class="md-nav__link">
         
   
   
@@ -351,7 +351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../release-notes/" class="md-nav__link">
+      <a href="../../../../release-notes/" class="md-nav__link">
         
   
   
@@ -379,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../license/" class="md-nav__link">
+      <a href="../../../../license/" class="md-nav__link">
         
   
   
@@ -387,618 +387,6 @@
     
   
     License
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Reference
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Reference
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/repository-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Repository Structure
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    User Guide
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    User Guide
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1" >
-        
-          
-          <label class="md-nav__link" for="__nav_2_2_1" id="__nav_2_2_1_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Test Scenarios
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_1_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2_1">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Test Scenarios
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/test-scenarios/overview/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/test-scenarios/datasource-clone/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Datasource Clone
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/test-scenarios/migration/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Migration
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/test-scenarios/chaos-benchmark/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Chaos Benchmark
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/test-scenarios/failure-recovery/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Failure Recovery
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/test-scenarios/cluster-validation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Cluster Validation
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/test-scenarios/fio-benchmark/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    FIO Benchmark
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/boot-storm-guide/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Boot Storm Testing Guide
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/vm-template-guide/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    VM Template Guide
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/configuration/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Configuration Options
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/output-and-results/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Output and Results
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/results-dashboard/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Results Dashboard
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/user-guide/cleanup-guide/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Cleanup Guide
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/troubleshooting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Troubleshooting
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reference/best-practices/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Best Practices
   
 
     
@@ -1036,7 +424,820 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../repository-structure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository Structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1" id="__nav_2_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Scenarios
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Test Scenarios
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datasource-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datasource Clone
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../chaos-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chaos Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../failure-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Failure Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cluster-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cluster Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FIO Benchmark
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FIO Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#virtbench-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        virtbench CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Script
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fio-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FIO Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#result-collection-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result Collection Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disk-space-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Disk Space Requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workload-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workload Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#output-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#view-in-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View in Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../boot-storm-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm Testing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../vm-template-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Template Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Options
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../output-and-results/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output and Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../results-dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Results Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cleanup-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleanup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../best-practices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Best Practices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -1057,7 +1258,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1075,7 +1276,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../../../../community/" class="md-nav__link">
         
   
   
@@ -1103,7 +1304,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
+      <a href="../../../../community/contributing/" class="md-nav__link">
         
   
   
@@ -1184,19 +1385,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../../community/support/" class="md-nav__link">
         
   
   
@@ -1212,7 +1404,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -1225,7 +1416,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../code-of-conduct/" class="md-nav__link">
+      <a href="../../../../community/code-of-conduct/" class="md-nav__link">
         
   
   
@@ -1273,6 +1464,164 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#virtbench-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        virtbench CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Script
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fio-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FIO Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#result-collection-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result Collection Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disk-space-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Disk Space Requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#workload-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workload Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#output-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#view-in-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View in Dashboard
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1291,14 +1640,227 @@
   
 
 
-<h1 id="support">Support</h1>
-<p>Use the GitHub <a href="https://github.com/portworx/kubevirt-benchmark/issues">issues</a> to report bugs or suggest features and enhancements. Issues are
-monitored and prioritized by the maintainers.</p>
-<p>Please include as much detail as possible. Information like the following is extremely helpful in allowing us to accurately evaluate and prioritize potential changes:</p>
+<h1 id="fio-storage-io-benchmark">FIO Storage I/O Benchmark</h1>
+<p>Tests storage I/O performance by running FIO benchmarks across multiple VMs in parallel.</p>
+<p><strong>Use Case</strong>: Measure storage IOPS, bandwidth, and latency under various workload patterns.</p>
+<h2 id="basic-usage">Basic Usage</h2>
+<h3 id="virtbench-cli">virtbench CLI</h3>
+<pre><code class="language-bash"># Run FIO benchmark on 10 VMs
+virtbench fio \
+  --start 1 --end 10 \
+  --storage-class YOUR-STORAGE-CLASS \
+  --save-results
+
+# Custom FIO parameters
+virtbench fio \
+  --start 1 --end 20 \
+  --storage-class YOUR-STORAGE-CLASS \
+  --fio-runtime 300 \
+  --fio-rw randrw \
+  --fio-bs 4k \
+  --fio-iodepth 64 \
+  --save-results \
+  --cleanup
+</code></pre>
+<h3 id="python-script">Python Script</h3>
+<pre><code class="language-bash">cd fio-benchmark
+
+python3 measure-fio-performance.py \
+  --start 1 --end 20 \
+  --storage-class YOUR-STORAGE-CLASS \
+  --fio-runtime 300 \
+  --fio-rw randrw \
+  --fio-bs 4k \
+  --fio-iodepth 64 \
+  --fio-numjobs 4 \
+  --save-results \
+  --results-dir ../results/my-test \
+  --cleanup
+</code></pre>
+<h2 id="configuration-options">Configuration Options</h2>
+<h3 id="fio-parameters">FIO Parameters</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--start</code></td>
+<td>(required)</td>
+<td>Starting namespace index</td>
+</tr>
+<tr>
+<td><code>--end</code></td>
+<td>(required)</td>
+<td>Ending namespace index</td>
+</tr>
+<tr>
+<td><code>--storage-class</code></td>
+<td>(required)</td>
+<td>Storage class name</td>
+</tr>
+<tr>
+<td><code>--namespace-prefix</code></td>
+<td><code>fio-benchmark</code></td>
+<td>Namespace prefix (creates <code>fio-benchmark-1</code>, etc.)</td>
+</tr>
+<tr>
+<td><code>--fio-runtime</code></td>
+<td><code>300</code></td>
+<td>FIO test duration in seconds</td>
+</tr>
+<tr>
+<td><code>--fio-rw</code></td>
+<td><code>randwrite</code></td>
+<td>I/O pattern: <code>read</code>, <code>write</code>, <code>randread</code>, <code>randwrite</code>, <code>randrw</code>, <code>rw</code></td>
+</tr>
+<tr>
+<td><code>--fio-bs</code></td>
+<td><code>4k</code></td>
+<td>Block size (e.g., <code>4k</code>, <code>8k</code>, <code>64k</code>, <code>1M</code>)</td>
+</tr>
+<tr>
+<td><code>--fio-iodepth</code></td>
+<td><code>64</code></td>
+<td>I/O queue depth</td>
+</tr>
+<tr>
+<td><code>--fio-numjobs</code></td>
+<td><code>4</code></td>
+<td>Number of parallel FIO jobs per VM</td>
+</tr>
+<tr>
+<td><code>--fio-size</code></td>
+<td><code>10G</code></td>
+<td>Test file size per job</td>
+</tr>
+</tbody>
+</table>
+<h3 id="result-collection-options">Result Collection Options</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--collect-retries</code></td>
+<td><code>8</code></td>
+<td>Max retries for collecting results from VMs</td>
+</tr>
+<tr>
+<td><code>--collect-retry-delay</code></td>
+<td><code>20</code></td>
+<td>Delay (seconds) between collection retries</td>
+</tr>
+<tr>
+<td><code>--collect-concurrency</code></td>
+<td><code>5</code></td>
+<td>Max concurrent result collections</td>
+</tr>
+</tbody>
+</table>
+<h3 id="output-options">Output Options</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--save-results</code></td>
+<td><code>false</code></td>
+<td>Save results to JSON/CSV files</td>
+</tr>
+<tr>
+<td><code>--results-dir</code></td>
+<td><code>results</code></td>
+<td>Base directory for results</td>
+</tr>
+<tr>
+<td><code>--cleanup</code></td>
+<td><code>false</code></td>
+<td>Delete VMs and namespaces after test</td>
+</tr>
+</tbody>
+</table>
+<h2 id="disk-space-requirements">Disk Space Requirements</h2>
+<p>FIO creates test files based on <code>--fio-size</code> and <code>--fio-numjobs</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Calculation</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Test files per VM</td>
+<td><code>fio-size × fio-numjobs</code></td>
+<td>10G × 4 = <strong>40GB</strong></td>
+</tr>
+<tr>
+<td>Scratch disk size</td>
+<td>Must be &gt; test files</td>
+<td>50GB (in VM template)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Data written during test</strong> depends on achieved IOPS:</p>
+<pre><code>Data Written = Write IOPS × Block Size × Runtime
+
+Example: 21,000 IOPS × 4KB × 60s ≈ 5GB written
+</code></pre>
+<h2 id="workload-examples">Workload Examples</h2>
+<pre><code class="language-bash"># Sequential read (max bandwidth)
+virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
+  --fio-rw read --fio-bs 1M --fio-iodepth 32 --save-results
+
+# Random write (database workload)
+virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
+  --fio-rw randwrite --fio-bs 4k --fio-iodepth 64 --save-results
+
+# Mixed read/write 50/50 (general workload)
+virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
+  --fio-rw randrw --fio-bs 4k --fio-iodepth 64 --save-results
+</code></pre>
+<h2 id="results">Results</h2>
+<p>Results include per-VM and aggregated metrics:</p>
 <ul>
-<li>A reproducible test case or clear sequence of steps</li>
-<li>Any modifications you’ve made that may be relevant to the issue</li>
-<li>Anything unusual or unique about your environment or deployment setup</li>
+<li><strong>IOPS</strong>: Read/Write operations per second</li>
+<li><strong>Bandwidth</strong>: Read/Write throughput in MiB/s</li>
+<li><strong>Latency</strong>: Read/Write latency in milliseconds</li>
+</ul>
+<h3 id="output-structure">Output Structure</h3>
+<pre><code>results/{timestamp}_fio_benchmark_{start}-{end}/
+├── aggregated_results.json    # Summary across all VMs
+├── aggregated_results.csv     # CSV format
+└── per-vm-results/            # Individual VM results
+    ├── fio-benchmark-1/
+    │   └── fio_raw.json
+    └── ...
+</code></pre>
+<h3 id="view-in-dashboard">View in Dashboard</h3>
+<pre><code class="language-bash">cd dashboard
+python3 generate_dashboard.py --base-dir ../results
+open output/dashboard.html
+</code></pre>
+<p>The dashboard displays:</p>
+<ul>
+<li>KPI summary cards (Total IOPS, Bandwidth, Latency)</li>
+<li>IOPS + Latency dual-axis chart</li>
+<li>Per-VM breakdown with clickable namespaces</li>
 </ul>
 
 
@@ -1349,10 +1911,10 @@ monitored and prioritized by the maintainers.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": [], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
