@@ -40,6 +40,10 @@ console = Console()
               help='Skip namespace creation (use existing namespaces)')
 @click.option('--boot-storm', is_flag=True,
               help='After initial test, shutdown all VMs and test boot storm')
+@click.option('--skip-vm-creation', is_flag=True,
+              help='Skip VM creation phase (use with --boot-storm to test existing VMs)')
+@click.option('--num-disks', type=int, default=None,
+              help='Number of disks per VM (auto-detected from template or existing VM if not specified)')
 @click.option('--namespace-batch-size', default=20, type=int,
               help='Number of namespaces to create in parallel')
 @click.option('--single-node', is_flag=True, help='Run all VMs on a single node')
@@ -146,6 +150,8 @@ def datasource_clone(ctx, **kwargs):
         python_args['skip-namespace-creation'] = True
     if kwargs['boot_storm']:
         python_args['boot-storm'] = True
+    if kwargs['skip_vm_creation']:
+        python_args['skip-vm-creation'] = True
     if kwargs['single_node']:
         python_args['single-node'] = True
     if kwargs['save_results']:
@@ -156,6 +162,8 @@ def datasource_clone(ctx, **kwargs):
         python_args['node-name'] = kwargs['node_name']
     if kwargs.get('storage_version'):
         python_args['storage-version'] = kwargs['storage_version']
+    if kwargs.get('num_disks'):
+        python_args['num-disks'] = kwargs['num_disks']
     if secret_yaml_path:
         python_args['secret-yaml'] = str(secret_yaml_path)
 

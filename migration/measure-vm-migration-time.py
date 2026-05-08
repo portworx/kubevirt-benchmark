@@ -7,6 +7,8 @@ This script measures VM live migration performance across different scenarios:
 - Parallel migration (multiple VMs simultaneously)
 - Evacuation scenario (all VMs from one node)
 - Round-robin migration (distribute across multiple nodes)
+- Multi-source-node migration (VMs discovered directly from a list of nodes,
+  interleaved across nodes so the load is spread evenly from the start)
 
 Usage:
     # Sequential migration
@@ -21,11 +23,18 @@ Usage:
     # Round-robin migration
     python3 measure-vm-migration-time.py --start 1 --end 100 --round-robin
 
+    # Multi-source-node migration (no range needed, VMs auto-discovered per node)
+    python3 measure-vm-migration-time.py --source-nodes worker-1 worker-2 worker-3 --concurrency 20
+
+    # Multi-source-node migration pinned to a single target node
+    python3 measure-vm-migration-time.py --source-nodes worker-1 worker-2 --target-node worker-5 --concurrency 15
+
 Author: KubeVirt Benchmark Suite Contributors
 License: Apache 2.0
 """
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -65,18 +74,27 @@ def parse_arguments():
 Examples:
   # Sequential migration from node-1 to node-2
   python3 measure-vm-migration-time.py --start 1 --end 10 --source-node worker-1 --target-node worker-2
-  
+
   # Parallel migration with 10 concurrent migrations
   python3 measure-vm-migration-time.py --start 1 --end 50 --source-node worker-1 --target-node worker-2 --parallel --concurrency 10
-  
+
   # Evacuate all VMs from node-1
   python3 measure-vm-migration-time.py --start 1 --end 100 --source-node worker-1 --evacuate
-  
+
   # Round-robin migration across all nodes
   python3 measure-vm-migration-time.py --start 1 --end 100 --round-robin
-  
+
   # Create VMs first, then migrate
   python3 measure-vm-migration-time.py --start 1 --end 10 --create-vms --source-node worker-1 --target-node worker-2
+
+  # Multi-source-node migration: discover VMs on listed nodes and migrate them
+  # in an interleaved order (VM1 from node1, VM1 from node2, VM1 from node3,
+  # VM2 from node1, VM2 from node2, ...). Useful when VM numbering may have
+  # changed after multiple prior live migrations.
+  python3 measure-vm-migration-time.py --source-nodes worker-1 worker-2 worker-3 --concurrency 20
+
+  # Multi-source-node with all migrations pinned to a single target node
+  python3 measure-vm-migration-time.py --source-nodes worker-1 worker-2 --target-node worker-5 --concurrency 15
         """
     )
     
@@ -105,6 +123,13 @@ Examples:
     # Migration scenarios
     parser.add_argument('--source-node', type=str, default=None,
                        help='Source node name (required for sequential/parallel/evacuate)')
+    parser.add_argument('--source-nodes', type=str, nargs='+', default=None,
+                       help='List of source nodes whose VMs will all be migrated in parallel. '
+                            'Discovers VMs directly from each node via kubectl (no --start/--end '
+                            'range needed) and submits them concurrently to the thread pool in an '
+                            'interleaved order (VM1 from node1, VM1 from node2, ..., VM2 from node1, '
+                            'VM2 from node2, ...). Pass "all" as the sole value to target every '
+                            'worker node in the cluster.')
     parser.add_argument('--target-node', type=str, default=None,
                        help='Target node name (optional, auto-select if not specified)')
     parser.add_argument('--parallel', action='store_true',
@@ -117,9 +142,9 @@ Examples:
                        help='Migrate VMs in round-robin fashion across all nodes')
     
     # Performance options
-    parser.add_argument('-c', '--concurrency', type=int, default=10,
+    parser.add_argument('-c', '--concurrency', type=int, default=50,
                        help='Number of concurrent migrations (default: 10)')
-    parser.add_argument('--poll-interval', type=int, default=5,
+    parser.add_argument('--poll-interval', type=int, default=2,
                        help='Seconds between status checks (default: 5)')
     parser.add_argument('--migration-timeout', type=int, default=600,
                        help='Timeout for each migration in seconds (default: 600)')
@@ -199,6 +224,17 @@ def validate_migration_args(args, logger):
     if args.node_name and not args.single_node:
         logger.error("--node-name requires --single-node")
         return False
+
+    # --source-nodes: multi-node parallel evacuation (new scenario)
+    if args.source_nodes:
+        if args.source_node:
+            logger.warning("Both --source-node and --source-nodes specified; "
+                           "--source-nodes takes precedence for multi-node mode")
+        if args.evacuate or args.round_robin or args.parallel:
+            logger.error("--source-nodes cannot be combined with --evacuate, --round-robin, or --parallel")
+            return False
+        logger.info(f"Multi-node evacuation mode: will migrate VMs from nodes: {args.source_nodes}")
+        return True
 
     if args.round_robin:
         # Round-robin doesn't need source/target nodes
@@ -502,6 +538,110 @@ def migrate_vm_sequential(
         return ns, False, 0.0, None, None, None
 
 
+_ALL_VMIS_CACHE: dict = {}  # node-independent cache so we fetch only once per run
+
+
+def _fetch_all_vmis(logger) -> list:
+    """
+    Fetch all VMIs across all namespaces once and cache the result.
+
+    Uses ``kubectl get vmi -A -o json`` and returns the list of item dicts.
+    ``spec.nodeName`` field selectors are not supported by the KubeVirt CRD,
+    so we retrieve everything and filter in Python.
+    """
+    if 'items' in _ALL_VMIS_CACHE:
+        return _ALL_VMIS_CACHE['items']
+
+    returncode, stdout, stderr = run_kubectl_command(
+        ['get', 'vmi', '-A', '-o', 'json'],
+        check=False,
+        logger=logger,
+    )
+    if returncode != 0:
+        logger.error(f"Failed to list all VMIs: {stderr}")
+        _ALL_VMIS_CACHE['items'] = []
+        return []
+
+    try:
+        data = json.loads(stdout)
+        items = data.get('items', [])
+        _ALL_VMIS_CACHE['items'] = items
+        logger.info(f"Fetched {len(items)} total VMI(s) from cluster.")
+        return items
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse VMI JSON: {e}")
+        _ALL_VMIS_CACHE['items'] = []
+        return []
+
+
+def discover_vms_on_node(node_name: str, vm_name: str, namespace_prefix: str,
+                         logger) -> List[str]:
+    """
+    Discover all namespaces that have a VMI named *vm_name* running on *node_name*.
+
+    Fetches all VMIs cluster-wide (cached) and filters by ``.status.nodeName`` in
+    Python — ``spec.nodeName`` is not a supported field selector for the KubeVirt
+    VMI CRD.
+
+    Returns a sorted list of namespace names whose VMI matches *vm_name* on
+    *node_name*.
+    """
+    logger.info(f"Discovering VMIs named '{vm_name}' on node '{node_name}' "
+                f"(prefix filter: '{namespace_prefix or '<none>'}')...")
+    try:
+        all_items = _fetch_all_vmis(logger)
+        namespaces: List[str] = []
+        for item in all_items:
+            meta = item.get('metadata', {})
+            status = item.get('status', {})
+            ns = meta.get('namespace', '')
+            name = meta.get('name', '')
+            node = status.get('nodeName', '')
+
+            if name != vm_name:
+                continue
+            if node != node_name:
+                continue
+            if namespace_prefix and not ns.startswith(namespace_prefix):
+                continue
+            namespaces.append(ns)
+
+        namespaces.sort()
+        logger.info(f"  Found {len(namespaces)} VMI(s) on {node_name}")
+        return namespaces
+
+    except Exception as e:
+        logger.error(f"Error discovering VMIs on node {node_name}: {e}")
+        return []
+
+
+def interleave_vms_across_nodes(per_node_vms: Dict[str, List[str]],
+                                node_order: List[str]) -> List[str]:
+    """
+    Interleave per-node VM lists into a single migration order.
+
+    Order: VM1 from node1, VM1 from node2, VM1 from node3,
+           VM2 from node1, VM2 from node2, VM2 from node3, ...
+
+    Lists of unequal length are zipped using a round-robin walk so that no
+    node is starved at the end. Duplicate namespaces (a VM may appear under
+    more than one node if it migrated mid-discovery) are deduplicated while
+    preserving first-seen order.
+    """
+    seen: set = set()
+    ordered: List[str] = []
+    max_len = max((len(per_node_vms[n]) for n in node_order), default=0)
+    for i in range(max_len):
+        for n in node_order:
+            lst = per_node_vms.get(n, [])
+            if i < len(lst):
+                ns = lst[i]
+                if ns not in seen:
+                    seen.add(ns)
+                    ordered.append(ns)
+    return ordered
+
+
 def main():
     """Main function."""
     args = parse_arguments()
@@ -513,7 +653,31 @@ def main():
     logger.info("=" * 80)
     logger.info("KubeVirt VM Live Migration Performance Test")
     logger.info("=" * 80)
-    logger.info(f"VM range: {args.start} to {args.end}")
+
+    # Catch the common mistake of omitting a space before the line-continuation
+    # backslash, e.g. "--source-nodes all\" -> "all--concurrency".
+    if args.source_nodes:
+        for bad in args.source_nodes:
+            if bad.startswith('all-') or (bad != 'all' and bad.lower().startswith('all') and not bad.startswith('all.')):
+                logger.error(
+                    f"Unexpected --source-nodes value: '{bad}'. "
+                    f"Did you forget a space before the backslash in your command? "
+                    f"Use '--source-nodes all' (with a space before '\\') to target every node."
+                )
+                sys.exit(1)
+
+    # Expand the magic value "all" into the full list of worker nodes.
+    if args.source_nodes and len(args.source_nodes) == 1 and args.source_nodes[0].lower() == 'all':
+        logger.info("--source-nodes all: discovering every worker node in the cluster...")
+        all_nodes = get_worker_nodes(logger)
+        if not all_nodes:
+            logger.error("No worker nodes found in the cluster.")
+            sys.exit(1)
+        args.source_nodes = all_nodes
+        logger.info(f"Expanded 'all' to {len(args.source_nodes)} node(s): {', '.join(args.source_nodes)}")
+
+    if not args.source_nodes:
+        logger.info(f"VM range: {args.start} to {args.end}")
     logger.info(f"VM name: {args.vm_name}")
     logger.info(f"Namespace prefix: {args.namespace_prefix}")
     logger.info(f"Create VMs: {args.create_vms}")
@@ -521,7 +685,10 @@ def main():
     if args.storage_version:
         logger.info(f"Using provided storage version: {args.storage_version}")
 
-    if args.round_robin:
+    if args.source_nodes:
+        logger.info(f"Migration mode: Multi-node evacuation from {len(args.source_nodes)} nodes")
+        logger.info(f"  Source nodes: {', '.join(args.source_nodes)}")
+    elif args.round_robin:
         logger.info("Migration mode: Round-robin")
     elif args.evacuate:
         if args.auto_select_busiest:
@@ -533,13 +700,13 @@ def main():
     else:
         logger.info("Migration mode: Sequential")
 
-    if args.source_node and not args.evacuate:
+    if args.source_node and not args.evacuate and not args.source_nodes:
         logger.info(f"Source node: {args.source_node}")
     if args.target_node:
         logger.info(f"Target node: {args.target_node}")
-    
+
     logger.info("=" * 80)
-    
+
     # Validate arguments
     if not validate_migration_args(args, logger):
         sys.exit(1)
@@ -551,8 +718,13 @@ def main():
             args.skip_ping = True
 
     # Prepare namespaces
-    namespaces = [f"{args.namespace_prefix}-{i}" for i in range(args.start, args.end + 1)]
-    logger.info(f"\nTarget namespaces: {namespaces[0]} to {namespaces[-1]} ({len(namespaces)} total)")
+    if args.source_nodes:
+        # Namespaces are discovered per-node in Scenario 5; nothing to build here.
+        namespaces: List[str] = []
+        logger.info("\nNamespace discovery will be performed per source node.")
+    else:
+        namespaces = [f"{args.namespace_prefix}-{i}" for i in range(args.start, args.end + 1)]
+        logger.info(f"\nTarget namespaces: {namespaces[0]} to {namespaces[-1]} ({len(namespaces)} total)")
 
     # Phase 1: Create VMs if requested
     if args.create_vms:
@@ -654,7 +826,12 @@ def main():
         logger.info("\n" + "=" * 80)
         logger.info("PHASE 1: Verifying Existing VMs")
         logger.info("=" * 80)
-        if not args.skip_checks:
+        if args.source_nodes:
+            # Namespace discovery hasn't run yet — VMs will be verified during
+            # the per-node discover_vms_on_node() calls in Scenario 5.
+            logger.info("Skipping pre-flight VM check for --source-nodes mode; "
+                        "VMs will be discovered per node during migration.")
+        elif not args.skip_checks:
             logger.info(f"\nChecking {len(namespaces)} VMs...")
             running_count = 0
 
@@ -698,28 +875,41 @@ def main():
 
     logger.info("Detecting disk count from existing VM spec...")
     try:
-        sample_ns = f"{args.namespace_prefix}-{args.start}"
-        vm_yaml_cmd = [
-            "kubectl", "get", "vm", args.vm_name, "-n", sample_ns, "-o", "yaml"
-        ]
-        result = subprocess.run(vm_yaml_cmd, capture_output=True, text=True, check=False)
-        if result.returncode == 0 and result.stdout:
-            vm_spec = yaml.safe_load(result.stdout)
-            volumes = (
-                vm_spec.get("spec", {})
-                .get("template", {})
-                .get("spec", {})
-                .get("volumes", [])
+        # For --source-nodes mode `namespaces` is empty here; pick any namespace
+        # that currently exists by probing the first source node.
+        if args.source_nodes:
+            _probe_ns_list = discover_vms_on_node(
+                args.source_nodes[0], args.vm_name, args.namespace_prefix, logger
             )
-            non_cloudinit = [
-                v for v in volumes
-                if not any(k in v for k in ["cloudInitNoCloud", "cloudInitConfigDrive"])
-            ]
-            num_disks = len(non_cloudinit)
-            logger.info(f"Detected {num_disks} disks (excluding cloud-init volumes)")
+            sample_ns = _probe_ns_list[0] if _probe_ns_list else None
         else:
-            logger.warning("Could not retrieve VM spec; defaulting to 1 disk")
+            sample_ns = f"{args.namespace_prefix}-{args.start}"
+
+        if not sample_ns:
+            logger.warning("No sample namespace available for disk detection; defaulting to 1 disk")
             num_disks = 1
+        else:
+            vm_yaml_cmd = [
+                "kubectl", "get", "vm", args.vm_name, "-n", sample_ns, "-o", "yaml"
+            ]
+            result = subprocess.run(vm_yaml_cmd, capture_output=True, text=True, check=False)
+            if result.returncode == 0 and result.stdout:
+                vm_spec = yaml.safe_load(result.stdout)
+                volumes = (
+                    vm_spec.get("spec", {})
+                    .get("template", {})
+                    .get("spec", {})
+                    .get("volumes", [])
+                )
+                non_cloudinit = [
+                    v for v in volumes
+                    if not any(k in v for k in ["cloudInitNoCloud", "cloudInitConfigDrive"])
+                ]
+                num_disks = len(non_cloudinit)
+                logger.info(f"Detected {num_disks} disks (excluding cloud-init volumes)")
+            else:
+                logger.warning("Could not retrieve VM spec; defaulting to 1 disk")
+                num_disks = 1
     except Exception as e:
         logger.error(f"Error detecting disks: {e}")
         num_disks = 1
@@ -733,7 +923,7 @@ def main():
     migration_phase_start = datetime.now()
 
     # Scenario 1: Sequential Migration
-    if not args.parallel and not args.evacuate and not args.round_robin:
+    if not args.parallel and not args.evacuate and not args.round_robin and not args.source_nodes:
         logger.info(f"\nSequential migration from {args.source_node or 'auto-selected node'} to {args.target_node or 'auto-selected node'}")
 
         for ns in namespaces:
@@ -748,7 +938,7 @@ def main():
             time.sleep(1)
 
     # Scenario 2: Parallel Migration
-    elif args.parallel and not args.evacuate and not args.round_robin:
+    elif args.parallel and not args.evacuate and not args.round_robin and not args.source_nodes:
         logger.info(f"\nParallel migration from {args.source_node or 'auto-selected node'} "
                     f"to {args.target_node or 'auto-selected node'}")
         logger.info(f"Concurrency: {args.concurrency}")
@@ -916,6 +1106,107 @@ def main():
                     ns = futures[future]
                     logger.error(f"[{ns}] Exception during migration: {e}")
                     migration_results.append((ns, False, 0.0, None, None, None))
+
+    # Scenario 5: Multi-source-node parallel migration (interleaved across nodes)
+    elif args.source_nodes:
+        logger.info("\n" + "=" * 80)
+        logger.info("IDENTIFYING VMs ON SOURCE NODES")
+        logger.info("=" * 80)
+        logger.info(f"Collecting VMs from {len(args.source_nodes)} source node(s): "
+                    f"{', '.join(args.source_nodes)}")
+
+        # Discover VMIs directly from each node — no namespace range required.
+        per_node_vms: Dict[str, List[str]] = {}
+        for source_node in args.source_nodes:
+            vms_on_node = discover_vms_on_node(
+                source_node, args.vm_name, args.namespace_prefix, logger
+            )
+            per_node_vms[source_node] = vms_on_node
+            if vms_on_node:
+                logger.info(f"  {source_node}: {len(vms_on_node)} VM(s) found")
+            else:
+                logger.warning(f"  {source_node}: no VMs found (check node name and namespace prefix)")
+
+        # Interleave across nodes so the migration order is:
+        # VM1 from node1, VM1 from node2, VM1 from node3, VM2 from node1, ...
+        all_vms_to_migrate = interleave_vms_across_nodes(per_node_vms, args.source_nodes)
+
+        if not all_vms_to_migrate:
+            logger.error("No VMs found on any of the specified source nodes. "
+                         "Check node names and --namespace-prefix.")
+            sys.exit(1)
+
+        logger.info(f"\nTotal unique VMs to migrate: {len(all_vms_to_migrate)}")
+        logger.info(f"Interleaved migration order (first 10): {all_vms_to_migrate[:10]}")
+        logger.info(f"Target node: {args.target_node or '(auto-selected per VM)'}")
+        logger.info(f"Concurrency: {args.concurrency}")
+        logger.info("=" * 80)
+
+        # Determine available target nodes.
+        # When a specific --target-node was given, pin to that node.
+        # Otherwise try to exclude source nodes so KubeVirt does not land a
+        # migrated VM back on a node being drained. If every worker is a
+        # source node (e.g. --source-nodes all) there are no non-source nodes,
+        # so we fall back to allowing all workers and rely on KubeVirt's own
+        # scheduler to avoid migrating a VM to its current node.
+        if args.target_node:
+            logger.info(f"Pinning all migrations to target node: {args.target_node}")
+        else:
+            available_targets = get_available_nodes(args.source_nodes, logger)
+            if available_targets:
+                logger.info(f"Available target nodes (excluding sources): {available_targets}")
+            else:
+                available_targets = get_available_nodes([], logger)
+                logger.warning(
+                    "All worker nodes are listed as source nodes — no non-source nodes "
+                    "available as targets. Falling back to all worker nodes as potential "
+                    "targets; KubeVirt will avoid migrating each VM back to its current node."
+                )
+                logger.info(f"Effective target pool: {available_targets}")
+
+        logger.info(f"\nStarting parallel migration of {len(all_vms_to_migrate)} VMs...")
+
+        with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
+            futures = {
+                executor.submit(
+                    migrate_vm_sequential,
+                    ns,
+                    args.vm_name,
+                    args.target_node,   # None -> KubeVirt auto-selects from available nodes
+                    args.migration_timeout,
+                    logger,
+                    args.poll_interval,
+                    10,                 # max_vmim_retries
+                    args.max_migration_retries,
+                ): ns
+                for ns in all_vms_to_migrate
+            }
+
+            completed = 0
+            for future in as_completed(futures):
+                ns = futures[future]
+                try:
+                    result = future.result()
+                    migration_results.append(result)
+                    completed += 1
+                    _, success, duration, src, tgt, _ = result
+                    status_str = "✓" if success else "✗"
+                    if success:
+                        logger.info(
+                            f"[{completed}/{len(all_vms_to_migrate)}] {status_str} "
+                            f"{ns}: {src} → {tgt or 'unknown'} ({duration:.1f}s)"
+                        )
+                    else:
+                        logger.info(
+                            f"[{completed}/{len(all_vms_to_migrate)}] {status_str} {ns}: FAILED"
+                        )
+                except Exception as e:
+                    completed += 1
+                    logger.error(f"[{ns}] Exception during migration: {e}")
+                    migration_results.append((ns, False, 0.0, None, None, None))
+
+        # Expose discovered namespaces to the ping / cleanup phases below.
+        namespaces = all_vms_to_migrate
 
     total_migration_time = (datetime.now() - migration_phase_start).total_seconds()
     # Phase 4: Validation (Ping Test)

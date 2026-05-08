@@ -4,6 +4,16 @@ Tests VM live migration with existing VMs or by creating new VMs across differen
 
 **Use Case**: Validates migration performance for node maintenance, load balancing, and disaster recovery scenarios.
 
+**Supported scenarios**:
+
+- **Sequential** — migrate VMs one at a time from a source to a target node.
+- **Parallel** — migrate many VMs concurrently between two nodes.
+- **Node evacuation** — drain every VM from a single source node (explicit or auto-selected busiest).
+- **Round-robin** — distribute VMs across all worker nodes for load balancing.
+- **Multi-source-node** — drain VMs from a list of nodes (or every worker via `--source-nodes all`)
+  in parallel, with discovery driven by `kubectl` so no `--start`/`--end` range is required.
+  See [Multi-Source-Node Migration](#multi-source-node-migration).
+
 ## Prerequisites
 
 Live migration tests require VMs to already exist. You have two options:
@@ -150,7 +160,7 @@ python3 measure-vm-migration-time.py \
 #### Using virtbench CLI
 
 ```bash
-# High-scale parallel migration with interleaved scheduling and custom timeout
+# High-scale parallel migration with custom timeout
 virtbench migration \
   --start 1 \
   --end 200 \
@@ -158,11 +168,14 @@ virtbench migration \
   --concurrency 50 \
   --skip-ping \
   --save-results \
-  --migration-timeout 1000 \
-  --interleaved-scheduling
+  --migration-timeout 1000
 ```
 
 #### Using Python Script
+
+The `--interleaved-scheduling` flag (distribute parallel migration threads
+across nodes in an interleaved pattern) is only available on the Python
+script:
 
 ```bash
 cd migration
@@ -213,20 +226,8 @@ python3 measure-vm-migration-time.py \
 
 ### Node Evacuation (Auto-Select Busiest)
 
-Automatically find and evacuate the busiest node.
-
-#### Using virtbench CLI
-
-```bash
-# Automatically find and evacuate the busiest node
-virtbench migration \
-  --start 1 \
-  --end 100 \
-  --evacuate \
-  --auto-select-busiest \
-  --concurrency 20 \
-  --save-results
-```
+Automatically find and evacuate the busiest node. The
+`--auto-select-busiest` flag is only available on the Python script.
 
 #### Using Python Script
 
@@ -245,19 +246,8 @@ python3 measure-vm-migration-time.py \
 
 ### Round-Robin Migration
 
-Distribute VMs across all nodes for load balancing.
-
-#### Using virtbench CLI
-
-```bash
-# Distribute VMs across all nodes for load balancing
-virtbench migration \
-  --start 1 \
-  --end 100 \
-  --round-robin \
-  --concurrency 20 \
-  --save-results
-```
+Distribute VMs across all nodes for load balancing. The `--round-robin`
+flag is only available on the Python script.
 
 #### Using Python Script
 
@@ -272,6 +262,81 @@ python3 measure-vm-migration-time.py \
   --concurrency 20 \
   --save-results
 ```
+
+### Multi-Source-Node Migration
+
+Discover and migrate **all** VMs running on a list of source nodes in parallel,
+without having to specify a `--start`/`--end` range. VMs are listed directly
+from the cluster (`kubectl get vmi -A`) and filtered by `.status.nodeName`,
+which makes this the right choice when:
+
+- The original `migration-N` namespace numbering no longer matches what is
+  actually running on each node (e.g. after several rounds of migrations).
+- You want to drain multiple nodes simultaneously (rolling node maintenance,
+  cordon-then-evacuate workflows, full cluster rebalancing).
+
+VMs are submitted to the worker pool in an **interleaved** order — `VM1` from
+node1, `VM1` from node2, `VM1` from node3, then `VM2` from node1, and so on —
+so concurrent migrations are spread evenly across source nodes from the very
+first batch instead of draining one node at a time.
+
+#### Using virtbench CLI
+
+```bash
+# Drain three specific nodes in parallel
+virtbench migration \
+  --source-nodes worker-1 \
+  --source-nodes worker-2 \
+  --source-nodes worker-3 \
+  --concurrency 20 \
+  --save-results
+
+# Pin every migration to a single target node
+virtbench migration \
+  --source-nodes worker-1 \
+  --source-nodes worker-2 \
+  --target-node worker-5 \
+  --concurrency 15 \
+  --save-results
+
+# Evacuate every worker node in the cluster
+virtbench migration \
+  --source-nodes all \
+  --concurrency 20 \
+  --save-results
+```
+
+#### Using Python Script
+
+```bash
+cd migration
+
+# Drain three specific nodes in parallel
+python3 measure-vm-migration-time.py \
+  --source-nodes worker-1 worker-2 worker-3 \
+  --concurrency 20 \
+  --save-results
+
+# Evacuate every worker node in the cluster
+python3 measure-vm-migration-time.py \
+  --source-nodes all \
+  --concurrency 20 \
+  --save-results
+```
+
+!!! note "Differences vs `--evacuate`"
+    `--evacuate` operates on the namespace range `--start`..`--end` and a single
+    `--source-node`. `--source-nodes` ignores any namespace range, accepts
+    multiple nodes at once, and discovers VMs directly from the cluster, so it
+    keeps working even when VMs no longer match their original namespace
+    numbering.
+
+!!! tip "Target node selection"
+    When `--target-node` is omitted, KubeVirt auto-selects a target for each
+    migration. The script prefers non-source nodes as targets; if every worker
+    is listed as a source (e.g. `--source-nodes all`), all workers become
+    eligible targets and KubeVirt's scheduler avoids migrating a VM back to
+    its current node.
 
 ## What the Test Measures
 

@@ -78,26 +78,26 @@ def require_python_version():
 def setup_logging(log_file: Optional[str] = None, log_level: str = 'INFO') -> logging.Logger:
     """
     Configure logging for the test suite.
-    
+
     Args:
         log_file: Optional file path to write logs to
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
-    
+
     Returns:
         Configured logger instance
     """
     logger = logging.getLogger('kubevirt-perf')
     logger.setLevel(getattr(logging, log_level.upper()))
-    
+
     # Clear any existing handlers
     logger.handlers.clear()
-    
+
     # Create formatter
     formatter = logging.Formatter(
         '%(asctime)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
+
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(getattr(logging, log_level.upper()))
@@ -106,7 +106,7 @@ def setup_logging(log_file: Optional[str] = None, log_level: str = 'INFO') -> lo
 
     if not log_file:
         log_file = f"kubevirt-perf-{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
-    
+
     # File handler if specified
     if log_file:
         try:
@@ -117,7 +117,7 @@ def setup_logging(log_file: Optional[str] = None, log_level: str = 'INFO') -> lo
             logger.info(f"Logging to file: {log_file}")
         except Exception as e:
             logger.error(f"Failed to create log file {log_file}: {e}")
-    
+
     return logger
 
 
@@ -130,26 +130,26 @@ def run_kubectl_command(
 ) -> Tuple[int, str, str]:
     """
     Execute a kubectl command with error handling.
-    
+
     Args:
         args: List of command arguments (e.g., ['get', 'pods'])
         check: Raise exception on non-zero exit code
         capture_output: Capture stdout and stderr
         timeout: Command timeout in seconds
         logger: Logger instance for debug output
-    
+
     Returns:
         Tuple of (return_code, stdout, stderr)
-    
+
     Raises:
         subprocess.CalledProcessError: If check=True and command fails
         subprocess.TimeoutExpired: If command exceeds timeout
     """
     cmd = ['kubectl'] + args
-    
+
     if logger:
         logger.debug(f"Executing: {' '.join(cmd)}")
-    
+
     try:
         result = subprocess.run(
             cmd,
@@ -176,11 +176,11 @@ def run_kubectl_command(
 def namespace_exists(namespace: str, logger: Optional[logging.Logger] = None) -> bool:
     """
     Check if a namespace exists.
-    
+
     Args:
         namespace: Namespace name
         logger: Logger instance
-    
+
     Returns:
         True if namespace exists, False otherwise
     """
@@ -761,12 +761,12 @@ CLEANUP SUMMARY
 def get_vm_status(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> Optional[str]:
     """
     Get the status of a VM.
-    
+
     Args:
         vm_name: VM name
         namespace: Namespace
         logger: Logger instance
-    
+
     Returns:
         VM status string or None if not found
     """
@@ -788,12 +788,12 @@ def get_vm_status(vm_name: str, namespace: str, logger: Optional[logging.Logger]
 def get_vmi_ip(vmi_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> Optional[str]:
     """
     Get the IP address of a VMI.
-    
+
     Args:
         vmi_name: VMI name
         namespace: Namespace
         logger: Logger instance
-    
+
     Returns:
         IP address or None if not available
     """
@@ -810,6 +810,108 @@ def get_vmi_ip(vmi_name: str, namespace: str, logger: Optional[logging.Logger] =
         if logger:
             logger.debug(f"Error getting VMI IP for {vmi_name} in {namespace}: {e}")
         return None
+
+
+def get_vm_disk_count(vm_name: str, namespace: str,
+                      logger: Optional[logging.Logger] = None) -> int:
+    """
+    Get the number of data disks on a VM from the VM spec.
+
+    Counts volumes defined in spec.template.spec.volumes, excluding cloudInit
+    volumes (cloudInitNoCloud, cloudInitConfigDrive).
+
+    Args:
+        vm_name: VM name
+        namespace: Namespace
+        logger: Logger instance
+
+    Returns:
+        Count of non-cloud-init volumes, or 0 if detection fails
+    """
+    try:
+        returncode, stdout, stderr = run_kubectl_command(
+            ['get', 'vm', vm_name, '-n', namespace,
+             '-o', 'jsonpath={.spec.template.spec.volumes}'],
+            check=False,
+            logger=logger
+        )
+        if returncode == 0 and stdout.strip():
+            volumes = json.loads(stdout.strip())
+            non_cloudinit_volumes = [
+                v for v in volumes
+                if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
+            ]
+            if logger:
+                logger.debug(f"Detected {len(non_cloudinit_volumes)} disks from VM spec (excluding cloud-init)")
+            return len(non_cloudinit_volumes)
+    except Exception as e:
+        if logger:
+            logger.debug(f"Could not get VM disk count for {vm_name} in {namespace}: {e}")
+    return 0
+
+
+def get_pvc_status(namespace: str, logger: Optional[logging.Logger] = None) -> str:
+    """
+    Get a one-line summary of PVC phases in a namespace.
+
+    Args:
+        namespace: Namespace
+        logger: Logger instance
+
+    Returns:
+        Space-separated 'name=phase' string, 'No PVCs', or 'Error'
+    """
+    try:
+        returncode, stdout, _ = run_kubectl_command(
+            ['get', 'pvc', '-n', namespace,
+             '-o', 'jsonpath={range .items[*]}{.metadata.name}={.status.phase} {end}'],
+            check=False,
+            logger=logger
+        )
+        if returncode == 0:
+            return stdout.strip() or "No PVCs"
+        return "Error"
+    except Exception as e:
+        if logger:
+            logger.debug(f"Error getting PVC status for {namespace}: {e}")
+        return "Error"
+
+
+def ssh_exec_command(ip: str, command: str, ssh_pod: str, ssh_pod_ns: str,
+                     vm_user: str, vm_password: str,
+                     logger: Optional[logging.Logger] = None,
+                     timeout: int = 30) -> Tuple[int, str, str]:
+    """
+    Execute a command on a VM via SSH through an existing helper pod.
+
+    Uses sshpass for password authentication. Disables strict host-key checking
+    and pubkey auth so it works against freshly-deployed VMs.
+
+    Args:
+        ip: VM IP address
+        command: Shell command to run on the VM
+        ssh_pod: SSH helper pod name
+        ssh_pod_ns: SSH helper pod namespace
+        vm_user: VM SSH user
+        vm_password: VM SSH password
+        logger: Logger instance
+        timeout: Command timeout in seconds
+
+    Returns:
+        Tuple of (return_code, stdout, stderr)
+    """
+    ssh_cmd = (
+        f"sshpass -p '{vm_password}' ssh -o StrictHostKeyChecking=no "
+        f"-o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 "
+        f"-o PreferredAuthentications=password -o PubkeyAuthentication=no "
+        f"{vm_user}@{ip} '{command}'"
+    )
+    return run_kubectl_command(
+        ['exec', '-n', ssh_pod_ns, ssh_pod, '--', 'sh', '-c', ssh_cmd],
+        check=False,
+        timeout=timeout,
+        logger=logger
+    )
 
 
 def ping_vm(ip: str, ssh_pod: str, ssh_pod_ns: str, logger: Optional[logging.Logger] = None) -> bool:

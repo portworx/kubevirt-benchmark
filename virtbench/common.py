@@ -87,10 +87,15 @@ def build_python_command(script_path: Path, args: Dict[str, Any]) -> List[str]:
             # Boolean flags - only add if True
             if value:
                 cmd.append(f'--{key}')
+        elif isinstance(value, (list, tuple)):
+            # nargs='+' arguments: emit "--key v1 v2 v3"
+            if len(value) > 0:
+                cmd.append(f'--{key}')
+                cmd.extend(str(v) for v in value)
         elif value is not None:
             # Regular arguments
             cmd.extend([f'--{key}', str(value)])
-    
+
     return cmd
 
 

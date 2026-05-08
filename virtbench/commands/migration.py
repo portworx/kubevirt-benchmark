@@ -24,6 +24,12 @@ console = Console()
 @click.option('--storage-class', help='Storage class name (required with --create-vms)')
 @click.option('--namespace-prefix', default='migration', help='Namespace prefix')
 @click.option('--source-node', help='Source node for VM creation and migration')
+@click.option('--source-nodes', multiple=True,
+              help='Multi-node evacuation: list of source nodes whose VMs will all be migrated '
+                   'in parallel. Pass --source-nodes multiple times (one node per flag) or use '
+                   '--source-nodes all to target every worker. VMs are discovered directly from '
+                   'each node (no --start/--end range required) and submitted in an interleaved '
+                   'order so load is spread across source nodes from the start.')
 @click.option('--target-node', help='Target node name to migrate VMs to')
 @click.option('--create-vms', is_flag=True, help='Create VMs on source node before migration (requires --storage-class)')
 @click.option('--parallel', is_flag=True, help='Migrate all VMs in parallel')
@@ -74,6 +80,14 @@ def migration(ctx, **kwargs):
 
       # Evacuate all VMs from a node
       virtbench migration --start 1 --end 100 --source-node worker-1 --evacuate
+
+      # Multi-node evacuation: discover VMs on multiple nodes and migrate
+      # them in parallel, interleaved across source nodes
+      virtbench migration --source-nodes worker-1 --source-nodes worker-2 \\
+        --source-nodes worker-3 --concurrency 20 --save-results
+
+      # Evacuate every worker node in the cluster
+      virtbench migration --source-nodes all --concurrency 20 --save-results
     """
     print_banner("VM Migration Benchmark")
 
@@ -151,6 +165,10 @@ def migration(ctx, **kwargs):
     # Add optional args
     if kwargs.get('source_node'):
         python_args['source-node'] = kwargs['source_node']
+    if kwargs.get('source_nodes'):
+        # Click multiple=True returns a tuple; build_python_command emits it
+        # as "--source-nodes n1 n2 n3" matching the script's argparse nargs='+'.
+        python_args['source-nodes'] = list(kwargs['source_nodes'])
     if kwargs.get('target_node'):
         python_args['target-node'] = kwargs['target_node']
     if kwargs.get('storage_version'):

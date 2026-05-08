@@ -187,6 +187,17 @@ Examples:
         help='After initial test, shutdown all VMs and test boot storm (power on all together)'
     )
     parser.add_argument(
+        '--skip-vm-creation',
+        action='store_true',
+        help='Skip VM creation phase (use with --boot-storm to test existing VMs)'
+    )
+    parser.add_argument(
+        '--num-disks',
+        type=int,
+        default=None,
+        help='Number of disks per VM (auto-detected from template or existing VM if not specified)'
+    )
+    parser.add_argument(
         '--namespace-batch-size',
         type=int,
         default=20,
@@ -459,6 +470,51 @@ def create_vm(ns: str, vm_yaml: str, node_name: Optional[str], logger,
 
     # Should not reach here, but just in case
     raise RuntimeError(f"Failed to create VM in {ns} after {max_retries} attempts")
+
+
+def get_vm_disk_count(ns: str, vm_name: str, logger) -> int:
+    """
+    Get the number of disks (excluding cloud-init) from an existing VM.
+
+    Args:
+        ns: Namespace
+        vm_name: VM name
+        logger: Logger instance
+
+    Returns:
+        Number of disks (excluding cloud-init volumes)
+    """
+    try:
+        result = subprocess.run(
+            ['kubectl', 'get', 'vm', vm_name, '-n', ns, '-o', 'json'],
+            capture_output=True, text=True, check=True
+        )
+        vm_spec = json.loads(result.stdout)
+
+        # Get list of volumes under spec.template.spec.volumes
+        volumes = (
+            vm_spec.get('spec', {})
+            .get('template', {})
+            .get('spec', {})
+            .get('volumes', [])
+        )
+
+        # Exclude cloudInit volumes
+        non_cloudinit_volumes = [
+            v for v in volumes
+            if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
+        ]
+
+        disk_count = len(non_cloudinit_volumes)
+        logger.info(f"[{ns}] Detected {disk_count} disks (excluding cloud-init) from existing VM")
+        return disk_count
+
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"[{ns}] Failed to get VM spec: {e.stderr}")
+        return 1
+    except (json.JSONDecodeError, KeyError) as e:
+        logger.warning(f"[{ns}] Failed to parse VM spec: {e}")
+        return 1
 
 
 def wait_for_vm_running(ns: str, vm_name: str, start_ts: datetime, poll_interval: int, logger) -> Tuple[str, float]:
@@ -845,36 +901,47 @@ def main():
     if args.storage_version:
         logger.info(f"Using provided storage version: {args.storage_version}")
 
-    try:
-        with open(args.vm_template, 'r') as f:
-            # Load *all* YAML docs
-            docs = list(yaml.safe_load_all(f))
+    # Determine number of disks per VM
+    if args.num_disks:
+        # Use explicitly provided disk count
+        num_disks_per_vm = args.num_disks
+        logger.info(f"Using provided disk count: {num_disks_per_vm}")
+    elif not args.skip_vm_creation:
+        # Parse VM template to get disk count
+        try:
+            with open(args.vm_template, 'r') as f:
+                # Load *all* YAML docs
+                docs = list(yaml.safe_load_all(f))
 
-        # Find the VirtualMachine document
-        vm_spec = next((doc for doc in docs if doc and doc.get('kind') == 'VirtualMachine'), None)
+            # Find the VirtualMachine document
+            vm_spec = next((doc for doc in docs if doc and doc.get('kind') == 'VirtualMachine'), None)
 
-        if not vm_spec:
-            raise ValueError("No VirtualMachine document found in the YAML file")
+            if not vm_spec:
+                raise ValueError("No VirtualMachine document found in the YAML file")
 
-        # Get list of volumes under spec.template.spec.volumes
-        volumes = (
-            vm_spec.get('spec', {})
-            .get('template', {})
-            .get('spec', {})
-            .get('volumes', [])
-        )
+            # Get list of volumes under spec.template.spec.volumes
+            volumes = (
+                vm_spec.get('spec', {})
+                .get('template', {})
+                .get('spec', {})
+                .get('volumes', [])
+            )
 
-        # Exclude cloudInit volumes
-        non_cloudinit_volumes = [
-            v for v in volumes
-            if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
-        ]
+            # Exclude cloudInit volumes
+            non_cloudinit_volumes = [
+                v for v in volumes
+                if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
+            ]
 
-        num_disks_per_vm = len(non_cloudinit_volumes)
-        logger.info(f"Detected {num_disks_per_vm} disks (excluding cloud-init) in VM template")
+            num_disks_per_vm = len(non_cloudinit_volumes)
+            logger.info(f"Detected {num_disks_per_vm} disks (excluding cloud-init) in VM template")
 
-    except Exception as e:
-        logger.error(f"Failed to parse {args.vm_template}: {e}")
+        except Exception as e:
+            logger.warning(f"Failed to parse {args.vm_template}: {e}")
+            logger.info("Will attempt to detect disk count from existing VM later")
+    else:
+        # skip_vm_creation without num_disks - will detect from existing VM after namespaces are set
+        logger.info("Disk count will be detected from existing VM")
 
     # Validate prerequisites
     if not validate_prerequisites(args.ssh_pod, args.ssh_pod_ns, logger):
@@ -920,91 +987,121 @@ def main():
     else:
         namespaces = [f"{args.namespace_prefix}-{i}" for i in range(args.start, args.end + 1)]
         logger.info(f"Using existing namespaces: {namespaces[0]} to {namespaces[-1]}")
-    
-    # Phase 1: Create all VMs in parallel
-    logger.info(f"\nPhase 1: Creating {len(namespaces)} VMs in parallel...")
-    if target_node:
-        logger.info(f"Target node: {target_node}")
-    if args.secret_yaml:
-        logger.info(f"Using secret YAML: {args.secret_yaml}")
-    create_start = datetime.now()
-    start_times = {}
 
-    with ThreadPoolExecutor(max_workers=len(namespaces)) as executor:
-        futures = {
-            executor.submit(create_vm, ns, args.vm_template, target_node, logger, args.secret_yaml): ns
-            for ns in namespaces
-        }
-
-        for future in as_completed(futures):
-            try:
-                ns, ts = future.result()
-                start_times[ns] = ts
-            except Exception as e:
-                ns = futures[future]
-                logger.error(f"[{ns}] Failed to create VM: {e}")
-    
-    create_elapsed = (datetime.now() - create_start).total_seconds()
-    logger.info(f"Phase 1 completed in {create_elapsed:.2f}s")
-    
-    # Phase 2: Monitor VMs
-    logger.info(f"\nPhase 2: Monitoring {len(start_times)} VMs (concurrency={args.concurrency})...")
-    monitor_start = datetime.now()
+    # Initialize variables for results
     results = []
+    out_dir = None
 
-    with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
-        futures = {
-            executor.submit(
-                monitor_vm, ns, args.vm_name, ts, args.ssh_pod, args.ssh_pod_ns,
-                args.poll_interval, args.ping_timeout, logger, False, args.vm_template
-            ): ns
-            for ns, ts in start_times.items()
-        }
+    # Skip VM creation if requested (for boot-storm only tests)
+    if args.skip_vm_creation:
+        logger.info("\n" + "=" * 80)
+        logger.info("SKIPPING VM CREATION (--skip-vm-creation)")
+        logger.info("=" * 80)
+        logger.info(f"Assuming {len(namespaces)} VMs already exist")
 
-        for future in as_completed(futures):
-            ns = futures[future]
-            try:
-                result = future.result()  # now returns (ns, run_time, ping_time, clone_time, success)
-                results.append(result)
-            except Exception as e:
-                logger.error(f"[{ns}] Monitoring failed: {e}")
-                results.append((ns, None, None, None, False))
+        if not args.boot_storm:
+            logger.warning("--skip-vm-creation is typically used with --boot-storm")
 
-    monitor_elapsed = (datetime.now() - monitor_start).total_seconds()
-    total_elapsed = (datetime.now() - create_start).total_seconds()
-    
-    logger.info(f"Phase 2 completed in {monitor_elapsed:.2f}s")
-    logger.info(f"Total test duration: {total_elapsed:.2f}s")
-    
-    # Print summary
-    print_summary_table(results, "VM Creation Performance Test Results", logger=logger)
+        # Detect disk count from existing VM if not provided
+        if not args.num_disks:
+            first_ns = namespaces[0]
+            logger.info(f"Detecting disk count from existing VM in {first_ns}...")
+            num_disks_per_vm = get_vm_disk_count(first_ns, args.vm_name, logger)
 
-    # Save structured results if requested
-    if args.save_results:
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        suffix = f"{args.namespace_prefix}_{args.start}-{args.end}"
-
-        # Construct results path dynamically
-        if args.storage_version:
-            out_dir = os.path.join(args.results_folder, args.storage_version, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
-        else:
-            out_dir = os.path.join(args.results_folder, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
-        os.makedirs(out_dir, exist_ok=True)
-
-        logger.info(f"Created results directory: {out_dir}")
-
-        # Save initial creation test results
-        save_results(
-            args,
-            results,
-            base_dir=out_dir,
-            prefix="vm_creation_results",
-            logger=logger,
-            total_time=total_elapsed
-        )
-        logger.info(f"Detailed and summary results saved under: {out_dir}")
+        # Create output directory for results if saving
+        if args.save_results:
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            suffix = f"{args.namespace_prefix}_{args.start}-{args.end}"
+            if args.storage_version:
+                out_dir = os.path.join(args.results_folder, args.storage_version, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
+            else:
+                out_dir = os.path.join(args.results_folder, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
+            os.makedirs(out_dir, exist_ok=True)
+            logger.info(f"Created results directory: {out_dir}")
     else:
-        logger.info("VM Creation Performance Test Results not saved (use --save-results to enable).")
+        # Phase 1: Create all VMs in parallel
+        logger.info(f"\nPhase 1: Creating {len(namespaces)} VMs in parallel...")
+        if target_node:
+            logger.info(f"Target node: {target_node}")
+        if args.secret_yaml:
+            logger.info(f"Using secret YAML: {args.secret_yaml}")
+        create_start = datetime.now()
+        start_times = {}
+
+        with ThreadPoolExecutor(max_workers=len(namespaces)) as executor:
+            futures = {
+                executor.submit(create_vm, ns, args.vm_template, target_node, logger, args.secret_yaml): ns
+                for ns in namespaces
+            }
+
+            for future in as_completed(futures):
+                try:
+                    ns, ts = future.result()
+                    start_times[ns] = ts
+                except Exception as e:
+                    ns = futures[future]
+                    logger.error(f"[{ns}] Failed to create VM: {e}")
+
+        create_elapsed = (datetime.now() - create_start).total_seconds()
+        logger.info(f"Phase 1 completed in {create_elapsed:.2f}s")
+
+        # Phase 2: Monitor VMs
+        logger.info(f"\nPhase 2: Monitoring {len(start_times)} VMs (concurrency={args.concurrency})...")
+        monitor_start = datetime.now()
+
+        with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
+            futures = {
+                executor.submit(
+                    monitor_vm, ns, args.vm_name, ts, args.ssh_pod, args.ssh_pod_ns,
+                    args.poll_interval, args.ping_timeout, logger, False, args.vm_template
+                ): ns
+                for ns, ts in start_times.items()
+            }
+
+            for future in as_completed(futures):
+                ns = futures[future]
+                try:
+                    result = future.result()  # now returns (ns, run_time, ping_time, clone_time, success)
+                    results.append(result)
+                except Exception as e:
+                    logger.error(f"[{ns}] Monitoring failed: {e}")
+                    results.append((ns, None, None, None, False))
+
+        monitor_elapsed = (datetime.now() - monitor_start).total_seconds()
+        total_elapsed = (datetime.now() - create_start).total_seconds()
+
+        logger.info(f"Phase 2 completed in {monitor_elapsed:.2f}s")
+        logger.info(f"Total test duration: {total_elapsed:.2f}s")
+
+        # Print summary
+        print_summary_table(results, "VM Creation Performance Test Results", logger=logger)
+
+        # Save structured results if requested
+        if args.save_results:
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            suffix = f"{args.namespace_prefix}_{args.start}-{args.end}"
+
+            # Construct results path dynamically
+            if args.storage_version:
+                out_dir = os.path.join(args.results_folder, args.storage_version, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
+            else:
+                out_dir = os.path.join(args.results_folder, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
+            os.makedirs(out_dir, exist_ok=True)
+
+            logger.info(f"Created results directory: {out_dir}")
+
+            # Save initial creation test results
+            save_results(
+                args,
+                results,
+                base_dir=out_dir,
+                prefix="vm_creation_results",
+                logger=logger,
+                total_time=total_elapsed
+            )
+            logger.info(f"Detailed and summary results saved under: {out_dir}")
+        else:
+            logger.info("VM Creation Performance Test Results not saved (use --save-results to enable).")
 
     # Boot storm testing if requested
     boot_storm_results = []
@@ -1114,7 +1211,7 @@ def main():
             save_results(args, boot_storm_results, base_dir=out_dir, prefix="boot_storm_results", logger=logger,
                          skip_clone=True, total_time=boot_total_elapsed)
 
-    failed_count = sum(1 for r in results if not r[4])
+    failed_count = sum(1 for r in results if len(r) > 4 and not r[4]) if results else 0
     should_cleanup = args.cleanup or (args.cleanup_on_failure and failed_count > 0)
 
     # Cleanup if requested

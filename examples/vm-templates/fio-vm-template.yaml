@@ -3,7 +3,7 @@
 # Template Variables (replaced at runtime by benchmark script):
 #   {{VM_NAME}}            - VM name
 #   {{STORAGE_CLASS_NAME}} - Storage class name
-#   {{SSH_PUBLIC_KEY}}     - SSH public key for passwordless access
+#   {{VM_PASSWORD}}        - VM password for SSH access
 #   {{FIO_RUNTIME}}        - FIO runtime in seconds
 #   {{FIO_BS}}             - Block size (e.g., 4k)
 #   {{FIO_RW}}             - I/O pattern (randread, randwrite, randrw)
@@ -71,10 +71,11 @@ spec:
           acpi: {}
           smm:
             enabled: true
+        memory:
+          guest: 2Gi
         resources:
           requests:
-            cpu: "2"
-            memory: 4Gi
+            cpu: "1"
       networks:
         - name: default
           pod: {}
@@ -97,12 +98,10 @@ spec:
             userData: |
               #cloud-config
               user: cloud-user
-              password: changeme
+              password: {{VM_PASSWORD}}
               chpasswd:
                 expire: false
               ssh_pwauth: true
-              ssh_authorized_keys:
-                - {{SSH_PUBLIC_KEY}}
               packages:
                 - qemu-guest-agent
                 - fio

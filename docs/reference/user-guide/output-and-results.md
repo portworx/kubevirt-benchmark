@@ -194,7 +194,7 @@ kubevirt-perf-test-3,rhel-9-vm,8.89,11.98,Success
   ```bash
   kubectl get storageclass YOUR-STORAGE-CLASS -o jsonpath='{.allowVolumeExpansion}'
   ```
-- If `false`, use `--skip-resize-job` to skip this phase
+- If `false`, use `--skip-resize` to skip this phase
 - Check storage backend limits and quotas
 
 #### Snapshot creation fails
@@ -206,7 +206,7 @@ kubevirt-perf-test-3,rhel-9-vm,8.89,11.98,Success
   ```bash
   kubectl get volumesnapshotclass
   ```
-- If not available, use `--skip-snapshot-job` to skip this phase
+- If not available, use `--skip-snapshot` to skip this phase
 - Verify storage backend supports CSI snapshots
 
 #### Out of resources (VM creation fails)

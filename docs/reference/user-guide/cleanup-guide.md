@@ -30,7 +30,9 @@ All test scripts support comprehensive cleanup with multiple options for differe
 - FenceAgentsRemediation (FAR) custom resources
 - FAR annotations from VMs
 - Uncordon nodes that were marked as failed
-- Optionally: VMs, DataVolumes, PVCs, and namespaces (with `--cleanup-vms`)
+- Optionally: VMs, DataVolumes, PVCs, and namespaces — only via the Python
+  script with `--cleanup-vms` (the `virtbench failure-recovery` wrapper
+  cleans up FAR resources only)
 
 ### Chaos Benchmark Tests
 
@@ -95,11 +97,8 @@ python3 measure-vm-migration-time.py --start 1 --end 10 --source-node worker-1 -
 
 **virtbench CLI:**
 ```bash
-# Clean up FAR resources only
-virtbench failure-recovery --start 1 --end 10 --cleanup
-
-# Clean up FAR resources and VMs
-virtbench failure-recovery --start 1 --end 10 --cleanup --cleanup-vms
+# Clean up FAR resources after a recovery test
+virtbench failure-recovery --node worker-1 --cleanup --yes
 ```
 
 **Python Script:**
@@ -107,10 +106,10 @@ virtbench failure-recovery --start 1 --end 10 --cleanup --cleanup-vms
 cd failure-recovery
 
 # Clean up FAR resources only
-python3 measure-recovery-time.py --start 1 --end 10 --cleanup
+python3 recovery-test.py --mode monitor --node worker-1 --cleanup --yes
 
 # Clean up FAR resources and VMs
-python3 measure-recovery-time.py --start 1 --end 10 --cleanup --cleanup-vms
+python3 recovery-test.py --mode monitor --node worker-1 --cleanup --cleanup-vms --yes
 ```
 
 ### Clean up after Chaos Benchmark

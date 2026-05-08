@@ -70,27 +70,23 @@ kubectl get nodehealthchecks -A
 ### Using virtbench CLI
 
 ```bash
-# Run failure recovery test
+# Run failure recovery test (auto-detects VMs on the node)
 virtbench failure-recovery \
-  --start 1 \
-  --end 60 \
-  --node-name worker-node-1 \
+  --node worker-node-1 \
   --vm-name rhel-9-vm \
   --save-results
 
-# With custom FAR configuration
+# With a different VM name
 virtbench failure-recovery \
-  --start 1 \
-  --end 60 \
-  --node-name worker-node-1 \
+  --node worker-node-1 \
   --vm-name debian-vm \
-  --far-name my-far-resource \
   --save-results
 ```
 
-### Using Shell Script
+### Using Python Script Directly
 
-The `run-far-test.sh` script orchestrates the complete FAR test workflow:
+The `recovery-test.py` script orchestrates the complete FAR test workflow when
+run with `--mode far-operator`:
 
 **Prerequisites**:
 - VMs already created and running on the target node
@@ -106,17 +102,17 @@ cd failure-recovery
 vim far-template.yaml
 
 # 2. Run the complete FAR test
-./run-far-test.sh \
-  --node-name worker-node-1 \
-  --start 1 \
-  --end 60 \
-  --vm-name rhel-9-vm
+python3 recovery-test.py \
+  --mode far-operator \
+  --node worker-node-1 \
+  --vm-name rhel-9-vm \
+  --far-config far-template.yaml \
+  --save-results
 
 # With custom options
-./run-far-test.sh \
-  --node-name worker-node-1 \
-  --start 1 \
-  --end 60 \
+python3 recovery-test.py \
+  --mode far-operator \
+  --node worker-node-1 \
   --vm-name rhel-9-vm \
   --far-config my-far-template.yaml \
   --concurrency 128 \
@@ -125,21 +121,25 @@ vim far-template.yaml
 
 **What the script does**:
 
-1. Validates prerequisites (kubectl, FAR config, node exists)
+1. Detects VMIs running on the target node
 2. Applies FAR configuration to trigger node failure
 3. Waits for node to become NotReady/Unknown
 4. Measures VM recovery time
-5. Cleans up FAR configuration
+5. Cleans up FAR configuration on exit
 
-### Using Python Script Directly
+### Monitor-Only Mode
+
+If you trigger node failure separately (for example via your own automation or
+manual BMC action), run `recovery-test.py` in monitor mode to only measure
+recovery time:
 
 ```bash
 cd failure-recovery
 
-# Run the Python script directly for recovery measurement
-python3 measure-recovery-time.py \
-  --start 1 \
-  --end 60 \
+# Auto-detect VMs by node
+python3 recovery-test.py \
+  --mode monitor \
+  --node worker-node-1 \
   --vm-name rhel-9-vm \
   --save-results
 ```
@@ -178,34 +178,33 @@ The failure recovery test measures:
 ### Using virtbench CLI
 
 ```bash
-# Clean up FAR resources
+# Clean up FAR resources after a recovery test
 virtbench failure-recovery \
-  --start 1 \
-  --end 60 \
+  --node worker-node-1 \
   --vm-name rhel-9-vm \
   --cleanup \
-  --far-name my-far-resource \
-  --failed-node worker-node-1
+  --yes
 ```
 
 ### Using Python Script
 
 ```bash
 cd failure-recovery
-python3 measure-recovery-time.py \
-  --start 1 \
-  --end 60 \
+python3 recovery-test.py \
+  --mode monitor \
+  --node worker-node-1 \
   --vm-name rhel-9-vm \
   --cleanup \
   --far-name my-far-resource \
-  --failed-node worker-node-1
+  --failed-node worker-node-1 \
+  --yes
 ```
 
 ---
 
 ## Manual Failure Testing (Without FAR)
 
-If you don't have the FAR operator installed or want to test manual node failure scenarios, you can use the manual failure recovery test script.
+If you don't have the FAR operator installed or want to test manual node failure scenarios, you can use `recovery-test.py` in `--mode manual`.
 
 ### Prerequisites
 
@@ -215,13 +214,13 @@ If you don't have the FAR operator installed or want to test manual node failure
 - Access to node BMC/IPMI or cloud console to manually power off the node
 
 **Optional**:
-- `patch-vms.sh` script (if using `--remove-node-selectors` option)
+- Use `--remove-node-selector` to allow VMs to reschedule onto healthy nodes
 
 ### How It Works
 
-The manual test script:
+In `--mode manual`, `recovery-test.py`:
 
-1. **Validates prerequisites** - Checks kubectl connectivity, node exists, and VMs are present
+1. **Detects VMs on the target node** - Builds the list of VMIs to monitor
 2. **(Optional) Removes node selectors** - Allows VMs to reschedule to other nodes
 3. **Waits for manual node failure** - You power off the node via BMC/IPMI/cloud console
 4. **Monitors node status** - Detects when node becomes NotReady/Unknown
@@ -243,41 +242,37 @@ virtbench datasource-clone \
   --save-results
 ```
 
-#### Step 2: Run the Manual Failure Test Script
+#### Step 2: Run the Manual Failure Test
 
 ```bash
 cd failure-recovery
 
 # Basic test - you'll manually power off the node
-./run-manual-failure-test.sh \
-  --node-name worker-node-1 \
-  --start 1 \
-  --end 60 \
+python3 recovery-test.py \
+  --mode manual \
+  --node worker-node-1 \
   --vm-name rhel-9-vm
 
 # With node selector removal (allows VMs to reschedule)
-./run-manual-failure-test.sh \
-  --node-name worker-node-1 \
-  --start 1 \
-  --end 60 \
+python3 recovery-test.py \
+  --mode manual \
+  --node worker-node-1 \
   --vm-name rhel-9-vm \
-  --remove-node-selectors
+  --remove-node-selector
 
 # With logging and custom options
-./run-manual-failure-test.sh \
-  --node-name worker-node-1 \
-  --start 1 \
-  --end 100 \
+python3 recovery-test.py \
+  --mode manual \
+  --node worker-node-1 \
   --vm-name rhel-9-vm \
-  --remove-node-selectors \
+  --remove-node-selector \
   --concurrency 128 \
   --log-file recovery-$(date +%Y%m%d-%H%M%S).log
 
 # Fast test - skip ping validation (only check VMI Running state)
-./run-manual-failure-test.sh \
-  --node-name worker-node-1 \
-  --start 1 \
-  --end 60 \
+python3 recovery-test.py \
+  --mode manual \
+  --node worker-node-1 \
   --vm-name rhel-9-vm \
   --skip-ping
 ```
@@ -348,17 +343,16 @@ VM Recovery Summary:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--node-name` | **Required**. Name of the node to fail | - |
-| `--start` | Start namespace index | 1 |
-| `--end` | End namespace index | 60 |
+| `--mode` | **Required**. `manual`, `far-operator`, or `monitor` | - |
+| `--node` | **Required**. Target node name | - |
 | `--vm-name` | VM name to monitor | rhel-9-vm |
-| `--namespace-prefix` | Namespace prefix | kubevirt-perf-test |
+| `--namespace-prefix` | Namespace prefix | perf-test |
 | `--concurrency` | Monitoring concurrency | 128 |
-| `--poll-interval` | Poll interval in seconds | 1 |
+| `--poll-interval` | Poll interval in seconds | 2 |
 | `--log-file` | Log file path | None |
-| `--remove-node-selectors` | Remove node selectors before test | false |
+| `--remove-node-selector` | Remove node selectors before test | false |
 | `--skip-ping` | Skip ping tests (faster) | false |
-| `--dry-run` | Show what would be done | false |
+| `--far-config` | FAR YAML manifest (`far-operator` mode) | far-template.yaml |
 
 ### When to Use Manual vs FAR Testing
 
@@ -378,17 +372,25 @@ VM Recovery Summary:
 
 ### Cleanup
 
-After testing, clean up the test VMs:
+After testing, clean up the FAR resources and (optionally) the VMs.
 
 ```bash
-# Using virtbench CLI
-virtbench cleanup \
-  --start 1 \
-  --end 60 \
-  --cleanup-vms \
-  --cleanup-namespaces
+# Using virtbench CLI — removes FAR resources and uncordons the node
+virtbench failure-recovery \
+  --node worker-1 \
+  --cleanup \
+  --yes
 
-# Or manually
+# Using the Python script — also delete VMs, DataVolumes, PVCs, and namespaces
+cd failure-recovery
+python3 recovery-test.py \
+  --mode monitor \
+  --node worker-1 \
+  --cleanup \
+  --cleanup-vms \
+  --yes
+
+# Or delete the namespaces manually
 for i in {1..60}; do
   kubectl delete namespace kubevirt-perf-test-$i
 done
@@ -447,7 +449,7 @@ ipmitool -I lanplus -H <bmc-ip> -U <username> -P <password> power on
 **Solutions**:
 - Verify you actually powered off the node
 - Check node status manually: `kubectl get node <node-name>`
-- Increase `MAX_WAIT` timeout in the script if needed
+- Increase the `--node-timeout` value (default: 600s)
 - Ensure kubectl can still reach the cluster
 
 #### VMs Not Rescheduling
@@ -455,7 +457,7 @@ ipmitool -I lanplus -H <bmc-ip> -U <username> -P <password> power on
 **Symptoms**: VMs remain in pending state after node failure
 
 **Solutions**:
-- Use `--remove-node-selectors` flag to allow rescheduling
+- Use `--remove-node-selector` flag to allow rescheduling
 - Verify other nodes have sufficient resources
 - Check if VMs have other constraints (affinity, taints)
 - Review VM events: `kubectl describe vm <vm-name> -n <namespace>`

@@ -34,13 +34,22 @@ nav:
   - User Guide:
       - Test Scenarios:
           - Overview: reference/user-guide/test-scenarios/overview.md
-          - Datasource Clone: reference/user-guide/test-scenarios/datasource-clone.md
-          - Migration: reference/user-guide/test-scenarios/migration.md
+          - VM Creation (DataSource Clone): reference/user-guide/test-scenarios/datasource-clone.md
+          - Boot Storm: reference/user-guide/test-scenarios/boot-storm.md
+          - Live Migration: reference/user-guide/test-scenarios/migration.md
           - Chaos Benchmark: reference/user-guide/test-scenarios/chaos-benchmark.md
           - Failure Recovery: reference/user-guide/test-scenarios/failure-recovery.md
           - Cluster Validation: reference/user-guide/test-scenarios/cluster-validation.md
           - FIO Benchmark: reference/user-guide/test-scenarios/fio-benchmark.md
-      - Boot Storm Testing Guide: reference/user-guide/boot-storm-guide.md
+          - Elbencho Benchmark: reference/user-guide/test-scenarios/elbencho-benchmark.md
+          - VM Operations:
+              - Overview: reference/user-guide/test-scenarios/vm-ops/overview.md
+              - Drain Nodes: reference/user-guide/test-scenarios/vm-ops/drain-nodes.md
+              - Hotplug Disks: reference/user-guide/test-scenarios/vm-ops/hotplug-disks.md
+              - Rebalance VMs: reference/user-guide/test-scenarios/vm-ops/rebalance-vms.md
+              - VM Snapshot: reference/user-guide/test-scenarios/vm-ops/vm-snapshot.md
+              - Run blkdiscard: reference/user-guide/test-scenarios/vm-ops/run-blkdiscard.md
+              - Power Toggle VMs: reference/user-guide/test-scenarios/vm-ops/power-toggle-vms.md
       - VM Template Guide: reference/user-guide/vm-template-guide.md
       - Configuration Options: reference/user-guide/configuration.md
       - Output and Results: reference/user-guide/output-and-results.md

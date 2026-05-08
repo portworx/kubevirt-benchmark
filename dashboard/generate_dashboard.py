@@ -1012,6 +1012,291 @@ def build_fio_single_vm_content(folder: Path, uid: str, data: dict) -> str:
     """
 
 
+# ---------------- Elbencho Benchmark Builder ----------------
+def build_elbencho_content(folder: Path, uid: str) -> str:
+    """Elbencho Benchmark section - displays storage I/O performance metrics from elbencho."""
+    elbencho_results = load_json(folder / "aggregated_results.json")
+
+    if not elbencho_results:
+        return "<p>No elbencho benchmark data found.</p>"
+
+    # Extract data from aggregated_results.json
+    timestamp = elbencho_results.get("timestamp", "N/A")
+    vms_with_results = elbencho_results.get("vms_with_results", 0)
+    vms_skipped = elbencho_results.get("vms_skipped", 0)
+    elapsed_seconds = elbencho_results.get("elapsed_seconds", 0)
+    aggregated = elbencho_results.get("aggregated", {})
+    per_vm_results = elbencho_results.get("per_vm_results", [])
+
+    # Aggregated metrics
+    total_iops = aggregated.get("total_iops", 0)
+    read_iops = aggregated.get("read_iops", 0)
+    write_iops = aggregated.get("write_iops", 0)
+    total_throughput_bytes = aggregated.get("total_throughput_bytes", 0)
+    read_throughput_bytes = aggregated.get("read_throughput_bytes", 0)
+    write_throughput_bytes = aggregated.get("write_throughput_bytes", 0)
+    avg_latency_us = aggregated.get("avg_latency_us", 0)
+    min_latency_us = aggregated.get("min_latency_us", 0)
+    max_latency_us = aggregated.get("max_latency_us", 0)
+
+    # Convert throughput to MB/s
+    total_throughput_mbs = total_throughput_bytes / 1024 / 1024
+    read_throughput_mbs = read_throughput_bytes / 1024 / 1024
+    write_throughput_mbs = write_throughput_bytes / 1024 / 1024
+
+    # Convert latency to ms
+    avg_latency_ms = avg_latency_us / 1000
+    min_latency_ms = min_latency_us / 1000
+    max_latency_ms = max_latency_us / 1000
+
+    # Header
+    header_html = f"""
+    <h6><strong>Results Directory:</strong> {folder.name}</h6>
+    <h6><strong>Timestamp:</strong> {timestamp}</h6>
+    <h6><strong>VMs with Results:</strong> {vms_with_results} (Skipped: {vms_skipped})</h6>
+    <h6><strong>Collection Duration:</strong> {elapsed_seconds:.1f} s</h6>
+    """
+
+    # KPI Summary Cards (similar to FIO)
+    kpi_html = f"""
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Total IOPS</div>
+            <div class="text-white fw-bold fs-4">{total_iops:,.0f}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Total Throughput</div>
+            <div class="text-white fw-bold fs-4">{total_throughput_mbs:,.1f} <small>MB/s</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Avg Latency</div>
+            <div class="text-white fw-bold fs-4">{avg_latency_ms:,.2f} <small>ms</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">VMs Tested</div>
+            <div class="text-white fw-bold fs-4">{vms_with_results}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+    # Aggregated metrics table
+    metrics_rows = f"""
+    <tr><th>Read IOPS</th><td>{read_iops:,.0f}</td></tr>
+    <tr><th>Write IOPS</th><td>{write_iops:,.0f}</td></tr>
+    <tr><th>Total IOPS</th><td>{total_iops:,.0f}</td></tr>
+    <tr><th>Read Throughput</th><td>{read_throughput_mbs:,.2f} MB/s</td></tr>
+    <tr><th>Write Throughput</th><td>{write_throughput_mbs:,.2f} MB/s</td></tr>
+    <tr><th>Total Throughput</th><td>{total_throughput_mbs:,.2f} MB/s</td></tr>
+    <tr><th>Avg Latency</th><td>{avg_latency_ms:,.3f} ms ({avg_latency_us:,.0f} µs)</td></tr>
+    <tr><th>Min Latency</th><td>{min_latency_ms:,.3f} ms ({min_latency_us:,.0f} µs)</td></tr>
+    <tr><th>Max Latency</th><td>{max_latency_ms:,.3f} ms ({max_latency_us:,.0f} µs)</td></tr>
+    """
+    metrics_table = f"""
+    <table class="table table-bordered table-striped w-auto">
+      <thead class="table-dark"><tr><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>{metrics_rows}</tbody>
+    </table>
+    """
+
+    # Charts
+    chart_html = f"""
+    <!-- Main Performance Chart - IOPS with Latency overlay -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-dark text-white">
+        <strong>Performance Overview</strong> <span class="text-muted small">— IOPS (bars) &amp; Latency (line)</span>
+      </div>
+      <div class="card-body">
+        <canvas id="elbenchoMainChart_{uid}" height="120"></canvas>
+      </div>
+    </div>
+
+    <!-- IOPS and Throughput Charts -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-light"><strong>IOPS Breakdown</strong></div>
+          <div class="card-body">
+            <canvas id="elbenchoIopsChart_{uid}" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+          <div class="card-header bg-light"><strong>Throughput Breakdown</strong></div>
+          <div class="card-body">
+            <canvas id="elbenchoThroughputChart_{uid}" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Main dual-axis chart (IOPS bars + Latency line)
+      new Chart(document.getElementById('elbenchoMainChart_{uid}'), {{
+        type: 'bar',
+        data: {{
+          labels: ['Read', 'Write'],
+          datasets: [
+            {{
+              label: 'IOPS',
+              data: [{read_iops}, {write_iops}],
+              backgroundColor: ['rgba(52, 152, 219, 0.85)', 'rgba(231, 76, 60, 0.85)'],
+              borderColor: ['#2980b9', '#c0392b'],
+              borderWidth: 2,
+              borderRadius: 4,
+              yAxisID: 'y'
+            }},
+            {{
+              label: 'Latency (ms)',
+              data: [{avg_latency_ms}, {avg_latency_ms}],
+              type: 'line',
+              borderColor: '#f39c12',
+              backgroundColor: 'rgba(243, 156, 18, 0.2)',
+              borderWidth: 3,
+              pointRadius: 6,
+              pointBackgroundColor: '#f39c12',
+              fill: false,
+              yAxisID: 'y1'
+            }}
+          ]
+        }},
+        options: {{
+          responsive: true,
+          interaction: {{ mode: 'index', intersect: false }},
+          plugins: {{
+            legend: {{ position: 'top' }},
+            tooltip: {{ callbacks: {{ label: function(ctx) {{ return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString(); }} }} }}
+          }},
+          scales: {{
+            y: {{ type: 'linear', position: 'left', beginAtZero: true, title: {{ display: true, text: 'IOPS', font: {{ weight: 'bold' }} }}, grid: {{ color: 'rgba(0,0,0,0.05)' }} }},
+            y1: {{ type: 'linear', position: 'right', beginAtZero: true, title: {{ display: true, text: 'Latency (ms)', font: {{ weight: 'bold' }} }}, grid: {{ drawOnChartArea: false }} }}
+          }}
+        }}
+      }});
+
+      // IOPS horizontal bar
+      new Chart(document.getElementById('elbenchoIopsChart_{uid}'), {{
+        type: 'bar',
+        data: {{
+          labels: ['Read', 'Write'],
+          datasets: [{{ data: [{read_iops}, {write_iops}], backgroundColor: ['#3498db', '#e74c3c'], borderRadius: 4 }}]
+        }},
+        options: {{
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {{ legend: {{ display: false }} }},
+          scales: {{ x: {{ beginAtZero: true, title: {{ display: true, text: 'IOPS' }} }} }}
+        }}
+      }});
+
+      // Throughput horizontal bar
+      new Chart(document.getElementById('elbenchoThroughputChart_{uid}'), {{
+        type: 'bar',
+        data: {{
+          labels: ['Read', 'Write'],
+          datasets: [{{ data: [{read_throughput_mbs}, {write_throughput_mbs}], backgroundColor: ['#3498db', '#e74c3c'], borderRadius: 4 }}]
+        }},
+        options: {{
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {{ legend: {{ display: false }} }},
+          scales: {{ x: {{ beginAtZero: true, title: {{ display: true, text: 'MB/s' }} }} }}
+        }}
+      }});
+    </script>
+    """
+
+    # Per-VM results table (collapsible)
+    per_vm_rows = ""
+    if isinstance(per_vm_results, list):
+        for r in per_vm_results:
+            ns = r.get("namespace", "N/A")
+            vm_name = r.get("vm_name", "N/A")
+            vm_iops = r.get("total_iops", 0)
+            vm_read_iops = r.get("total_read_iops", 0)
+            vm_write_iops = r.get("total_write_iops", 0)
+            vm_throughput = r.get("total_throughput_bytes", 0) / 1024 / 1024
+            vm_latency = r.get("avg_latency_us", 0)
+            skipped = r.get("skipped", False)
+            error = r.get("error", "")
+
+            if skipped:
+                status_badge = f'<span class="badge bg-warning">Skipped</span>'
+            elif error:
+                status_badge = f'<span class="badge bg-danger" title="{error}">Error</span>'
+            else:
+                status_badge = '<span class="badge bg-success">✓</span>'
+
+            per_vm_rows += f"""
+            <tr>
+              <td>{status_badge} {ns}/{vm_name}</td>
+              <td>{vm_read_iops:,.0f}</td>
+              <td>{vm_write_iops:,.0f}</td>
+              <td>{vm_iops:,.0f}</td>
+              <td>{vm_throughput:,.2f}</td>
+              <td>{vm_latency:,.0f}</td>
+            </tr>
+            """
+
+    per_vm_table = f"""
+    <div class="accordion" id="perVmAccordionElbencho_{uid}">
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                  data-bs-target="#perVmCollapseElbencho_{uid}">
+            Per-VM Results ({vms_with_results} VMs)
+          </button>
+        </h2>
+        <div id="perVmCollapseElbencho_{uid}" class="accordion-collapse collapse">
+          <div class="accordion-body">
+            <table class="table table-sm table-hover table-striped">
+              <thead class="table-light">
+                <tr>
+                  <th>VM</th>
+                  <th>Read IOPS</th>
+                  <th>Write IOPS</th>
+                  <th>Total IOPS</th>
+                  <th>Throughput (MB/s)</th>
+                  <th>Avg Latency (µs)</th>
+                </tr>
+              </thead>
+              <tbody>{per_vm_rows}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+    return f"""
+    <div class="mb-4">
+      {header_html}
+      {kpi_html}
+      <h4 class="mt-4">Aggregated Results (Across All VMs)</h4>
+      {metrics_table}
+      {chart_html}
+      <h4 class="mt-4">Per-VM Details</h4>
+      {per_vm_table}
+    </div>
+    """
+
+
 # ---------------- Disk and PX Builders ----------------
 def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
     """Disk-level tab with charts and nested VM-size tabs."""
@@ -1088,9 +1373,15 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
             for f in by_vms[vm_count] if (f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists()
         ) or "<p>No FIO Benchmark data for this VM size.</p>"
 
-        # Check if we have capacity/fio data to show the tabs
+        elbencho_sections = "".join(
+            build_elbencho_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
+            for f in by_vms[vm_count] if (f / "aggregated_results.json").exists()
+        ) or "<p>No Elbencho Benchmark data for this VM size.</p>"
+
+        # Check if we have capacity/fio/elbencho data to show the tabs
         has_capacity_data = any((f / "summary_capacity_benchmark.json").exists() for f in by_vms[vm_count])
         has_fio_data = any((f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists() for f in by_vms[vm_count])
+        has_elbencho_data = any((f / "aggregated_results.json").exists() for f in by_vms[vm_count])
         # Check if we have chaos data to show the tab
         has_capacity_data = any((f / "summary_chaos_benchmark.json").exists() for f in by_vms[vm_count])
 
@@ -1118,6 +1409,14 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
             )
             tab_content_items.append(
                 f'<div class="tab-pane fade" id="tab_{vm_id}_fio" role="tabpanel">{fio_sections}</div>'
+            )
+
+        if has_elbencho_data:
+            tab_nav_items.append(
+                f'<li class="nav-item"><button class="nav-link" id="tab-{vm_id}_elbencho-tab" data-bs-toggle="tab" data-bs-target="#tab_{vm_id}_elbencho" type="button" role="tab">Elbencho Benchmark</button></li>'
+            )
+            tab_content_items.append(
+                f'<div class="tab-pane fade" id="tab_{vm_id}_elbencho" role="tabpanel">{elbencho_sections}</div>'
             )
 
         vm_tabs_body.append(

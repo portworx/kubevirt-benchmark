@@ -106,7 +106,7 @@ This guide helps you diagnose and resolve common issues when running virtbench p
   ```bash
   kubectl get storageclass YOUR-STORAGE-CLASS -o jsonpath='{.allowVolumeExpansion}'
   ```
-- If `false`, use `--skip-resize-job` to skip this phase
+- If `false`, use `--skip-resize` to skip this phase
 - Check storage backend limits and quotas
 
 ### Snapshot Creation Fails
@@ -118,7 +118,7 @@ This guide helps you diagnose and resolve common issues when running virtbench p
   ```bash
   kubectl get volumesnapshotclass
   ```
-- If not available, use `--skip-snapshot-job` to skip this phase
+- If not available, use `--skip-snapshot` to skip this phase
 - Verify storage backend supports CSI snapshots
 
 ### Out of Resources (VM Creation Fails)

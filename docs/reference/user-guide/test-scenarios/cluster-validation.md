@@ -21,23 +21,16 @@ The script validates:
 
 ### Using virtbench CLI
 
+The `virtbench validate-cluster` wrapper exposes a small surface — for the
+DataSource override, minimum-node count, or "run all checks" flags, use the
+Python script directly.
+
 ```bash
 # Basic validation
 virtbench validate-cluster --storage-class YOUR-STORAGE-CLASS
 
-# Comprehensive validation
-virtbench validate-cluster --storage-class YOUR-STORAGE-CLASS --all
-
-# With custom DataSource
-virtbench validate-cluster \
-  --storage-class YOUR-STORAGE-CLASS \
-  --datasource fedora \
-  --datasource-namespace openshift-virtualization-os-images
-
-# Require minimum worker nodes
-virtbench validate-cluster \
-  --storage-class YOUR-STORAGE-CLASS \
-  --min-worker-nodes 5
+# Quick validation (skip slower checks)
+virtbench validate-cluster --storage-class YOUR-STORAGE-CLASS --quick
 ```
 
 ### Using Python Script
@@ -54,20 +47,29 @@ python3 validate_cluster.py --all --storage-class YOUR-STORAGE-CLASS
 # With custom DataSource
 python3 validate_cluster.py \
   --storage-class YOUR-STORAGE-CLASS \
-  --datasource debian \
+  --datasource fedora \
   --datasource-namespace openshift-virtualization-os-images
+
+# Require minimum worker nodes
+python3 validate_cluster.py \
+  --storage-class YOUR-STORAGE-CLASS \
+  --min-worker-nodes 5
 ```
 
 ## Validation Options
 
+Flags marked **(script-only)** are exposed only by `utils/validate_cluster.py`,
+not by the `virtbench validate-cluster` wrapper.
+
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--storage-class NAME` | Storage class name to validate | (required) |
-| `--datasource NAME` | DataSource name to validate | rhel9 |
-| `--datasource-namespace NS` | DataSource namespace | openshift-virtualization-os-images |
-| `--min-worker-nodes NUM` | Minimum worker nodes required | 1 |
-| `--all` | Run all validation checks | false |
-| `--log-level LEVEL` | Logging level | INFO |
+| `--quick` | Skip the slower checks (wrapper-only fast path) | false |
+| `--datasource NAME` *(script-only)* | DataSource name to validate | rhel9 |
+| `--datasource-namespace NS` *(script-only)* | DataSource namespace | openshift-virtualization-os-images |
+| `--min-worker-nodes NUM` *(script-only)* | Minimum worker nodes required | 1 |
+| `--all` *(script-only)* | Run all validation checks | false |
+| `--log-level LEVEL` *(script-only)* | Logging level | INFO |
 
 ## Exit Codes
 

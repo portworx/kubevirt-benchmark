@@ -174,8 +174,7 @@ Set timeouts based on your RTO requirements:
 
 ```bash
 virtbench failure-recovery \
-  --start 1 \
-  --end 10 \
+  --node worker-1 \
   --recovery-timeout 600  # 10 minutes
 ```
 
@@ -185,10 +184,9 @@ Always clean up FAR resources after testing:
 
 ```bash
 virtbench failure-recovery \
-  --start 1 \
-  --end 10 \
+  --node worker-1 \
   --cleanup \
-  --cleanup-vms
+  --yes
 ```
 
 ## Logging and Debugging

@@ -7,58 +7,80 @@ This page describes the organization and structure of the virtbench repository.
 ```
 kubevirt-benchmark/
 ├── virtbench/                    # Main CLI package
-│   ├── __init__.py              # Package initialization
-│   ├── cli.py                   # CLI entry point and command definitions
-│   ├── commands/                # Individual command implementations
-│   │   ├── datasource_clone.py # DataSource clone benchmark
-│   │   ├── migration.py         # Migration benchmark
+│   ├── __init__.py
+│   ├── cli.py                    # CLI entry point and command definitions
+│   ├── commands/                 # Individual command implementations
 │   │   ├── chaos.py              # Chaos benchmark
-│   │   ├── failure_recovery.py  # Failure recovery benchmark
-│   │   └── validate_cluster.py  # Cluster validation
-│   └── utils/                   # Shared utilities
-│       ├── logger.py            # Logging utilities
-│       ├── k8s_utils.py         # Kubernetes helpers
-│       └── results.py           # Results processing
+│   │   ├── datasource_clone.py   # DataSource clone benchmark
+│   │   ├── elbencho.py           # elbencho IO benchmark
+│   │   ├── failure_recovery.py   # Failure recovery benchmark
+│   │   ├── fio.py                # FIO IO benchmark
+│   │   ├── migration.py          # Migration benchmark
+│   │   ├── validate.py           # Cluster validation
+│   │   ├── version.py            # Version subcommand
+│   │   └── vm_ops.py             # vm-ops command group
+│   └── utils/                    # Shared utilities (logger, k8s helpers, results)
 │
-├── scripts/                     # Legacy Python scripts (deprecated)
-│   ├── measure-vm-creation-time.py
-│   ├── measure-migration-time.py
-│   ├── measure-chaos.py
-│   └── measure-failure-recovery.py
+├── chaos-benchmark/              # Chaos benchmark Python script
+│   └── measure-chaos.py
+├── datasource-clone/             # DataSource-clone benchmark Python script
+│   └── measure-vm-creation-time.py
+├── migration/                    # Migration benchmark Python script
+│   └── measure-vm-migration-time.py
+├── failure-recovery/             # Failure-recovery Python script and FAR template
+│   ├── recovery-test.py
+│   └── far-template.yaml
+├── io-benchmark/                 # IO benchmark scripts
+│   ├── fio/
+│   └── elbencho/
+├── vm-ops/                       # VM operations scripts
+│   ├── drain-nodes.py
+│   ├── hotplug-disks.py
+│   ├── power-toggle-vms.py
+│   ├── rebalance-vms.py
+│   ├── run-blkdiscard.py
+│   └── snapshot-vms.py
 │
-├── dashboard/                   # Dashboard generation
-│   ├── generate_dashboard.py   # Dashboard generator script
-│   ├── cluster_info.yaml       # Cluster metadata template
-│   └── manual_results.yaml     # Manual results template
+├── utils/                        # Shared shell/python helpers
+│   ├── apply_template.sh         # VM template helper
+│   ├── replace-storage-class.sh
+│   ├── common.py
+│   └── validate_cluster.py       # Cluster validation Python script
 │
-├── templates/                   # VM and resource templates
-│   ├── vm-template.yaml        # Base VM template
-│   ├── datasource-template.yaml# DataSource template
-│   └── far-template.yaml       # FAR template
+├── dashboard/                    # Dashboard generation
+│   ├── generate_dashboard.py
+│   ├── cluster_info.yaml         # Cluster metadata template
+│   ├── manual_results.yaml       # Manual results template
+│   └── README.md
 │
-├── docs/                        # Documentation
-│   ├── index.md                # Landing page
-│   ├── install.md              # Installation guide
-│   ├── reference/              # Reference documentation
-│   │   ├── user-guide/         # User guides
-│   │   │   └── test-scenarios/ # Test scenario guides
-│   │   ├── configuration.md    # Configuration reference
+├── examples/                     # Reference YAML and shell examples
+│   ├── vm-templates/             # VM templates (vm-template.yaml, fio-vm-template.yaml, …)
+│   ├── benchmarks/               # Sample benchmark resources
+│   ├── scripts/                  # Reference shell scripts (migration scenarios, …)
+│   └── utilities/                # Helper resources (e.g. ssh-pod.yaml)
+│
+├── docs/                         # Documentation (MkDocs)
+│   ├── index.md                  # Landing page
+│   ├── install.md                # Installation guide
+│   ├── reference/                # Reference documentation
+│   │   ├── user-guide/
+│   │   │   └── test-scenarios/
+│   │   ├── configuration.md
 │   │   ├── output-and-results.md
 │   │   └── results-dashboard.md
-│   └── community/              # Community docs
+│   └── community/                # Community docs
 │
-├── results/                     # Test results (auto-generated)
+├── results/                      # Test results (auto-generated)
 │   └── {storage-version}/
 │       └── {num-disks}-disk/
 │           └── {timestamp}_{test}_{vms}vms/
 │
-├── setup.py                     # Python package setup
-├── requirements.txt             # Python dependencies
-├── install.sh                   # Installation script
-├── mkdocs.yml                   # Documentation configuration
-├── README.md                    # Repository README
-├── LICENSE                      # Apache 2.0 license
-└── CHANGELOG.md                 # Version history
+├── setup.py                      # Python package setup
+├── requirements.txt              # Python dependencies
+├── install.sh                    # Installation script
+├── mkdocs.yml                    # Documentation configuration
+├── README.md                     # Repository README
+└── LICENSE                       # Apache 2.0 license
 ```
 
 ## Key Components
@@ -73,11 +95,15 @@ The `virtbench/` directory contains the main CLI application:
 
 ### Templates
 
-The `templates/` directory contains YAML templates for:
+VM and resource templates live under `examples/vm-templates/` (with the
+exception of `failure-recovery/far-template.yaml`, which sits next to the
+script that consumes it):
 
-- **VM templates**: Base VM configurations for different scenarios
-- **DataSource templates**: For VM cloning operations
-- **FAR templates**: For failure and recovery testing
+- **VM templates** (`examples/vm-templates/`): Base VM configurations
+  (`vm-template.yaml`, `fio-vm-template.yaml`, `rhel9-vm-datasource.yaml`,
+  `rhel9-vm-registry.yaml`)
+- **FAR template** (`failure-recovery/far-template.yaml`): For failure and
+  recovery testing
 
 ### Dashboard
 

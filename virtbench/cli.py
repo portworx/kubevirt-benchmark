@@ -14,8 +14,10 @@ from virtbench.commands import (
     chaos,
     failure_recovery,
     fio,
+    elbencho,
     validate,
     version,
+    vm_ops,
 )
 
 
@@ -70,9 +72,12 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
       migration            Run VM migration benchmark
       chaos-benchmark      Run chaos benchmark (concurrent VM/volume operations)
       failure-recovery     Run failure recovery benchmark
+      fio                  Run FIO benchmark across VMs
+      elbencho             Manage elbencho workloads on VMs
+      vm-ops               VM operations (drain, hotplug, snapshot, blkdiscard, power)
       validate-cluster     Validate cluster prerequisites
       version              Print version information
-    
+
     \b
     Examples:
       # Validate cluster
@@ -83,6 +88,9 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
 
       # Run migration test
       virtbench migration --start 1 --end 5 --source-node worker-1
+
+      # Manage elbencho workloads
+      virtbench elbencho -p datasource-clone -s 1 -e 10 -n rhel-elbencho-1 -a status
     
     \b
     Global Flags:
@@ -110,6 +118,8 @@ cli.add_command(migration.migration)
 cli.add_command(chaos.chaos_benchmark)
 cli.add_command(failure_recovery.failure_recovery)
 cli.add_command(fio.fio)
+cli.add_command(elbencho.elbencho)
+cli.add_command(vm_ops.vm_ops)
 cli.add_command(validate.validate_cluster)
 cli.add_command(version.version)
 
