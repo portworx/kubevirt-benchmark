@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='virtbench',
-    version='1.0.0',
+    version='2.0.0',
     description='KubeVirt Benchmark Suite - Performance testing toolkit for KubeVirt VMs',
     packages=find_packages(),
     python_requires='>=3.8',

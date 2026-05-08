@@ -42,7 +42,7 @@ class Context:
 
 
 @click.group(context_settings={'help_option_names': ['-h', '--help']})
-@click.version_option(version='1.0.0', prog_name='virtbench')
+@click.version_option(version='2.0.0', prog_name='virtbench')
 @click.option('--log-level',
               default='info',
               type=click.Choice(['debug', 'info', 'warn', 'error'], case_sensitive=False),
