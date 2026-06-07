@@ -65,18 +65,6 @@ virtbench vm-ops power-toggle-vms \
   --node worker-1
 ```
 
-### Using Python Script
-
-```bash
-cd vm-ops
-
-# Power off
-python3 power-toggle-vms.py --action off --node worker-1 --percentage 50
-
-# Power on (range)
-python3 power-toggle-vms.py --action on \
-  --namespace-prefix migration --start 1 --end 50 --vm-name rhel-9-vm
-```
 
 ## Full Example
 

@@ -14,7 +14,7 @@
 
 cluster:
   # Storage backend version (e.g., "3.5.0", "v1.2.3")
-  storage_version: ""
+  storage_driver: ""
 
   # Storage backend type (e.g., "Ceph", "vSphere", "AWS EBS", "Portworx", etc.)
   storage_type: ""

@@ -45,7 +45,6 @@ nav:
           - VM Operations:
               - Overview: reference/user-guide/test-scenarios/vm-ops/overview.md
               - Drain Nodes: reference/user-guide/test-scenarios/vm-ops/drain-nodes.md
-              - Hotplug Disks: reference/user-guide/test-scenarios/vm-ops/hotplug-disks.md
               - Rebalance VMs: reference/user-guide/test-scenarios/vm-ops/rebalance-vms.md
               - VM Snapshot: reference/user-guide/test-scenarios/vm-ops/vm-snapshot.md
               - Run blkdiscard: reference/user-guide/test-scenarios/vm-ops/run-blkdiscard.md

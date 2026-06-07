@@ -40,20 +40,6 @@ virtbench fio --action gather-results -s 1 -e 10 --save-results
 virtbench fio --action cleanup -s 1 -e 10
 ```
 
-### Python Script
-
-```bash
-cd io-benchmark/fio
-
-python3 measure-fio-performance.py --action run-all \
-  --start 1 --end 20 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --fio-runtime 300 --fio-rw randrw --fio-bs 4k \
-  --fio-iodepth 64 --fio-numjobs 4 \
-  --save-results --storage-version px-3.2.0 \
-  --results-dir ../../results --cleanup
-```
-
 !!! note "`--save-results` vs `--action gather-results`"
     `--save-results` is a **flag** that writes summary JSON/CSV files to the output directory. `--action gather-results` is an **action** that collects raw FIO output from VMs over SSH. Use them together (`--action gather-results --save-results`) to both fetch and persist.
 
@@ -101,7 +87,7 @@ python3 measure-fio-performance.py --action run-all \
 |--------|---------|-------------|
 | `--save-results` | `false` | Save summary JSON/CSV to the output directory |
 | `--results-dir` | `results` | Base directory for results |
-| `--storage-version` | `Not-Specified` | Storage version label (folder component) |
+| `--storage-driver` | `Not-Specified` | Storage driver label (folder component) |
 | `--disks-per-vm` | `auto` | Disks-per-VM label (folder component); auto-detected from VM spec |
 | `--cleanup` | `false` | Delete VMs and namespaces after `run-all` |
 
@@ -149,7 +135,7 @@ Results include per-VM and aggregated metrics:
 ### Output Structure
 
 ```
-{results-dir}/{storage-version}/{disks-per-vm}/{timestamp}_fio_benchmark_{N}vms/
+{results-dir}/{storage-driver}/{disks-per-vm}/{timestamp}_fio_benchmark_{N}vms/
 ├── summary_fio_benchmark.json     # Aggregated summary across all VMs
 ├── fio_benchmark_results.json     # Per-VM results (JSON array)
 ├── fio_benchmark_results.csv      # Per-VM results (CSV)
@@ -159,15 +145,11 @@ Results include per-VM and aggregated metrics:
     └── ...
 ```
 
-Example: `results/px-3.2.0/2-disk/20260308-141522_fio_benchmark_10vms/`. `--storage-version` and `--disks-per-vm` are folder components only - they have no functional effect on the test.
+Example: `results/portworx-3.6/2-disk/20260308-141522_fio_benchmark_10vms/`. `--storage-driver` and `--disks-per-vm` are folder components only - they have no functional effect on the test.
 
 ### View in Dashboard
 
-```bash
-cd dashboard
-python3 generate_dashboard.py --base-dir ../results
-open output/dashboard.html
-```
+Generate the dashboard from the saved results directory after the run.
 
 The dashboard displays:
 

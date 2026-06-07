@@ -15,7 +15,7 @@ in the suite. Subcommands:
 
 - `virtbench datasource-clone` — VM creation / boot storm
 - `virtbench migration` — live migration testing
-- `virtbench chaos` — concurrent chaos workload
+- `virtbench chaos-benchmark` — concurrent chaos workload
 - `virtbench failure-recovery` — node-failure recovery with FAR
 - `virtbench fio` — FIO storage I/O benchmark
 - `virtbench elbencho` — Elbencho storage benchmark
@@ -28,7 +28,7 @@ Top-level options (`--log-level`, `--log-file`, `--kubeconfig`, `--timeout`,
 
 #### New: Chaos Benchmark
 
-`virtbench chaos` runs concurrent chaos operations — VM creation, volume
+`virtbench chaos-benchmark` runs concurrent chaos operations — VM creation, volume
 resize, volume clone, VM restart, and snapshots — to stress-test cluster
 resilience under mixed concurrent load.
 
@@ -44,7 +44,6 @@ A dedicated command group for VM lifecycle operations used during
 benchmarking and validation:
 
 - `vm-ops drain-nodes` — drain Kubernetes nodes and measure drain time
-- `vm-ops hotplug-disks` — hotplug DataVolumes onto running VMs
 - `vm-ops rebalance-vms` — rebalance VMs across worker nodes
 - `vm-ops vm-snapshot` — create `VirtualMachineSnapshots` in batches
 - `vm-ops run-blkdiscard` — run `blkdiscard` on data disks inside VMs

@@ -44,16 +44,6 @@ virtbench vm-ops run-blkdiscard \
   --concurrency 25
 ```
 
-### Using Python Script
-
-```bash
-cd vm-ops
-
-python3 run-blkdiscard.py \
-  --namespace-prefix rhel-eb-filler \
-  --start 1 --end 10 \
-  --vm-name rhel-elbencho-1
-```
 
 ## Full Example with All Options
 
@@ -109,7 +99,4 @@ virtbench vm-ops run-blkdiscard \
 
 ## See Also
 
-* [Hotplug Disks](hotplug-disks.md) — pairs well to seed disks before the
-  discard cycle.
 * [Cleanup Guide](../../cleanup-guide.md)
-

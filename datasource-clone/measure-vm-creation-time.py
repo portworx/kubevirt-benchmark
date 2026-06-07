@@ -228,16 +228,16 @@ Examples:
     parser.add_argument(
         '--results-folder',
         type=str,
-        default=os.path.join(os.path.dirname(os.getcwd()), 'results'),
-        help='Base directory to store test results (default: ../results)'
+        default='results',
+        help='Base directory to store test results (default: results)'
     )
 
-    # Storage version grouping (optional)
     parser.add_argument(
-        '--storage-version',
+        '--storage-driver',
+        dest='storage_driver',
         type=str,
         default=None,
-        help='Storage version to include in results path (optional)'
+        help='Storage driver label to include in results path (for example: portworx-3.6, ceph)'
     )
 
     
@@ -256,6 +256,38 @@ Examples:
         parser.error(f"Secret YAML file not found: {args.secret_yaml}")
 
     return args
+
+
+def detect_disk_count_from_template(vm_template_path: str) -> Optional[int]:
+    """Return non-cloud-init disk count from a VM template, or None on failure."""
+    with open(vm_template_path, 'r') as f:
+        docs = list(yaml.safe_load_all(f))
+
+    vm_spec = next((doc for doc in docs if doc and doc.get('kind') == 'VirtualMachine'), None)
+    if not vm_spec:
+        return None
+
+    volumes = (
+        vm_spec.get('spec', {})
+        .get('template', {})
+        .get('spec', {})
+        .get('volumes', [])
+    )
+    non_cloudinit_volumes = [
+        v for v in volumes
+        if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
+    ]
+    return len(non_cloudinit_volumes)
+
+
+def build_results_dir(args, num_disks_per_vm: int, timestamp: Optional[str] = None) -> str:
+    """Build the canonical results directory path for a datasource-clone run."""
+    timestamp = timestamp or datetime.now().strftime("%Y%m%d-%H%M%S")
+    suffix = f"{args.namespace_prefix}_{args.start}-{args.end}"
+    disk_dir = f"{num_disks_per_vm}-disk" if num_disks_per_vm else "unknown-disk"
+    if args.storage_driver:
+        return os.path.join(args.results_folder, args.storage_driver, disk_dir, f"{timestamp}_{suffix}")
+    return os.path.join(args.results_folder, disk_dir, f"{timestamp}_{suffix}")
 
 
 def ensure_namespaces(start: int, end: int, prefix: str, batch_size: int, logger) -> List[str]:
@@ -853,6 +885,26 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
 def main():
     """Main execution function."""
     args = parse_args()
+    args._results_dir = None
+    args._precomputed_disk_count = None
+
+    if args.save_results:
+        if args.num_disks:
+            args._precomputed_disk_count = args.num_disks
+        else:
+            try:
+                args._precomputed_disk_count = detect_disk_count_from_template(args.vm_template)
+            except Exception:
+                args._precomputed_disk_count = None
+
+        args._results_dir = build_results_dir(args, args._precomputed_disk_count or 0)
+        os.makedirs(args._results_dir, exist_ok=True)
+
+        if args.log_file:
+            log_name = os.path.basename(args.log_file)
+            args.log_file = os.path.join(args._results_dir, log_name)
+        else:
+            args.log_file = os.path.join(args._results_dir, "datasource-clone.log")
 
     # Setup logging
     logger = setup_logging(args.log_file, args.log_level)
@@ -898,42 +950,23 @@ def main():
     logger.info("=" * 80)
     num_disks_per_vm = 1
 
-    if args.storage_version:
-        logger.info(f"Using provided storage version: {args.storage_version}")
+    if args.storage_driver:
+        logger.info(f"Using storage driver label: {args.storage_driver}")
+    if args.save_results:
+        logger.info(f"Results and log files will be saved under: {args._results_dir}")
 
     # Determine number of disks per VM
     if args.num_disks:
         # Use explicitly provided disk count
         num_disks_per_vm = args.num_disks
         logger.info(f"Using provided disk count: {num_disks_per_vm}")
+    elif args._precomputed_disk_count:
+        num_disks_per_vm = args._precomputed_disk_count
+        logger.info(f"Detected {num_disks_per_vm} disks (excluding cloud-init) in VM template")
     elif not args.skip_vm_creation:
         # Parse VM template to get disk count
         try:
-            with open(args.vm_template, 'r') as f:
-                # Load *all* YAML docs
-                docs = list(yaml.safe_load_all(f))
-
-            # Find the VirtualMachine document
-            vm_spec = next((doc for doc in docs if doc and doc.get('kind') == 'VirtualMachine'), None)
-
-            if not vm_spec:
-                raise ValueError("No VirtualMachine document found in the YAML file")
-
-            # Get list of volumes under spec.template.spec.volumes
-            volumes = (
-                vm_spec.get('spec', {})
-                .get('template', {})
-                .get('spec', {})
-                .get('volumes', [])
-            )
-
-            # Exclude cloudInit volumes
-            non_cloudinit_volumes = [
-                v for v in volumes
-                if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
-            ]
-
-            num_disks_per_vm = len(non_cloudinit_volumes)
+            num_disks_per_vm = detect_disk_count_from_template(args.vm_template)
             logger.info(f"Detected {num_disks_per_vm} disks (excluding cloud-init) in VM template")
 
         except Exception as e:
@@ -1010,14 +1043,8 @@ def main():
 
         # Create output directory for results if saving
         if args.save_results:
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            suffix = f"{args.namespace_prefix}_{args.start}-{args.end}"
-            if args.storage_version:
-                out_dir = os.path.join(args.results_folder, args.storage_version, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
-            else:
-                out_dir = os.path.join(args.results_folder, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
-            os.makedirs(out_dir, exist_ok=True)
-            logger.info(f"Created results directory: {out_dir}")
+            out_dir = args._results_dir
+            logger.info(f"Using results directory: {out_dir}")
     else:
         # Phase 1: Create all VMs in parallel
         logger.info(f"\nPhase 1: Creating {len(namespaces)} VMs in parallel...")
@@ -1078,17 +1105,8 @@ def main():
 
         # Save structured results if requested
         if args.save_results:
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            suffix = f"{args.namespace_prefix}_{args.start}-{args.end}"
-
-            # Construct results path dynamically
-            if args.storage_version:
-                out_dir = os.path.join(args.results_folder, args.storage_version, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
-            else:
-                out_dir = os.path.join(args.results_folder, f"{num_disks_per_vm}-disk", f"{timestamp}_{suffix}")
-            os.makedirs(out_dir, exist_ok=True)
-
-            logger.info(f"Created results directory: {out_dir}")
+            out_dir = args._results_dir
+            logger.info(f"Using results directory: {out_dir}")
 
             # Save initial creation test results
             save_results(
@@ -1255,4 +1273,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

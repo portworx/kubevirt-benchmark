@@ -35,6 +35,7 @@ License: Apache 2.0
 
 import argparse
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -56,7 +57,8 @@ from utils.common import (
     wait_for_migration_complete, get_available_nodes, create_namespace,
     find_busiest_node, get_vms_on_node, remove_node_selectors,
     cleanup_test_namespaces, confirm_cleanup, print_cleanup_summary,
-    list_resources_in_namespace, delete_vmim, save_migration_results
+    list_resources_in_namespace, delete_vmim, save_migration_results,
+    get_command_for_logging,
 )
 
 # Default configuration
@@ -188,10 +190,10 @@ Examples:
     )
 
     parser.add_argument(
-        '--storage-version',
+        '--storage-driver',
         type=str,
         default=None,
-        help='Storage version to include in results path (optional)'
+        help='Storage driver to include in results path (optional)'
     )
 
     parser.add_argument(
@@ -642,6 +644,35 @@ def interleave_vms_across_nodes(per_node_vms: Dict[str, List[str]],
     return ordered
 
 
+def build_results_dir(args, num_disks: int, timestamp: Optional[str] = None) -> str:
+    """Build the canonical migration results directory."""
+    timestamp = timestamp or datetime.now().strftime("%Y%m%d-%H%M%S")
+    if args.source_nodes:
+        source_label = "all-workers" if len(args.source_nodes) == 1 and args.source_nodes[0] == "all" else f"{len(args.source_nodes)}-source-nodes"
+        suffix = f"{args.namespace_prefix}_{source_label}"
+    else:
+        suffix = f"{args.namespace_prefix}_{args.start}-{args.end}"
+    disk_dir = f"{num_disks}-disk"
+    run_dir = f"{timestamp}_live_migration_{suffix}"
+    if args.storage_driver:
+        return os.path.join(args.results_folder, args.storage_driver, disk_dir, run_dir)
+    return os.path.join(args.results_folder, disk_dir, run_dir)
+
+
+def attach_file_logging(logger, log_file: str) -> None:
+    """Attach file logging after the migration result directory is known."""
+    formatter = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    logger.info(f"Logging to file: {log_file}")
+    logger.info(f"Command: {get_command_for_logging()}")
+
+
 def main():
     """Main function."""
     args = parse_arguments()
@@ -682,8 +713,8 @@ def main():
     logger.info(f"Namespace prefix: {args.namespace_prefix}")
     logger.info(f"Create VMs: {args.create_vms}")
 
-    if args.storage_version:
-        logger.info(f"Using provided storage version: {args.storage_version}")
+    if args.storage_driver:
+        logger.info(f"Using provided storage driver: {args.storage_driver}")
 
     if args.source_nodes:
         logger.info(f"Migration mode: Multi-node evacuation from {len(args.source_nodes)} nodes")
@@ -914,6 +945,14 @@ def main():
         logger.error(f"Error detecting disks: {e}")
         num_disks = 1
 
+    out_dir = None
+    if args.save_results:
+        out_dir = build_results_dir(args, num_disks)
+        os.makedirs(out_dir, exist_ok=True)
+        logger.info(f"Results and log files will be saved under: {out_dir}")
+        if not args.log_file:
+            attach_file_logging(logger, os.path.join(out_dir, "migration.log"))
+
     # Phase 2: Perform Migration
     logger.info("\n" + "=" * 80)
     logger.info("PHASE 2: Live Migration")
@@ -1142,6 +1181,30 @@ def main():
         logger.info(f"Concurrency: {args.concurrency}")
         logger.info("=" * 80)
 
+        logger.info("\n" + "=" * 80)
+        logger.info("REMOVING NODE SELECTORS FOR MIGRATION")
+        logger.info("=" * 80)
+        logger.info("Removing nodeSelector from discovered VMs to allow live migration...")
+
+        removal_success = 0
+        removal_failed = 0
+
+        for ns in all_vms_to_migrate:
+            if remove_node_selectors(args.vm_name, ns, logger):
+                removal_success += 1
+            else:
+                removal_failed += 1
+                logger.warning(f"[{ns}] Failed to remove nodeSelector")
+
+        logger.info(f"\nNodeSelector removal: {removal_success} successful, {removal_failed} failed")
+
+        if removal_success != len(all_vms_to_migrate):
+            logger.error(
+                "Failed to remove nodeSelectors from all discovered VMs. "
+                "Aborting before migration so target pods do not get stuck unschedulable."
+            )
+            sys.exit(1)
+
         # Determine available target nodes.
         # When a specific --target-node was given, pin to that node.
         # Otherwise try to exclude source nodes so KubeVirt does not land a
@@ -1348,25 +1411,7 @@ def main():
 
     # --- Save structured migration results if requested ---
     if args.save_results:
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        suffix = f"{args.namespace_prefix}_{args.start}-{args.end}"
-
-        if args.storage_version:
-            out_dir = os.path.join(
-                args.results_folder,
-                args.storage_version,
-                f"{num_disks}-disk",
-                f"{timestamp}_live_migration_{suffix}"
-            )
-        else:
-            out_dir = os.path.join(
-                args.results_folder,
-                f"{num_disks}-disk",
-                f"{timestamp}_live_migration_{suffix}"
-            )
-        os.makedirs(out_dir, exist_ok=True)
-
-        logger.info(f"Created results directory: {out_dir}")
+        logger.info(f"Using results directory: {out_dir}")
 
         # Save detailed and summary results in the correct folder
         save_migration_results(
@@ -1441,4 +1486,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

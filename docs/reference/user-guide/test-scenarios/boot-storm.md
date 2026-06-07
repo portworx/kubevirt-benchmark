@@ -72,8 +72,6 @@ simultaneously.
 **Use Case**: Validates node-level capacity (e.g., how many VMs can a single
 node handle during boot storm).
 
-#### Using virtbench CLI
-
 ```bash
 # Run test on a single node (auto-selected) with your storage class
 virtbench datasource-clone \
@@ -85,7 +83,7 @@ virtbench datasource-clone \
   --single-node \
   --boot-storm \
   --save-results \
-  --storage-version STORAGE-VERSION
+  --storage-driver STORAGE-DRIVER
 
 # Or specify a specific node
 virtbench datasource-clone \
@@ -98,23 +96,7 @@ virtbench datasource-clone \
   --node-name worker-node-1 \
   --boot-storm \
   --save-results \
-  --storage-version STORAGE-VERSION
-```
-
-#### Using Python Script
-
-```bash
-cd datasource-clone
-
-python3 measure-vm-creation-time.py \
-  --start 1 \
-  --end 50 \
-  --vm-name VM-NAME \
-  --namespace-prefix NS-PREFIX \
-  --single-node \
-  --boot-storm \
-  --save-results \
-  --storage-version STORAGE-VERSION
+  --storage-driver STORAGE-DRIVER
 ```
 
 **What it does**:
@@ -134,8 +116,6 @@ simultaneously.
 **Use Case**: Validates cluster-wide performance under boot storm conditions
 (e.g., after maintenance, power outage recovery).
 
-#### Using virtbench CLI
-
 ```bash
 virtbench datasource-clone \
   --start 1 \
@@ -145,22 +125,7 @@ virtbench datasource-clone \
   --storage-class YOUR-STORAGE-CLASS \
   --boot-storm \
   --save-results \
-  --storage-version STORAGE-VERSION
-```
-
-#### Using Python Script
-
-```bash
-cd datasource-clone
-
-python3 measure-vm-creation-time.py \
-  --start 1 \
-  --end 100 \
-  --vm-name VM-NAME \
-  --namespace-prefix NS-PREFIX \
-  --boot-storm \
-  --save-results \
-  --storage-version STORAGE-VERSION
+  --storage-driver STORAGE-DRIVER
 ```
 
 **What it does**:
@@ -185,8 +150,17 @@ virtbench datasource-clone \
   --namespace-prefix NS-PREFIX \
   --boot-storm \
   --skip-vm-creation \
-  --save-results
+  --save-results \
+  --storage-driver STORAGE-DRIVER
 ```
+
+Saved boot-storm runs are written under:
+
+```text
+results/{storage-driver}/{num-disks}-disk/{timestamp}_{namespace-prefix}_{start}-{end}/
+```
+
+The run log is saved in the same folder as the boot-storm JSON and CSV files.
 
 ## Interpreting Boot Storm Results
 

@@ -4,16 +4,15 @@ The `virtbench vm-ops` command group bundles day-2 VM lifecycle operations
 used during benchmarking and cluster validation. Each operation is a thin
 Click wrapper around a script in `vm-ops/` that you can also invoke directly.
 
-**Use Case**: Drain nodes, hotplug disks, rebalance VMs across hosts,
-snapshot VMs in batches, run `blkdiscard` inside guests, and power VMs on
-or off — all without leaving the unified CLI.
+**Use Case**: Drain nodes, rebalance VMs across hosts, snapshot VMs in
+batches, run `blkdiscard` inside guests, and power VMs on or off — all
+without leaving the unified CLI.
 
 ## Available Operations
 
 | Operation | Purpose |
 | --- | --- |
 | [`drain-nodes`](drain-nodes.md) | Drain Kubernetes nodes and measure drain time |
-| [`hotplug-disks`](hotplug-disks.md) | Hotplug DataVolumes onto running KubeVirt VMs |
 | [`rebalance-vms`](rebalance-vms.md) | Rebalance VMs evenly across worker nodes |
 | [`vm-snapshot`](vm-snapshot.md) | Create `VirtualMachineSnapshots` in batches |
 | [`run-blkdiscard`](run-blkdiscard.md) | Run `blkdiscard` on data disks inside VMs |
@@ -24,10 +23,6 @@ or off — all without leaving the unified CLI.
 ```bash
 # Drain two nodes in parallel
 virtbench vm-ops drain-nodes --nodes worker-1 worker-2 --parallel
-
-# Hotplug 2x10Gi disks onto VMs in 10 namespaces
-virtbench vm-ops hotplug-disks -s 1 -e 10 --disk-count 2 \
-  --storage-class YOUR-STORAGE-CLASS
 
 # Rebalance the cluster (dry-run)
 virtbench vm-ops rebalance-vms --vm-name rhel-elbencho-1 --dry-run
@@ -60,9 +55,9 @@ Most operations support two ways of selecting target VMs:
 * **Range mode** — `--namespace-prefix <prefix> --start <i> --end <j>` plus
   `--vm-name <name>`. The CLI iterates `prefix-i` through `prefix-j` and
   acts on the named VM in each namespace.
-* **Node mode** — `--node <node>` (and sometimes `--num-vms`) — discovers
-  VMs running on a given worker. Only available where the running VMI is
-  bound to a node (e.g., `hotplug-disks`, `power-toggle-vms --action off`).
+* **Node mode** — `--node <node>` discovers VMs running on a given worker.
+  Only available where the running VMI is bound to a node (for example,
+  `power-toggle-vms --action off`).
 
 ### Concurrency
 
@@ -77,7 +72,7 @@ mutating cluster state.
 
 ### Logging
 
-`drain-nodes`, `hotplug-disks`, `vm-snapshot`, and `run-blkdiscard` accept
+`drain-nodes`, `vm-snapshot`, and `run-blkdiscard` accept
 `--log-file <path>` and the global `virtbench --log-file <path>`. When
 neither is provided, a timestamped log file is generated automatically.
 
@@ -87,11 +82,10 @@ write a log file.
 ## Prerequisites
 
 * `kubectl` (or `oc`) on `$PATH`, with a working kubeconfig.
-* `virtctl` (or the `kubectl virt` Krew plugin) for VM power and hotplug
-  operations.
-* For `run-blkdiscard` and `hotplug-disks --start-io`: an SSH-capable pod
-  in the cluster (default `ssh-test-pod` in the `default` namespace) with
-  network access to the target VMs.
+* `virtctl` (or the `kubectl virt` Krew plugin) for VM power operations.
+* For `run-blkdiscard`: an SSH-capable pod in the cluster (default
+  `ssh-test-pod` in the `default` namespace) with network access to the
+  target VMs.
 
 ## See Also
 
@@ -99,4 +93,3 @@ write a log file.
   tests.
 * [Migration Testing](../migration.md) — pairs well with
   `drain-nodes` and `power-toggle-vms` for evacuation scenarios.
-

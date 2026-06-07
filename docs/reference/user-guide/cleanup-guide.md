@@ -57,20 +57,6 @@ virtbench datasource-clone --start 1 --end 50 --storage-class YOUR-STORAGE-CLASS
 virtbench datasource-clone --start 1 --end 50 --storage-class YOUR-STORAGE-CLASS --cleanup-on-failure
 ```
 
-**Python Script:**
-```bash
-cd datasource-clone
-
-# Clean up after test
-python3 measure-vm-creation-time.py --start 1 --end 50 --cleanup
-
-# Dry run to see what would be deleted
-python3 measure-vm-creation-time.py --start 1 --end 50 --dry-run-cleanup
-
-# Clean up even if tests fail
-python3 measure-vm-creation-time.py --start 1 --end 50 --cleanup-on-failure
-```
-
 ### Clean up after Migration Tests
 
 **virtbench CLI:**
@@ -82,17 +68,6 @@ virtbench migration --start 1 --end 10 --source-node worker-1 --cleanup
 virtbench migration --start 1 --end 10 --source-node worker-1 --create-vms --cleanup
 ```
 
-**Python Script:**
-```bash
-cd migration
-
-# Clean up VMIMs only
-python3 measure-vm-migration-time.py --start 1 --end 10 --source-node worker-1 --cleanup
-
-# Clean up everything
-python3 measure-vm-migration-time.py --start 1 --end 10 --source-node worker-1 --create-vms --cleanup
-```
-
 ### Clean up after Failure Recovery Tests
 
 **virtbench CLI:**
@@ -101,31 +76,12 @@ python3 measure-vm-migration-time.py --start 1 --end 10 --source-node worker-1 -
 virtbench failure-recovery --node worker-1 --cleanup --yes
 ```
 
-**Python Script:**
-```bash
-cd failure-recovery
-
-# Clean up FAR resources only
-python3 recovery-test.py --mode monitor --node worker-1 --cleanup --yes
-
-# Clean up FAR resources and VMs
-python3 recovery-test.py --mode monitor --node worker-1 --cleanup --cleanup-vms --yes
-```
-
 ### Clean up after Chaos Benchmark
 
 **virtbench CLI:**
 ```bash
 # Cleanup only (from previous run)
 virtbench chaos-benchmark --cleanup-only --concurrency 1
-```
-
-**Python Script:**
-```bash
-cd chaos-benchmark
-
-# Cleanup only (from previous run)
-python3 measure-chaos.py --cleanup-only --concurrency 1
 ```
 
 ## Manual Cleanup

@@ -8,6 +8,7 @@ kubectl command execution, and common helper functions.
 
 import json
 import logging
+import shlex
 import subprocess
 import sys
 import time
@@ -18,6 +19,15 @@ import csv
 
 # Minimum required Python version
 MIN_PYTHON_VERSION = (3, 8)
+
+SENSITIVE_ARG_KEYWORDS = (
+    'password',
+    'passwd',
+    'token',
+    'api-key',
+    'apikey',
+    'pwd',
+)
 
 
 class Colors:
@@ -75,6 +85,54 @@ def require_python_version():
         sys.exit(1)
 
 
+def _is_sensitive_arg(arg: str) -> bool:
+    key = arg.lstrip('-').split('=', 1)[0].lower()
+    return any(keyword in key for keyword in SENSITIVE_ARG_KEYWORDS)
+
+
+def redact_command_args(args: List[str]) -> List[str]:
+    """Redact sensitive command-line argument values before logging."""
+    redacted = []
+    redact_next = False
+    for arg in args:
+        if redact_next:
+            redacted.append('***')
+            redact_next = False
+            continue
+
+        if arg.startswith('--') and '=' in arg:
+            key, _ = arg.split('=', 1)
+            if _is_sensitive_arg(key):
+                redacted.append(f"{key}=***")
+            else:
+                redacted.append(arg)
+            continue
+
+        redacted.append(arg)
+        if arg.startswith('--') and _is_sensitive_arg(arg):
+            redact_next = True
+
+    return redacted
+
+
+def get_command_for_logging() -> str:
+    """Return the virtbench command, or direct Python argv, with secrets redacted."""
+    raw_args = None
+    env_args = os.getenv('VIRTBENCH_COMMAND_ARGS')
+    if env_args:
+        try:
+            loaded = json.loads(env_args)
+            if isinstance(loaded, list) and all(isinstance(item, str) for item in loaded):
+                raw_args = loaded
+        except json.JSONDecodeError:
+            raw_args = None
+
+    if raw_args is None:
+        raw_args = sys.argv
+
+    return shlex.join(redact_command_args(raw_args))
+
+
 def setup_logging(log_file: Optional[str] = None, log_level: str = 'INFO') -> logging.Logger:
     """
     Configure logging for the test suite.
@@ -104,17 +162,17 @@ def setup_logging(log_file: Optional[str] = None, log_level: str = 'INFO') -> lo
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    if not log_file:
-        log_file = f"kubevirt-perf-{datetime.now().strftime('%Y%m%d-%H%M%S')}.log"
-
-    # File handler if specified
     if log_file:
         try:
+            log_dir = os.path.dirname(log_file)
+            if log_dir:
+                os.makedirs(log_dir, exist_ok=True)
             file_handler = logging.FileHandler(log_file)
             file_handler.setLevel(logging.DEBUG)  # Always log everything to file
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
             logger.info(f"Logging to file: {log_file}")
+            logger.info(f"Command: {get_command_for_logging()}")
         except Exception as e:
             logger.error(f"Failed to create log file {log_file}: {e}")
 
@@ -2079,12 +2137,12 @@ def save_migration_results(args, results, base_dir="results", logger=None, total
     return json_path, csv_path, summary_json_path, summary_csv_path, output_dir
 
 
-def save_capacity_results(results: dict, base_dir: str = "results", storage_version: str = None, logger=None) -> str:
+def save_capacity_results(results: dict, base_dir: str = "results", storage_driver: str = None, logger=None) -> str:
     """
     Save chaos benchmark results to JSON and CSV files.
 
     Directory structure follows the same pattern as other tests:
-        results/{storage_version}/{num_disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
+        results/{storage_driver}/{num_disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
 
     Args:
         results: Dictionary containing chaos benchmark results with keys:
@@ -2102,7 +2160,7 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_vers
             - end_reason: Reason for test ending
             - phases_skipped: List of skipped phases
         base_dir: Base directory for results (default: "results")
-        storage_version: Storage version for folder hierarchy (e.g., "3.2.0"). If None, uses "default"
+        storage_driver: Storage driver for folder hierarchy (e.g., "portworx-3.6"). If None, uses "default"
         logger: Logger instance (optional)
 
     Returns:
@@ -2111,7 +2169,7 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_vers
     from datetime import datetime
 
     # Create timestamped output directory following the standard structure:
-    # results/{storage_version}/{num_disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
+    # results/{storage_driver}/{num_disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     total_vms = results.get('total_vms', 0)
 
@@ -2120,11 +2178,11 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_vers
     num_disks = data_volumes_per_vm + 1  # +1 for root volume
 
     # Build directory path
-    version_dir = storage_version if storage_version else "default"
+    driver_dir = storage_driver if storage_driver else "default"
     disk_dir = f"{num_disks}-disk"
     run_dir = f"{timestamp}_chaos_benchmark_{total_vms}vms"
 
-    output_dir = os.path.join(base_dir, version_dir, disk_dir, run_dir)
+    output_dir = os.path.join(base_dir, driver_dir, disk_dir, run_dir)
     os.makedirs(output_dir, exist_ok=True)
 
     if logger:
@@ -2693,4 +2751,3 @@ def get_vm_volume_names(vm_name: str, namespace: str,
         if logger:
             logger.error(f"[{namespace}] Failed to get VM volumes: {e}")
         return []
-

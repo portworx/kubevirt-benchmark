@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-rebalance-vms.py  –  Rebalance KubeVirt VMs to a target range per node.
+rebalance-vms.py - Rebalance KubeVirt VMs to an even target per node.
 
-Queries the live cluster for node and VMI data, computes the minimum set
-of moves to bring every node into the target range, then for each move:
+Queries the live cluster for node and VMI data, computes the minimum set of
+moves to spread the selected VMs across worker nodes by default, then for each
+move:
 
   1. oc patch vm   rhel-elbencho-1 -n <namespace>  (pin nodeSelector first)
   2. virtctl stop  rhel-elbencho-1 -n <namespace>
@@ -13,8 +14,8 @@ of moves to bring every node into the target range, then for each move:
 Usage:
   python3 rebalance-vms.py                          # execute all moves
   python3 rebalance-vms.py --dry-run                # print commands only
-  python3 rebalance-vms.py --target-min 15 --target-max 16
-  python3 rebalance-vms.py --vm-name my-vm --namespace-label my-label
+  python3 rebalance-vms.py --target-min 0 --target-max 1
+  python3 rebalance-vms.py --include-master-nodes
 """
 
 import argparse
@@ -22,8 +23,6 @@ import subprocess
 import sys
 
 VM_NAME    = "rhel-elbencho-1"
-TARGET_MIN = 16
-TARGET_MAX = 17
 
 
 # --------------------------------------------------------------------------- #
@@ -40,11 +39,37 @@ def _oc(args):
     return res.stdout
 
 
-def fetch_nodes():
-    """Return list of all Ready worker/master node names via 'oc get nodes'."""
-    out = _oc(["get", "nodes", "--no-headers", "-o",
-                "custom-columns=NAME:.metadata.name"])
-    return [line.strip() for line in out.splitlines() if line.strip()]
+def fetch_nodes(include_master_nodes=False):
+    """Return schedulable target node names, workers by default."""
+    args = ["get", "nodes"]
+    if not include_master_nodes:
+        args.extend(["-l", "node-role.kubernetes.io/worker"])
+    args.extend([
+        "--no-headers",
+        "-o",
+        "custom-columns=NAME:.metadata.name,READY:.status.conditions[?(@.type==\"Ready\")].status",
+    ])
+    out = _oc(args)
+    nodes = []
+    for line in out.splitlines():
+        cols = line.split()
+        if len(cols) >= 2 and cols[1] == "True":
+            nodes.append(cols[0])
+    return nodes
+
+
+def fetch_all_nodes():
+    """Return all Ready node names so source VMIs are visible even if misplaced."""
+    out = _oc([
+        "get", "nodes", "--no-headers", "-o",
+        "custom-columns=NAME:.metadata.name,READY:.status.conditions[?(@.type==\"Ready\")].status",
+    ])
+    nodes = []
+    for line in out.splitlines():
+        cols = line.split()
+        if len(cols) >= 2 and cols[1] == "True":
+            nodes.append(cols[0])
+    return nodes
 
 
 def fetch_vmi(all_nodes, vm_name):
@@ -54,7 +79,7 @@ def fetch_vmi(all_nodes, vm_name):
                "NS:.metadata.namespace,"
                "NAME:.metadata.name,"
                "NODE:.status.nodeName"])
-    node_vms = {nd: [] for nd in all_nodes}   # seed every node (incl. empty)
+    node_vms = {nd: [] for nd in all_nodes}   # seed every known node (incl. empty)
     for line in out.splitlines():
         cols = line.split()
         if len(cols) < 3:
@@ -74,19 +99,49 @@ def fetch_vmi(all_nodes, vm_name):
 # Balancing logic                                                              #
 # --------------------------------------------------------------------------- #
 
-def assign_targets(node_vms, target_min, target_max):
+def calculate_target_range(total_vms, node_count, target_min=None, target_max=None):
+    """Return a sane target range for the current VM/node count."""
+    if node_count == 0:
+        raise ValueError("No target nodes found.")
+
+    auto_min = total_vms // node_count
+    auto_max = auto_min + (1 if total_vms % node_count else 0)
+
+    if target_min is None:
+        target_min = auto_min
+    if target_max is None:
+        target_max = auto_max
+
+    if target_min < 0 or target_max < 0:
+        raise ValueError("--target-min and --target-max must be non-negative")
+    if target_min > target_max:
+        raise ValueError("--target-min cannot be greater than --target-max")
+    if target_min * node_count > total_vms:
+        raise ValueError(
+            f"Impossible target: {node_count} nodes x target-min {target_min} exceeds {total_vms} VMIs"
+        )
+    if target_max * node_count < total_vms:
+        raise ValueError(
+            f"Impossible target: {node_count} nodes x target-max {target_max} cannot hold {total_vms} VMIs"
+        )
+
+    return target_min, target_max
+
+
+def assign_targets(node_vms, target_nodes, target_min, target_max):
     """
     Assign target_max or target_min to each node so that:
       - total VMs is preserved exactly
-      - nodes already closest to target_max are preferred for the higher quota
-        (minimises overall movement)
+      - nodes already holding the most VMs are preferred for the higher quota
+        (minimises stop/start movement)
     """
     total  = sum(len(v) for v in node_vms.values())
-    n      = len(node_vms)
+    n      = len(target_nodes)
     n_high = total - n * target_min          # how many nodes get target_max
 
-    ranked = sorted(node_vms, key=lambda nd: abs(len(node_vms[nd]) - target_max))
-    targets, assigned = {}, 0
+    ranked = sorted(target_nodes, key=lambda nd: -len(node_vms.get(nd, [])))
+    targets = {nd: 0 for nd in node_vms}
+    assigned = 0
     for nd in ranked:
         if assigned < n_high:
             targets[nd] = target_max
@@ -96,7 +151,7 @@ def assign_targets(node_vms, target_min, target_max):
     return targets
 
 
-def compute_moves(node_vms, targets):
+def compute_moves(node_vms, target_nodes, targets):
     """
     Return list of (src_node, dst_node, namespace) tuples.
     Donors: most-loaded nodes first.
@@ -108,7 +163,7 @@ def compute_moves(node_vms, targets):
         donors.extend((nd, ns) for ns in excess)
 
     receivers = []
-    for nd in sorted(node_vms, key=lambda x: len(node_vms[x])):
+    for nd in sorted(target_nodes, key=lambda x: len(node_vms[x])):
         for _ in range(targets[nd] - len(node_vms[nd])):
             receivers.append(nd)
 
@@ -152,36 +207,51 @@ def main():
                     help="Print commands without executing them")
     ap.add_argument("--vm-name", default=VM_NAME,
                     help=f"VM name to rebalance (default: {VM_NAME})")
-    ap.add_argument("--target-min", type=int, default=TARGET_MIN,
-                    help=f"Minimum VMs per node (default: {TARGET_MIN})")
-    ap.add_argument("--target-max", type=int, default=TARGET_MAX,
-                    help=f"Maximum VMs per node (default: {TARGET_MAX})")
+    ap.add_argument("--target-min", type=int, default=None,
+                    help="Minimum VMs per target node (default: auto)")
+    ap.add_argument("--target-max", type=int, default=None,
+                    help="Maximum VMs per target node (default: auto)")
+    ap.add_argument("--include-master-nodes", action="store_true",
+                    help="Include master/control-plane nodes as rebalance targets")
     args = ap.parse_args()
 
-    if args.target_min > args.target_max:
-        ap.error("--target-min cannot be greater than --target-max")
+    print("Fetching target node list from cluster...")
+    target_nodes = fetch_nodes(args.include_master_nodes)
+    print(f"  {len(target_nodes)} target nodes found "
+          f"({'workers + masters' if args.include_master_nodes else 'workers only'})")
 
-    print("Fetching node list from cluster...")
-    all_nodes = fetch_nodes()
-    print(f"  {len(all_nodes)} nodes found")
+    all_nodes = fetch_all_nodes()
 
     print(f"Fetching VMI list for '{args.vm_name}'...")
     node_vms  = fetch_vmi(all_nodes, args.vm_name)
     total_vms = sum(len(v) for v in node_vms.values())
     print(f"  {total_vms} VMIs found\n")
 
-    targets = assign_targets(node_vms, args.target_min, args.target_max)
-    moves   = compute_moves(node_vms, targets)
+    try:
+        target_min, target_max = calculate_target_range(
+            total_vms,
+            len(target_nodes),
+            args.target_min,
+            args.target_max,
+        )
+    except ValueError as exc:
+        ap.error(str(exc))
+
+    print(f"Target range: {target_min}-{target_max} VMIs per target node\n")
+
+    targets = assign_targets(node_vms, target_nodes, target_min, target_max)
+    moves   = compute_moves(node_vms, target_nodes, targets)
 
     # ---- Summary table ---------------------------------------------------- #
     print(f"\n{'NODE':<22} {'NOW':>4}  {'TARGET':>6}  {'DELTA':>5}")
     print("-" * 48)
     for nd in sorted(node_vms):
         cur, tgt = len(node_vms[nd]), targets[nd]
-        marker = "  ← move" if cur != tgt else ""
-        print(f"  {nd:<20} {cur:>4}  {tgt:>6}  {tgt-cur:>+5}{marker}")
+        scope = "target" if nd in target_nodes else "source-only"
+        marker = "  <- move" if cur != tgt else ""
+        print(f"  {nd:<20} {cur:>4}  {tgt:>6}  {tgt-cur:>+5}  {scope:<11}{marker}")
     total = sum(len(v) for v in node_vms.values())
-    print(f"\n  Total VMs : {total}   Nodes : {len(node_vms)}   Moves : {len(moves)}\n")
+    print(f"\n  Total VMs : {total}   Target nodes : {len(target_nodes)}   Moves : {len(moves)}\n")
 
     if not moves:
         print("Cluster is already balanced. Nothing to do.")
@@ -220,4 +290,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

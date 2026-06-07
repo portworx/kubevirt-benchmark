@@ -20,7 +20,7 @@ Usage:
     # Step-by-step workflow
     python3 measure-fio-performance.py --action deploy --start 1 --end 10 --storage-class px-csi
     python3 measure-fio-performance.py --action status --start 1 --end 10
-    python3 measure-fio-performance.py --action gather-results --start 1 --end 10 --storage-version px-3.2.0
+    python3 measure-fio-performance.py --action gather-results --start 1 --end 10 --storage-driver portworx-3.6
     python3 measure-fio-performance.py --action cleanup --start 1 --end 10
 
 Author: KubeVirt Benchmark Suite Contributors
@@ -79,7 +79,7 @@ Examples:
   # Step-by-step workflow
   %(prog)s --action deploy --start 1 --end 10 --storage-class px-csi
   %(prog)s --action status --start 1 --end 10
-  %(prog)s --action gather-results --start 1 --end 10 --storage-version px-3.2.0
+  %(prog)s --action gather-results --start 1 --end 10 --storage-driver portworx-3.6
   %(prog)s --action cleanup --start 1 --end 10
 
   # Custom FIO parameters (for deploy or run-all)
@@ -115,8 +115,8 @@ Examples:
 
     # Output
     parser.add_argument('--results-dir', type=str, default='results', help='Base results directory')
-    parser.add_argument('--storage-version', type=str, default='Not-Specified',
-                        help='Storage version for results folder (default: Not-Specified)')
+    parser.add_argument('--storage-driver', type=str, default='Not-Specified',
+                        help='Storage driver for results folder (default: Not-Specified)')
     parser.add_argument('--disks-per-vm', type=str, default='auto',
                         help='Disks per VM for results folder name (default: auto-detect from first VM, fallback: 1-disk)')
     parser.add_argument('--save-results', action='store_true', help='Save results to JSON/CSV')
@@ -451,16 +451,21 @@ def print_results_table(summary: Dict):
 
 def get_output_dir(args, namespaces, logger) -> str:
     """Determine and create output directory."""
+    if getattr(args, '_output_dir', None):
+        return args._output_dir
+
     disks_per_vm = args.disks_per_vm
     if disks_per_vm == "auto":
         first_ns = namespaces[0]
         disk_count = get_vm_disk_count(args.vm_name, first_ns, logger)
         if disk_count > 0:
             disks_per_vm = f"{disk_count}-disk"
-            logger.info(f"Auto-detected {disk_count} disks from {first_ns}/{args.vm_name} spec")
+            if logger:
+                logger.info(f"Auto-detected {disk_count} disks from {first_ns}/{args.vm_name} spec")
         else:
             disks_per_vm = "1-disk"
-            logger.warning(f"Could not detect disks from {first_ns}/{args.vm_name}, using default: 1-disk")
+            if logger:
+                logger.warning(f"Could not detect disks from {first_ns}/{args.vm_name}, using default: 1-disk")
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     num_vms = len(namespaces)
@@ -468,11 +473,12 @@ def get_output_dir(args, namespaces, logger) -> str:
 
     output_dir = os.path.join(
         args.results_dir,
-        args.storage_version,
+        args.storage_driver,
         disks_per_vm,
         run_name
     )
     os.makedirs(output_dir, exist_ok=True)
+    args._output_dir = output_dir
     return output_dir
 
 
@@ -793,9 +799,13 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
 
 def main():
     args = parse_args()
-    logger = setup_logging(args.log_file, args.log_level)
-
     namespaces = [f"{args.namespace_prefix}-{i}" for i in range(args.start, args.end + 1)]
+
+    if args.save_results and args.action in ['gather-results', 'run-all'] and not args.log_file:
+        output_dir = get_output_dir(args, namespaces, logger=None)
+        args.log_file = os.path.join(output_dir, "fio-benchmark.log")
+
+    logger = setup_logging(args.log_file, args.log_level)
 
     fio_config = {
         'runtime': args.fio_runtime,
@@ -830,4 +840,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

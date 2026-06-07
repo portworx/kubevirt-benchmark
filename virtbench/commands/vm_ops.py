@@ -9,7 +9,6 @@ the unified ``virtbench`` CLI:
 
 Operations:
   drain-nodes        Drain Kubernetes nodes and measure drain time
-  hotplug-disks      Hotplug DataVolumes onto KubeVirt VMs
   rebalance-vms      Rebalance VMs evenly across nodes
   vm-snapshot        Create VirtualMachineSnapshots in batches
   run-blkdiscard     Run blkdiscard on data disks inside VMs
@@ -29,7 +28,6 @@ console = Console()
 # Map subcommand -> script filename in <repo>/vm-ops/
 _SCRIPTS = {
     'drain-nodes': 'drain-nodes.py',
-    'hotplug-disks': 'hotplug-disks.py',
     'rebalance-vms': 'rebalance-vms.py',
     'vm-snapshot': 'snapshot-vms.py',
     'run-blkdiscard': 'run-blkdiscard.py',
@@ -48,7 +46,7 @@ def _run_script(ctx, op_name: str, python_args: dict) -> None:
     # Honour the global --log-file when the subcommand didn't set one and the
     # underlying script accepts --log-file (rebalance-vms and power-toggle-vms
     # don't expose one).
-    _supports_log_file = {'drain-nodes', 'hotplug-disks', 'vm-snapshot', 'run-blkdiscard'}
+    _supports_log_file = {'drain-nodes', 'vm-snapshot', 'run-blkdiscard'}
     if op_name in _supports_log_file and 'log-file' not in python_args:
         if ctx.obj.log_file:
             python_args['log-file'] = ctx.obj.log_file
@@ -78,7 +76,6 @@ def vm_ops():
     \b
     Available operations:
       drain-nodes        Drain Kubernetes nodes and measure drain time
-      hotplug-disks      Hotplug DataVolumes onto KubeVirt VMs
       rebalance-vms      Rebalance VMs evenly across nodes
       vm-snapshot        Create VirtualMachineSnapshots in batches
       run-blkdiscard     Run blkdiscard on data disks inside VMs
@@ -87,7 +84,6 @@ def vm_ops():
     \b
     Examples:
       virtbench vm-ops drain-nodes --nodes worker-1 worker-2 --parallel
-      virtbench vm-ops hotplug-disks -s 1 -e 10 --storage-class px-raw-sc
       virtbench vm-ops rebalance-vms --vm-name rhel-elbencho-1 --dry-run
       virtbench vm-ops vm-snapshot --namespace-prefix migration --start 1 --end 50 --vm-name rhel-9-vm
       virtbench vm-ops run-blkdiscard --namespace-prefix rhel-eb-filler --start 1 --end 10 --vm-name rhel-elbencho-1
@@ -135,51 +131,12 @@ def drain_nodes(ctx, **kwargs):
     _run_script(ctx, 'drain-nodes', args)
 
 
-@vm_ops.command('hotplug-disks', context_settings={'help_option_names': ['-h', '--help']})
-@click.option('-s', '--start', type=int, default=None, help='Start namespace index')
-@click.option('-e', '--end', type=int, default=None, help='End namespace index')
-@click.option('--vm-name', default=None, help='VM name in each namespace (default: rhel-9-vm)')
-@click.option('--namespace-prefix', default=None, help='Namespace prefix (default: datasource-clone)')
-@click.option('--node', default=None, help='Node name (Mode 2)')
-@click.option('--num-vms', type=int, default=None, help='Number of VMs to hotplug to (Mode 2)')
-@click.option('--disk-count', type=int, default=None, help='Disks to hotplug per VM (default: 1)')
-@click.option('--disk-size', default=None, help='Size of each disk (default: 10Gi)')
-@click.option('--storage-class', required=True, help='Storage class for the DataVolumes')
-@click.option('--volume-mode', type=click.Choice(['Block', 'Filesystem']), default=None)
-@click.option('--persist/--no-persist', default=None,
-              help='Persist hotplug volumes to VM spec (default: True)')
-@click.option('-c', '--concurrency', type=int, default=None, help='Max parallel operations')
-@click.option('--dry-run', is_flag=True, help='Show what would be done without making changes')
-@click.option('--start-io', is_flag=True, help='Start elbencho IO on hotplugged disks')
-@click.option('--ssh-pod', default=None, help='SSH pod name (default: ssh-test-pod)')
-@click.option('--ssh-pod-ns', default=None, help='SSH pod namespace (default: default)')
-@click.option('--vm-user', default=None, help='VM SSH user (default: root)')
-@click.option('--vm-password', default=None, help='VM SSH password (default: Password1)')
-@click.option('--log-file', type=click.Path(), default=None, help='Path to log file')
-@click.pass_context
-def hotplug_disks(ctx, **kwargs):
-    """Hotplug Portworx DataVolumes to KubeVirt VMs using virtctl."""
-    print_banner("VM-Ops: Hotplug Disks")
-    args = {'storage-class': kwargs['storage_class'], 'log-level': ctx.obj.log_level.upper()}
-    for k in ('start', 'end', 'vm_name', 'namespace_prefix', 'node', 'num_vms',
-             'disk_count', 'disk_size', 'volume_mode', 'concurrency',
-             'ssh_pod', 'ssh_pod_ns', 'vm_user', 'vm_password'):
-        if kwargs[k] is not None:
-            args[k.replace('_', '-')] = kwargs[k]
-    if kwargs['persist'] is True:
-        args['persist'] = True
-    for flag in ('dry_run', 'start_io'):
-        if kwargs[flag]:
-            args[flag.replace('_', '-')] = True
-    if kwargs['log_file']:
-        args['log-file'] = kwargs['log_file']
-    _run_script(ctx, 'hotplug-disks', args)
-
-
 @vm_ops.command('rebalance-vms', context_settings={'help_option_names': ['-h', '--help']})
 @click.option('--vm-name', default=None, help='VM name to rebalance (default: rhel-elbencho-1)')
-@click.option('--target-min', type=int, default=None, help='Minimum VMs per node (default: 16)')
-@click.option('--target-max', type=int, default=None, help='Maximum VMs per node (default: 17)')
+@click.option('--target-min', type=int, default=None, help='Minimum VMs per target node (default: auto)')
+@click.option('--target-max', type=int, default=None, help='Maximum VMs per target node (default: auto)')
+@click.option('--include-master-nodes', is_flag=True,
+              help='Include master/control-plane nodes as rebalance targets')
 @click.option('--dry-run', is_flag=True, help='Print commands without executing them')
 @click.pass_context
 def rebalance_vms(ctx, **kwargs):
@@ -189,6 +146,8 @@ def rebalance_vms(ctx, **kwargs):
     for k in ('vm_name', 'target_min', 'target_max'):
         if kwargs[k] is not None:
             args[k.replace('_', '-')] = kwargs[k]
+    if kwargs['include_master_nodes']:
+        args['include-master-nodes'] = True
     if kwargs['dry_run']:
         args['dry-run'] = True
     _run_script(ctx, 'rebalance-vms', args)

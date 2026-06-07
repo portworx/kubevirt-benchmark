@@ -31,17 +31,6 @@ virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 5 --v
 virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 2 --max-iterations 5
 ```
 
-### Using Python Script
-
-```bash
-cd chaos-benchmark
-
-# Run chaos test with mandatory concurrency
-python3 measure-chaos.py --storage-class YOUR-STORAGE-CLASS --concurrency 2
-
-# Run with custom VM count
-python3 measure-chaos.py --storage-class YOUR-STORAGE-CLASS --concurrency 5 --vms 10
-```
 
 ## Full Example with All Options
 
@@ -90,12 +79,12 @@ virtbench chaos-benchmark \
   --concurrency 2 \
   --vms 5 \
   --save-results \
-  --storage-version 3.2.0
+  --storage-driver portworx-3.6
 ```
 
 Results will be saved to:
 ```
-results/{storage-version}/{num-disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
+results/{storage-driver}/{num-disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
 ```
 
 ## Cleanup
@@ -107,12 +96,6 @@ results/{storage-version}/{num-disks}-disk/{timestamp}_chaos_benchmark_{total_vm
 virtbench chaos-benchmark --cleanup-only --concurrency 1
 ```
 
-### Using Python Script
-
-```bash
-cd chaos-benchmark
-python3 measure-chaos.py --cleanup-only --concurrency 1
-```
 
 ## Troubleshooting
 

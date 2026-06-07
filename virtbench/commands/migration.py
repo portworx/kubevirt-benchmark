@@ -14,6 +14,17 @@ from virtbench.common import print_banner, build_python_command, generate_log_fi
 console = Console()
 
 
+def _normalize_source_nodes(values):
+    """Accept repeated flags and comma-separated node lists."""
+    nodes = []
+    for value in values or ():
+        for node in str(value).split(','):
+            node = node.strip()
+            if node:
+                nodes.append(node)
+    return nodes
+
+
 @click.command('migration')
 @click.option('--start', '-s', default=1, type=int, help='Start index for test namespaces')
 @click.option('--end', '-e', default=10, type=int, help='End index for test namespaces')
@@ -26,14 +37,20 @@ console = Console()
 @click.option('--source-node', help='Source node for VM creation and migration')
 @click.option('--source-nodes', multiple=True,
               help='Multi-node evacuation: list of source nodes whose VMs will all be migrated '
-                   'in parallel. Pass --source-nodes multiple times (one node per flag) or use '
-                   '--source-nodes all to target every worker. VMs are discovered directly from '
-                   'each node (no --start/--end range required) and submitted in an interleaved '
-                   'order so load is spread across source nodes from the start.')
+                   'in parallel. Pass a comma-separated list, repeat the flag, or use '
+                   '--source-nodes all to target every worker. VMs are discovered directly '
+                   'from each node (no --start/--end range required) and submitted in an '
+                   'interleaved order so load is spread across source nodes from the start.')
 @click.option('--target-node', help='Target node name to migrate VMs to')
 @click.option('--create-vms', is_flag=True, help='Create VMs on source node before migration (requires --storage-class)')
 @click.option('--parallel', is_flag=True, help='Migrate all VMs in parallel')
 @click.option('--evacuate', is_flag=True, help='Evacuate all VMs from source node')
+@click.option('--auto-select-busiest', is_flag=True,
+              help='Auto-select the node with the most matching VMs for evacuation')
+@click.option('--round-robin', is_flag=True,
+              help='Migrate VMs to randomly selected different worker nodes')
+@click.option('--interleaved-scheduling', is_flag=True,
+              help='Interleave parallel migration scheduling across detected nodes')
 @click.option('--concurrency', '-c', default=50, type=int, help='Max parallel threads')
 @click.option('--poll-interval', default=1, type=int, help='Seconds between status checks')
 @click.option('--migration-timeout', default=600, type=int, help='Timeout for migration in seconds')
@@ -50,7 +67,7 @@ console = Console()
 @click.option('--yes', '-y', is_flag=True, help='Skip confirmation prompts')
 @click.option('--save-results', is_flag=True, help='Save detailed results to results folder')
 @click.option('--results-folder', default='../results', help='Base directory to store test results')
-@click.option('--storage-version', help='Storage version to include in results path (optional)')
+@click.option('--storage-driver', help='Storage driver label for results path (for example: portworx-3.6, ceph)')
 @click.option('--log-file', type=click.Path(), help='Log file path (auto-generated if not specified)')
 @click.pass_context
 def migration(ctx, **kwargs):
@@ -83,8 +100,8 @@ def migration(ctx, **kwargs):
 
       # Multi-node evacuation: discover VMs on multiple nodes and migrate
       # them in parallel, interleaved across source nodes
-      virtbench migration --source-nodes worker-1 --source-nodes worker-2 \\
-        --source-nodes worker-3 --concurrency 20 --save-results
+      virtbench migration --source-nodes worker-1,worker-2,worker-3 \\
+        --concurrency 20 --save-results
 
       # Evacuate every worker node in the cluster
       virtbench migration --source-nodes all --concurrency 20 --save-results
@@ -153,6 +170,12 @@ def migration(ctx, **kwargs):
         python_args['parallel'] = True
     if kwargs['evacuate']:
         python_args['evacuate'] = True
+    if kwargs['auto_select_busiest']:
+        python_args['auto-select-busiest'] = True
+    if kwargs['round_robin']:
+        python_args['round-robin'] = True
+    if kwargs['interleaved_scheduling']:
+        python_args['interleaved-scheduling'] = True
     if kwargs['cleanup']:
         python_args['cleanup'] = True
     if kwargs['yes']:
@@ -165,21 +188,23 @@ def migration(ctx, **kwargs):
     # Add optional args
     if kwargs.get('source_node'):
         python_args['source-node'] = kwargs['source_node']
-    if kwargs.get('source_nodes'):
-        # Click multiple=True returns a tuple; build_python_command emits it
-        # as "--source-nodes n1 n2 n3" matching the script's argparse nargs='+'.
-        python_args['source-nodes'] = list(kwargs['source_nodes'])
+    source_nodes = _normalize_source_nodes(kwargs.get('source_nodes'))
+    if source_nodes:
+        # build_python_command emits this as "--source-nodes n1 n2 n3",
+        # matching the script's argparse nargs='+'.
+        python_args['source-nodes'] = source_nodes
     if kwargs.get('target_node'):
         python_args['target-node'] = kwargs['target_node']
-    if kwargs.get('storage_version'):
-        python_args['storage-version'] = kwargs['storage_version']
+    if kwargs.get('storage_driver'):
+        python_args['storage-driver'] = kwargs['storage_driver']
     
-    # Add log-file (prefer subcommand option, then global context, then auto-generate)
+    # Add log-file only when explicitly requested. With --save-results, the
+    # script creates the run directory and writes migration.log next to JSON/CSV.
     if kwargs.get('log_file'):
         python_args['log-file'] = kwargs['log_file']
     elif ctx.obj.log_file:
         python_args['log-file'] = ctx.obj.log_file
-    else:
+    elif not kwargs['save_results']:
         python_args['log-file'] = generate_log_filename('migration')
     
     # Build and run command
@@ -197,4 +222,3 @@ def migration(ctx, **kwargs):
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
-

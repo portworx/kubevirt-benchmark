@@ -39,13 +39,6 @@ virtbench vm-ops drain-nodes \
   --grace-period 60
 ```
 
-### Using Python Script
-
-```bash
-cd vm-ops
-
-python3 drain-nodes.py --nodes worker-1 worker-2 --parallel
-```
 
 ## Full Example with All Options
 

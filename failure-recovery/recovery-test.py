@@ -663,8 +663,8 @@ Examples:
                         help='Save detailed results to a results folder')
     parser.add_argument('--results-folder', default='../results',
                         help='Base directory for saved results (default: ../results)')
-    parser.add_argument('--storage-version', default=None,
-                        help='Storage version label included in results path (optional)')
+    parser.add_argument('--storage-driver', default=None,
+                        help='Storage driver label included in results path (optional)')
 
     parser.add_argument('--log-file', help='Optional log file path')
     parser.add_argument('--log-level', default='INFO',
@@ -688,8 +688,8 @@ def save_test_results(args: argparse.Namespace, results: List[Dict],
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
     suffix = f"{args.namespace_prefix}_{args.node}"
 
-    if args.storage_version:
-        out_dir = os.path.join(args.results_folder, args.storage_version,
+    if args.storage_driver:
+        out_dir = os.path.join(args.results_folder, args.storage_driver,
                                'failure-recovery', f"{timestamp}_{suffix}")
     else:
         out_dir = os.path.join(args.results_folder, 'failure-recovery',

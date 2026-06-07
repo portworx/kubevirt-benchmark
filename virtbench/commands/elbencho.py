@@ -46,11 +46,11 @@ console = Console()
 # Results parameters
 @click.option('--save-results', is_flag=True, help='Save results to JSON/CSV')
 @click.option('--results-dir', default='./results', help='Base results directory')
-@click.option('--storage-version', default='Not-Specified', help='Storage version for results folder')
+@click.option('--storage-driver', default='Not-Specified', help='Storage driver label for results folder')
 @click.option('--disks-per-vm', default='auto', help='Disks per VM for results folder (auto-detect)')
 @click.option('--run-name', default=None, help='Custom run name')
 @click.option('--output-dir', default=None,
-              help='DEPRECATED: full output directory path (overrides results-dir/storage-version/disks-per-vm)')
+              help='DEPRECATED: full output directory path (overrides results-dir/storage-driver/disks-per-vm)')
 # SSH parameters
 @click.option('--ssh-pod', default='ssh-test-pod', help='SSH pod name')
 @click.option('--ssh-pod-ns', default='default', help='SSH pod namespace')
@@ -107,9 +107,9 @@ def elbencho(ctx, **kwargs):
           -a change-workload --rwmixpct 70 --block-size 32K
 
     \b
-      # Gather results and save with storage version label
+      # Gather results and save with storage driver label
       virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \\
-          -a gather-results --save-results --storage-version px-3.2.0
+          -a gather-results --save-results --storage-driver portworx-3.6
 
     \b
       # Stop all elbencho processes
@@ -180,7 +180,7 @@ def elbencho(ctx, **kwargs):
     if kwargs['save_results']:
         cmd.append('--save-results')
     cmd.extend(['--results-dir', kwargs['results_dir']])
-    cmd.extend(['--storage-version', kwargs['storage_version']])
+    cmd.extend(['--storage-driver', kwargs['storage_driver']])
     cmd.extend(['--disks-per-vm', kwargs['disks_per_vm']])
     if kwargs['run_name']:
         cmd.extend(['--run-name', kwargs['run_name']])
@@ -211,4 +211,3 @@ def elbencho(ctx, **kwargs):
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
-

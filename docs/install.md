@@ -98,7 +98,7 @@ virtbench --version
 You should see output similar to:
 
 ```
-virtbench version 1.0.0
+virtbench version 2.0.0
 ```
 
 ### 7. Enable Shell Completion (Optional)

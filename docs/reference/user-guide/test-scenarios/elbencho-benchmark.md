@@ -31,7 +31,7 @@ virtbench elbencho \
   --vm-name rhel-elbencho-1 --action run-all \
   --vm-template examples/vm-templates/YOUR-ELBENCHO-VM.yaml \
   --iops 1000 --block-size 4K --duration 300 \
-  --save-results --storage-version px-3.2.0
+  --save-results --storage-driver portworx-3.6
 
 # RWMIX mode: 70% read at max throughput for 10 minutes
 virtbench elbencho \
@@ -40,19 +40,6 @@ virtbench elbencho \
   --vm-template examples/vm-templates/YOUR-ELBENCHO-VM.yaml \
   --rwmixpct 70 --block-size 32K --iodepth 2 --threads 12 \
   --duration 600 --save-results
-```
-
-### Python Script
-
-```bash
-cd io-benchmark/elbencho
-
-python3 measure-elbencho-performance.py \
-  --namespace-prefix perf-test --start 1 --end 10 \
-  --vm-name rhel-elbencho-1 --action run-all \
-  --vm-template ../../examples/vm-templates/YOUR-ELBENCHO-VM.yaml \
-  --iops 1000 --block-size 4K --duration 300 \
-  --save-results --storage-version px-3.2.0
 ```
 
 ## Step-by-Step Workflow
@@ -75,7 +62,7 @@ virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
 
 # 5. Stop IO and gather results
 virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
-  -a gather-results --save-results --storage-version px-3.2.0
+  -a gather-results --save-results --storage-driver portworx-3.6
 
 # 6. Cleanup VMs and namespaces
 virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 -a cleanup
@@ -134,7 +121,7 @@ virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 -a cleanup
 |--------|---------|-------------|
 | `--save-results` | `false` | Save aggregated JSON summary |
 | `--results-dir` | `./results` | Base directory for results |
-| `--storage-version` | `Not-Specified` | Storage version label (folder component) |
+| `--storage-driver` | `Not-Specified` | Storage driver label (folder component) |
 | `--disks-per-vm` | `auto` | Disks-per-VM label (folder component); auto-detected from VM spec |
 | `--run-name` | (auto) | Override run folder name (default: `{timestamp}_elbencho_{N}vms`) |
 | `--output-dir` | (none) | **Deprecated**: full output path that bypasses the structured layout |
@@ -154,7 +141,7 @@ virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 -a cleanup
 |--------|---------|-------------|
 | `--concurrency`, `-c` | `20` | Max concurrent operations |
 | `--log-level` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `--log-file` | (auto) | Log file path (default: `logs/elbencho_<action>_<timestamp>.log`) |
+| `--log-file` | (auto) | Log file path. With `--save-results`, defaults to `elbencho_<action>_<timestamp>.log` inside the run result folder. |
 
 
 ## Workload Mode Examples
@@ -191,7 +178,7 @@ virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
 ### Output Structure
 
 ```
-{results-dir}/{storage-version}/{disks-per-vm}/{run-name}/
+{results-dir}/{storage-driver}/{disks-per-vm}/{run-name}/
 ├── aggregated_results.json        # Summary across all VMs
 ├── elbencho_gather.log            # Execution log
 └── perf-test-1/                   # Per-VM raw output
@@ -228,11 +215,7 @@ Default `run-name`: `{timestamp}_elbencho_{N}vms`.
 
 ### View in Dashboard
 
-```bash
-cd dashboard
-python3 generate_dashboard.py --base-dir ../results
-open output/dashboard.html
-```
+Generate the dashboard from the saved results directory after the run.
 
 ## Troubleshooting
 

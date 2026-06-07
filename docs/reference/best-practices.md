@@ -35,16 +35,16 @@ virtbench datasource-clone \
   --end 50 \
   --storage-class YOUR-STORAGE-CLASS \
   --save-results \
-  --storage-version 3.2.0
+  --storage-driver portworx-3.6
 ```
 
 ### 4. Use Meaningful Test Names
 
-Organize results with storage version and configuration details:
+Organize results with a storage driver label:
 
 ```bash
---storage-version "portworx-3.2.0"
---storage-version "ceph-rbd-17.2"
+--storage-driver "portworx-3.6"
+--storage-driver "ceph"
 ```
 
 ### 5. Monitor Cluster Resources
@@ -254,10 +254,10 @@ virtbench datasource-clone \
 
 ### 1. Organize Results by Version
 
-Use `--storage-version` to organize results:
+Use `--storage-driver` to organize results:
 
 ```bash
---storage-version "portworx-3.2.0"
+--storage-driver "portworx-3.6"
 ```
 
 ### 2. Generate Dashboards Regularly
@@ -265,7 +265,7 @@ Use `--storage-version` to organize results:
 Create dashboards after each test run:
 
 ```bash
-python3 dashboard/generate_dashboard.py --days 30
+Generate the results dashboard after each run and archive the produced HTML.
 ```
 
 ### 3. Archive Important Results
@@ -300,4 +300,3 @@ python3 dashboard/generate_dashboard.py --days 30
 - [Troubleshooting](troubleshooting.md) - Common issues and solutions
 - [Output and Results](user-guide/output-and-results.md) - Understanding test output
 - [Cleanup Guide](user-guide/cleanup-guide.md) - Cleanup procedures
-

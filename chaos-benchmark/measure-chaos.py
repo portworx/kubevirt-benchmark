@@ -134,8 +134,8 @@ Examples:
                         help='Save results to JSON/CSV files in results directory')
     parser.add_argument('--results-dir', type=str, default='results',
                         help='Directory to save results (default: results)')
-    parser.add_argument('--storage-version', type=str, default=None,
-                        help='Storage version for results folder hierarchy (e.g., 3.2.0)')
+    parser.add_argument('--storage-driver', type=str, default=None,
+                        help='Storage driver for results folder hierarchy (e.g., portworx-3.6)')
 
     # Logging
     parser.add_argument('--log-file', type=str,
@@ -826,7 +826,7 @@ def main():
 
     # Save results if requested
     if args.save_results:
-        save_capacity_results(results, args.results_dir, args.storage_version, logger)
+        save_capacity_results(results, args.results_dir, args.storage_driver, logger)
 
     # Cleanup if requested
     if args.cleanup:

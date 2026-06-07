@@ -32,7 +32,7 @@ Usage:
     python3 measure-elbencho-performance.py --namespace-prefix perf-test \
         --start 1 --end 10 --action run-all --vm-name rhel-elbencho-1 \
         --vm-template /path/to/vm-template.yaml \
-        --rwmixpct 70 --block-size 32K --duration 600 --storage-version px-3.2.0
+        --rwmixpct 70 --block-size 32K --duration 600 --storage-driver portworx-3.6
 
     # Deploy VMs only (requires --vm-template)
     python3 measure-elbencho-performance.py --namespace-prefix perf-test \
@@ -52,7 +52,7 @@ Usage:
     # Gather results: stop IO on all VMs and collect aggregated metrics
     python3 measure-elbencho-performance.py --namespace-prefix datasource-clone \
         --start 101 --end 110 --action gather-results --vm-name rhel-elbencho-1 \
-        --storage-version px-3.2.0
+        --storage-driver portworx-3.6
 
     # Cleanup VMs and namespaces
     python3 measure-elbencho-performance.py --namespace-prefix perf-test \
@@ -67,7 +67,9 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Optional, Tuple
+
+import yaml
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -77,6 +79,73 @@ from utils.common import (
     get_vmi_ip,
     ssh_exec_command,
 )
+
+
+def detect_disk_count_from_template(vm_template_path: str) -> Optional[int]:
+    """Return non-cloud-init disk count from a VM template, or None on failure."""
+    with open(vm_template_path, 'r') as f:
+        docs = list(yaml.safe_load_all(f))
+
+    vm_spec = next((doc for doc in docs if doc and doc.get('kind') == 'VirtualMachine'), None)
+    if not vm_spec:
+        return None
+
+    volumes = (
+        vm_spec.get('spec', {})
+        .get('template', {})
+        .get('spec', {})
+        .get('volumes', [])
+    )
+    non_cloudinit_volumes = [
+        v for v in volumes
+        if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
+    ]
+    return len(non_cloudinit_volumes)
+
+
+def build_elbencho_output_dir(args, vm_targets: List[Tuple[str, str]],
+                              logger: Optional[logging.Logger] = None) -> str:
+    """Build and cache the canonical elbencho result directory."""
+    if getattr(args, '_output_dir', None):
+        return args._output_dir
+
+    disks_per_vm = args.disks_per_vm
+    if disks_per_vm == "auto":
+        disk_count = None
+        if args.action == "run-all" and args.vm_template:
+            try:
+                disk_count = detect_disk_count_from_template(args.vm_template)
+                if disk_count and logger:
+                    logger.info(f"Auto-detected {disk_count} disks from VM template")
+            except Exception as exc:
+                if logger:
+                    logger.warning(f"Could not detect disks from VM template: {exc}")
+
+        if not disk_count:
+            first_ns, first_vm = vm_targets[0]
+            disk_count = get_vm_disk_count(first_vm, first_ns, logger)
+            if disk_count and logger:
+                logger.info(f"Auto-detected {disk_count} disks from {first_ns}/{first_vm} spec")
+
+        if disk_count and disk_count > 0:
+            disks_per_vm = f"{disk_count}-disk"
+        else:
+            disks_per_vm = "1-disk"
+            if logger:
+                logger.warning("Could not detect disks, using default: 1-disk")
+
+    vm_count = len(vm_targets)
+    if args.run_name:
+        run_name = args.run_name
+    else:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_name = f"{timestamp}_elbencho_{vm_count}vms"
+
+    output_dir = os.path.join(args.results_dir, args.storage_driver, disks_per_vm, run_name)
+    os.makedirs(output_dir, exist_ok=True)
+    args._output_dir = output_dir
+    args._disks_per_vm = disks_per_vm
+    return output_dir
 
 
 def stop_all_elbencho(ip: str, ssh_pod: str, ssh_pod_ns: str,
@@ -431,9 +500,7 @@ def gather_results_from_vm(namespace: str, vm_name: str,
     stop_all_elbencho(ip, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger, log_prefix, wait_for_json=True)
 
     # Create output directory for this VM
-    import os
     vm_output_dir = f"{output_dir}/{namespace}"
-    import os
     os.makedirs(vm_output_dir, exist_ok=True)
 
     # List actual files in results directory for debugging
@@ -720,14 +787,14 @@ def main():
     # gather-results parameters
     parser.add_argument("--results-dir", type=str, default="./results",
                         help="Base results directory (default: ./results)")
-    parser.add_argument("--storage-version", type=str, default="Not-Specified",
-                        help="Storage version for results folder (default: Not-Specified)")
+    parser.add_argument("--storage-driver", type=str, default="Not-Specified",
+                        help="Storage driver for results folder (default: Not-Specified)")
     parser.add_argument("--disks-per-vm", type=str, default="auto",
                         help="Disks per VM for results folder name (default: auto-detect from first VM, fallback: 1-disk)")
     parser.add_argument("--run-name", type=str, default=None,
                         help="Custom run name (default: auto-generated with timestamp and VM count)")
     parser.add_argument("--output-dir", type=str, default=None,
-                        help="DEPRECATED: Use --results-dir instead. Full output directory path (overrides --results-dir/--storage-version/--disks-per-vm)")
+                        help="DEPRECATED: Use --results-dir instead. Full output directory path (overrides --results-dir/--storage-driver/--disks-per-vm)")
 
     parser.add_argument("--ssh-pod", default="ssh-test-pod",
                         help="SSH pod name (default: ssh-test-pod)")
@@ -746,17 +813,16 @@ def main():
 
     args = parser.parse_args()
 
-    # Always log to a file
-    import os
-    from datetime import datetime as dt
-    log_file = args.log_file
-    if not log_file:
-        # Create logs directory
-        os.makedirs("logs", exist_ok=True)
-        timestamp = dt.now().strftime("%Y%m%d_%H%M%S")
-        log_file = f"logs/elbencho_{args.action}_{timestamp}.log"
+    # Build list of namespaces early so saved runs can log into their result directory.
+    namespaces = [f"{args.namespace_prefix}-{i}" for i in range(args.start, args.end + 1)]
+    vm_targets = [(ns, args.vm_name) for ns in namespaces]
 
-    logger = setup_logging(log_file=log_file, log_level=args.log_level)
+    if args.save_results and args.action in ("gather-results", "run-all") and not args.log_file:
+        output_dir = build_elbencho_output_dir(args, vm_targets)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        args.log_file = os.path.join(output_dir, f"elbencho_{args.action}_{timestamp}.log")
+
+    logger = setup_logging(log_file=args.log_file, log_level=args.log_level)
 
     # Validate arguments
     if args.action in ["deploy", "run-all"]:
@@ -785,10 +851,6 @@ def main():
         logger.error("--duration is required for run-all action (cannot be infinite).")
         sys.exit(1)
 
-    # Build list of namespaces
-    namespaces = [f"{args.namespace_prefix}-{i}" for i in range(args.start, args.end + 1)]
-    vm_targets = [(ns, args.vm_name) for ns in namespaces]
-
     logger.info(f"Managing elbencho workload on {len(vm_targets)} VMs")
     logger.info(f"Action: {args.action}")
     if args.action == "change-workload":
@@ -805,37 +867,12 @@ def main():
 
     # Handle gather-results action separately
     if args.action == "gather-results":
-        import os
-
-        # Determine disks-per-vm (auto-detect from first VM spec if needed)
-        disks_per_vm = args.disks_per_vm
-        if disks_per_vm == "auto":
-            # Try to detect from first VM spec
-            first_ns, first_vm = vm_targets[0]
-            disk_count = get_vm_disk_count(first_vm, first_ns, logger)
-            if disk_count > 0:
-                disks_per_vm = f"{disk_count}-disk"
-                logger.info(f"Auto-detected {disk_count} disks from {first_ns}/{first_vm} spec")
-            else:
-                disks_per_vm = "1-disk"
-                logger.warning(f"Could not detect disks from {first_ns}/{first_vm}, using default: 1-disk")
-
-        # Determine output directory
         if args.output_dir:
             # Use legacy --output-dir if provided (for backward compatibility)
-            logger.warning("--output-dir is deprecated. Use --results-dir, --storage-version, --disks-per-vm instead.")
+            logger.warning("--output-dir is deprecated. Use --results-dir, --storage-driver, --disks-per-vm instead.")
             output_dir = args.output_dir
         else:
-            # Build output directory path: results/<storage-version>/<disks-per-vm>/<run-name>/
-            # Run name format: <timestamp>_elbencho_<vm-count>vms
-            vm_count = len(vm_targets)
-            if args.run_name:
-                run_name = args.run_name
-            else:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                run_name = f"{timestamp}_elbencho_{vm_count}vms"
-
-            output_dir = os.path.join(args.results_dir, args.storage_version, disks_per_vm, run_name)
+            output_dir = build_elbencho_output_dir(args, vm_targets, logger)
 
         os.makedirs(output_dir, exist_ok=True)
         logger.info(f"Output directory: {output_dir}")
@@ -945,8 +982,6 @@ def main():
 
     # Handle deploy action - calls datasource-clone script
     if args.action == "deploy":
-        import os
-
         logger.info("=" * 60)
         logger.info("ELBENCHO - DEPLOY VMs")
         logger.info("=" * 60)
@@ -988,8 +1023,8 @@ def main():
         if args.save_results:
             cmd.append('--save-results')
             cmd.extend(['--results-folder', args.results_dir])
-            if args.storage_version != "Not-Specified":
-                cmd.extend(['--storage-version', args.storage_version])
+            if args.storage_driver != "Not-Specified":
+                cmd.extend(['--storage-driver', args.storage_driver])
 
         logger.info(f"Running: {' '.join(cmd[:3])}...")
         logger.debug(f"Full command: {' '.join(cmd)}")
@@ -1011,7 +1046,6 @@ def main():
 
     # Handle cleanup action
     if args.action == "cleanup":
-        import os
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
         from utils.common import cleanup_test_namespaces
 
@@ -1161,27 +1195,7 @@ def main():
         logger.info("")
         logger.info("[4/4] Gathering results...")
 
-        # Determine disks-per-vm (auto-detect from first VM spec if needed)
-        disks_per_vm = args.disks_per_vm
-        if disks_per_vm == "auto":
-            first_ns, first_vm = vm_targets[0]
-            disk_count = get_vm_disk_count(first_vm, first_ns, logger)
-            if disk_count > 0:
-                disks_per_vm = f"{disk_count}-disk"
-                logger.info(f"Auto-detected {disk_count} disks from {first_ns}/{first_vm} spec")
-            else:
-                disks_per_vm = "1-disk"
-                logger.warning(f"Could not detect disks from {first_ns}/{first_vm}, using default: 1-disk")
-
-        # Determine output directory
-        vm_count = len(vm_targets)
-        if args.run_name:
-            run_name = args.run_name
-        else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            run_name = f"{timestamp}_elbencho_{vm_count}vms"
-
-        output_dir = os.path.join(args.results_dir, args.storage_version, disks_per_vm, run_name)
+        output_dir = build_elbencho_output_dir(args, vm_targets, logger)
         os.makedirs(output_dir, exist_ok=True)
         logger.info(f"Output directory: {output_dir}")
 
@@ -1339,4 +1353,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -10,7 +10,7 @@ Tests VM live migration with existing VMs or by creating new VMs across differen
 - **Parallel** — migrate many VMs concurrently between two nodes.
 - **Node evacuation** — drain every VM from a single source node (explicit or auto-selected busiest).
 - **Round-robin** — distribute VMs across all worker nodes for load balancing.
-- **Multi-source-node** — drain VMs from a list of nodes (or every worker via `--source-nodes all`)
+- **Multi-source-node** — drain VMs from a comma-separated list of nodes (or every worker via `--source-nodes all`)
   in parallel, with discovery driven by `kubectl` so no `--start`/`--end` range is required.
   See [Multi-Source-Node Migration](#multi-source-node-migration).
 
@@ -47,40 +47,133 @@ virtbench migration \
   --save-results
 ```
 
-#### Using Python Script
-
-```bash
-cd migration
-
-# Create 10 VMs on source node and migrate them to target node
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 10 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
-  --save-results
-```
-
-!!! warning "Important"
-    When using `--create-vms`, you must either:
-    
-    - Provide `--storage-class YOUR-STORAGE-CLASS` to specify the storage class at runtime, OR
-    - Pre-configure your VM template with the correct storage class before running the test
 
 ### Option 2: Use existing VMs
 
 If VMs already exist (e.g., created by datasource-clone tests), you can migrate them directly:
 
 ```bash
-# Migrate existing VMs (assumes VMs exist in migration-1 through migration-10 namespaces)
+# Migrate existing VMs created by datasource-clone
 virtbench migration \
+  --start 1 --end 3 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
+```
+
+## Recommended Workflow: Creation, Boot Storm, Rebalance, Multi-Source Migration
+
+Use this workflow when you want to validate VM provisioning, boot storm, and
+live migration against the same VM set. The example below creates 10 VMs,
+runs a boot storm against those existing VMs, rebalances the VMIs across
+worker nodes, and then migrates all VMs using multi-source-node migration.
+
+Replace these placeholders before running the commands:
+
+- `KUBECONFIG` — path to the kubeconfig for the target cluster.
+- `VM_TEMPLATE` — path to the VM template YAML.
+- `SECRET_YAML` — path to cloud-init or secret YAML required by the VM.
+- `STORAGE_CLASS` — storage class to validate.
+- `STORAGE_DRIVER` — result grouping label, such as `portworx-3.6` or `ceph`.
+- `WORKER_1,WORKER_2,...` — comma-separated worker nodes currently hosting
+  the VMs before migration.
+
+Set the kubeconfig once before running the workflow:
+
+```bash
+export KUBECONFIG=/path/to/kubeconfig
+```
+
+### 1. Validate the cluster
+
+```bash
+virtbench validate-cluster \
+  --storage-class STORAGE_CLASS \
+  --datasource rhel9 \
+  --datasource-namespace openshift-virtualization-os-images \
+  --min-worker-nodes 4
+```
+
+### 2. Create 10 VMs
+
+```bash
+virtbench datasource-clone \
   --start 1 \
   --end 10 \
-  --namespace-prefix migration \
-  --source-node worker-1 \
-  --save-results
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --vm-template VM_TEMPLATE \
+  --secret-yaml SECRET_YAML \
+  --concurrency 10 \
+  --namespace-batch-size 10 \
+  --ping-timeout 300 \
+  --num-disks 4 \
+  --save-results \
+  --results-folder results \
+  --storage-driver STORAGE_DRIVER
+```
+
+### 3. Run boot storm against the existing VMs
+
+```bash
+virtbench datasource-clone \
+  --start 1 \
+  --end 10 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --vm-template VM_TEMPLATE \
+  --secret-yaml SECRET_YAML \
+  --concurrency 10 \
+  --ping-timeout 300 \
+  --num-disks 4 \
+  --boot-storm \
+  --skip-vm-creation \
+  --skip-namespace-creation \
+  --save-results \
+  --results-folder results \
+  --storage-driver STORAGE_DRIVER
+```
+
+### 4. Rebalance the VMs across worker nodes
+
+```bash
+virtbench vm-ops rebalance-vms \
+  --vm-name rhel-elbencho-1
+```
+
+By default, rebalance uses worker nodes only. For example, 10 VMs across
+4 workers results in a target range of 2-3 VMs per worker. Rebalance moves
+VMs by setting `nodeSelector`, stopping the VM, and starting it again on the
+target worker.
+
+### 5. Run multi-source-node migration
+
+```bash
+virtbench migration \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --source-nodes WORKER_1,WORKER_2,WORKER_3,WORKER_4 \
+  --concurrency 10 \
+  --poll-interval 1 \
+  --migration-timeout 600 \
+  --ping-timeout 300 \
+  --save-results \
+  --results-folder results \
+  --storage-driver STORAGE_DRIVER
+```
+
+The `--source-nodes` value is a comma-separated list. Multi-source migration
+discovers the matching VMIs on those nodes, clears VM/VMI `nodeSelector`
+settings left by rebalance, and then submits migrations in an interleaved
+order across the source nodes. If you want to target every worker that has
+matching VMIs, you can use `--source-nodes all`.
+
+Each saved run writes its log, JSON, and CSV files into one run folder:
+
+```text
+results/{storage-driver}/{num-disks}-disk/{timestamp}_{test-name}/
 ```
 
 ## Migration Scenarios
@@ -92,31 +185,19 @@ Migrate VMs one by one from source to target node.
 #### Using virtbench CLI
 
 ```bash
-# Migrate 10 VMs one by one from worker-1 to worker-2
+# Migrate existing VMs one by one
 virtbench migration \
-  --start 1 \
-  --end 10 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --storage-class YOUR-STORAGE-CLASS \
-  --save-results
+  --start 1 --end 3 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --poll-interval 1 \
+  --migration-timeout 600 \
+  --ping-timeout 300 \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 ```
 
-#### Using Python Script
-
-```bash
-cd migration
-
-# Migrate 10 VMs one by one from worker-1 to worker-2
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 10 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --save-results
-```
 
 ### Parallel Migration
 
@@ -125,72 +206,43 @@ Migrate multiple VMs simultaneously with configurable concurrency.
 #### Using virtbench CLI
 
 ```bash
-# Migrate 50 VMs in parallel with 10 concurrent migrations
+# Migrate existing VMs in parallel with three concurrent migrations
 virtbench migration \
-  --start 1 \
-  --end 50 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --storage-class YOUR-STORAGE-CLASS \
+  --start 1 --end 3 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --parallel \
-  --concurrency 10 \
-  --save-results
+  --concurrency 3 \
+  --poll-interval 1 \
+  --migration-timeout 600 \
+  --ping-timeout 300 \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 ```
 
-#### Using Python Script
-
-```bash
-cd migration
-
-# Migrate 50 VMs in parallel with 10 concurrent migrations
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 50 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --parallel \
-  --concurrency 10 \
-  --save-results
-```
 
 ### Parallel Migration with Advanced Options
 
 #### Using virtbench CLI
 
 ```bash
-# High-scale parallel migration with custom timeout
+# High-scale parallel migration with custom timeout and no ping validation
 virtbench migration \
   --start 1 \
   --end 200 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --parallel \
   --concurrency 50 \
-  --skip-ping \
-  --save-results \
-  --migration-timeout 1000
-```
-
-#### Using Python Script
-
-The `--interleaved-scheduling` flag (distribute parallel migration threads
-across nodes in an interleaved pattern) is only available on the Python
-script:
-
-```bash
-cd migration
-
-# High-scale parallel migration with interleaved scheduling and custom timeout
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 200 \
-  --parallel \
-  --concurrency 50 \
-  --skip-ping \
-  --save-results \
+  --interleaved-scheduling \
   --migration-timeout 1000 \
-  --interleaved-scheduling
+  --skip-ping \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 ```
+
 
 ### Node Evacuation (Specific Node)
 
@@ -203,65 +255,62 @@ Evacuate all VMs from a specific node before maintenance.
 virtbench migration \
   --start 1 \
   --end 100 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --source-node worker-3 \
   --evacuate \
   --concurrency 20 \
-  --save-results
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 ```
 
-#### Using Python Script
-
-```bash
-cd migration
-
-# Evacuate all VMs from worker-3 before maintenance
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 100 \
-  --source-node worker-3 \
-  --evacuate \
-  --concurrency 20 \
-  --save-results
-```
 
 ### Node Evacuation (Auto-Select Busiest)
 
-Automatically find and evacuate the busiest node. The
-`--auto-select-busiest` flag is only available on the Python script.
+Automatically find and evacuate the node currently hosting the most matching
+VMs in the namespace range.
 
-#### Using Python Script
+#### Using virtbench CLI
 
 ```bash
-cd migration
-
-# Automatically find and evacuate the busiest node
-python3 measure-vm-migration-time.py \
+virtbench migration \
   --start 1 \
   --end 100 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --evacuate \
   --auto-select-busiest \
   --concurrency 20 \
-  --save-results
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 ```
+
 
 ### Round-Robin Migration
 
-Distribute VMs across all nodes for load balancing. The `--round-robin`
-flag is only available on the Python script.
+Distribute VMs across worker nodes for load balancing. The command chooses a
+different target worker for each VM and runs migrations concurrently up to
+`--concurrency`.
 
-#### Using Python Script
+#### Using virtbench CLI
 
 ```bash
-cd migration
-
-# Distribute VMs across all nodes for load balancing
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 100 \
+virtbench migration \
+  --start 1 --end 3 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --round-robin \
-  --concurrency 20 \
-  --save-results
+  --concurrency 3 \
+  --poll-interval 1 \
+  --migration-timeout 600 \
+  --ping-timeout 300 \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 ```
+
 
 ### Multi-Source-Node Migration
 
@@ -285,58 +334,36 @@ first batch instead of draining one node at a time.
 ```bash
 # Drain three specific nodes in parallel
 virtbench migration \
-  --source-nodes worker-1 \
-  --source-nodes worker-2 \
-  --source-nodes worker-3 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --source-nodes worker-1,worker-2,worker-3 \
   --concurrency 20 \
-  --save-results
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 
 # Pin every migration to a single target node
 virtbench migration \
-  --source-nodes worker-1 \
-  --source-nodes worker-2 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --source-nodes worker-1,worker-2 \
   --target-node worker-5 \
   --concurrency 15 \
-  --save-results
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 
 # Evacuate every worker node in the cluster
 virtbench migration \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --source-nodes all \
   --concurrency 20 \
-  --save-results
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 ```
 
-#### Using Python Script
-
-```bash
-cd migration
-
-# Drain three specific nodes in parallel
-python3 measure-vm-migration-time.py \
-  --source-nodes worker-1 worker-2 worker-3 \
-  --concurrency 20 \
-  --save-results
-
-# Evacuate every worker node in the cluster
-python3 measure-vm-migration-time.py \
-  --source-nodes all \
-  --concurrency 20 \
-  --save-results
-```
-
-!!! note "Differences vs `--evacuate`"
-    `--evacuate` operates on the namespace range `--start`..`--end` and a single
-    `--source-node`. `--source-nodes` ignores any namespace range, accepts
-    multiple nodes at once, and discovers VMs directly from the cluster, so it
-    keeps working even when VMs no longer match their original namespace
-    numbering.
-
-!!! tip "Target node selection"
-    When `--target-node` is omitted, KubeVirt auto-selects a target for each
-    migration. The script prefers non-source nodes as targets; if every worker
-    is listed as a source (e.g. `--source-nodes all`), all workers become
-    eligible targets and KubeVirt's scheduler avoids migrating a VM back to
-    its current node.
 
 ## What the Test Measures
 
@@ -357,12 +384,6 @@ python3 measure-vm-migration-time.py \
 virtbench migration --start 1 --end 100 --cleanup
 ```
 
-#### Using Python Script
-
-```bash
-cd migration
-python3 measure-vm-migration-time.py --start 1 --end 100 --cleanup
-```
 
 ### Clean up everything if VMs were created by the test
 
@@ -372,12 +393,6 @@ python3 measure-vm-migration-time.py --start 1 --end 100 --cleanup
 virtbench migration --start 1 --end 100 --create-vms --cleanup
 ```
 
-#### Using Python Script
-
-```bash
-cd migration
-python3 measure-vm-migration-time.py --start 1 --end 100 --create-vms --cleanup
-```
 
 ## See Also
 

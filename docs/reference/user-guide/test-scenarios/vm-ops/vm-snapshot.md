@@ -46,16 +46,6 @@ virtbench vm-ops vm-snapshot \
   --concurrency 25
 ```
 
-### Using Python Script
-
-```bash
-cd vm-ops
-
-python3 snapshot-vms.py \
-  --namespace-prefix migration \
-  --start 1 --end 50 \
-  --vm-name rhel-9-vm
-```
 
 ## Full Example with All Options
 

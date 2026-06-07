@@ -34,7 +34,7 @@ console = Console()
 @click.option('--fio-numjobs', default=4, type=int, help='Number of parallel jobs')
 @click.option('--fio-size', default='10G', help='Test file size')
 @click.option('--results-dir', default='results', help='Base directory for results')
-@click.option('--storage-version', default='Not-Specified', help='Storage version for results folder')
+@click.option('--storage-driver', default='Not-Specified', help='Storage driver label for results folder')
 @click.option('--disks-per-vm', default='auto', help='Disks per VM for results folder (auto-detect)')
 @click.option('--save-results', is_flag=True, help='Save results to JSON/CSV files')
 @click.option('--cleanup/--no-cleanup', default=False, help='Delete VMs after test (for run-all)')
@@ -93,7 +93,7 @@ def fio(ctx, **kwargs):
         sys.exit(1)
 
     repo_root = ctx.obj.repo_root
-    script_path = repo_root / 'fio-benchmark' / 'measure-fio-performance.py'
+    script_path = repo_root / 'io-benchmark' / 'fio' / 'measure-fio-performance.py'
 
     if not script_path.exists():
         console.print(f"[red]Error:[/red] Script not found: {script_path}")
@@ -131,7 +131,7 @@ def fio(ctx, **kwargs):
     cmd.extend(['--fio-numjobs', str(kwargs['fio_numjobs'])])
     cmd.extend(['--fio-size', kwargs['fio_size']])
     cmd.extend(['--results-dir', kwargs['results_dir']])
-    cmd.extend(['--storage-version', kwargs['storage_version']])
+    cmd.extend(['--storage-driver', kwargs['storage_driver']])
     cmd.extend(['--disks-per-vm', kwargs['disks_per_vm']])
     cmd.extend(['--log-level', kwargs['log_level']])
 
@@ -165,4 +165,3 @@ def fio(ctx, **kwargs):
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
-

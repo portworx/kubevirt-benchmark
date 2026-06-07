@@ -29,7 +29,7 @@ console = Console()
 @click.option('--yes', '-y', is_flag=True, help='Skip confirmation prompts')
 @click.option('--save-results', is_flag=True, help='Save detailed results to results folder')
 @click.option('--results-folder', default='../results', help='Base directory to store test results')
-@click.option('--storage-version', help='Storage version to include in results path (optional)')
+@click.option('--storage-driver', help='Storage driver label for results path (for example: portworx-3.6, ceph)')
 @click.option('--log-file', type=click.Path(), help='Log file path (auto-generated if not specified)')
 @click.pass_context
 def failure_recovery(ctx, **kwargs):
@@ -99,8 +99,8 @@ def failure_recovery(ctx, **kwargs):
     if kwargs['save_results']:
         python_args['save-results'] = True
 
-    if kwargs.get('storage_version'):
-        python_args['storage-version'] = kwargs['storage_version']
+    if kwargs.get('storage_driver'):
+        python_args['storage-driver'] = kwargs['storage_driver']
     
     # Add log-file (prefer subcommand option, then global context, then auto-generate)
     if kwargs.get('log_file'):
@@ -125,4 +125,3 @@ def failure_recovery(ctx, **kwargs):
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
-

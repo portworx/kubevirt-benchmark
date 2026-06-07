@@ -40,7 +40,8 @@ console = Console()
 @click.option('--cleanup-only', is_flag=True, help='Only cleanup resources from previous runs')
 @click.option('--save-results', is_flag=True, help='Save results to JSON/CSV files in results directory')
 @click.option('--results-dir', default='results', help='Directory to save results (default: results)')
-@click.option('--storage-version', default=None, help='Storage version for results folder hierarchy (e.g., 3.2.0)')
+@click.option('--storage-driver', default=None,
+              help='Storage driver label for results path (for example: portworx-3.6, ceph)')
 @click.option('--log-file', type=click.Path(), help='Log file path (auto-generated if not specified)')
 @click.option('--log-level', default='INFO', type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR']),
               help='Logging level')
@@ -162,8 +163,8 @@ def chaos_benchmark(ctx, **kwargs):
     if kwargs['save_results']:
         python_args['save-results'] = True
         python_args['results-dir'] = kwargs['results_dir']
-        if kwargs.get('storage_version'):
-            python_args['storage-version'] = kwargs['storage_version']
+        if kwargs.get('storage_driver'):
+            python_args['storage-driver'] = kwargs['storage_driver']
 
     # Add log-file
     if kwargs.get('log_file'):
@@ -188,4 +189,3 @@ def chaos_benchmark(ctx, **kwargs):
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
-

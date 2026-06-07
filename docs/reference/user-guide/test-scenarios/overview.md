@@ -65,8 +65,7 @@ file-system level throughput and latency.
 
 ### 9. VM Operations (Day-2)
 Day-2 lifecycle operations for benchmarking and validation: drain nodes,
-hotplug disks, rebalance VMs, snapshot in batches, run `blkdiscard`, and
-power VMs on/off.
+rebalance VMs, snapshot in batches, run `blkdiscard`, and power VMs on/off.
 
 **Use Case**: Exercise VM lifecycle paths individually or as building blocks
 for larger test plans.
@@ -78,4 +77,3 @@ for larger test plans.
 1. [Configure your environment](../configuration.md) - Set up storage classes and templates
 2. [Run your first test](datasource-clone.md) - Start with a simple VM creation test
 3. [View results](../output-and-results.md) - Understand test output and metrics
-

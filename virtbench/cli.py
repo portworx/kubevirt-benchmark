@@ -5,6 +5,9 @@ virtbench - KubeVirt Benchmark Suite CLI
 Main entry point for the virtbench command-line interface.
 """
 import click
+import json
+import os
+import sys
 from pathlib import Path
 
 from virtbench.common import find_repo_root
@@ -74,7 +77,7 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
       failure-recovery     Run failure recovery benchmark
       fio                  Run FIO benchmark across VMs
       elbencho             Manage elbencho workloads on VMs
-      vm-ops               VM operations (drain, hotplug, snapshot, blkdiscard, power)
+      vm-ops               VM operations (drain, rebalance, snapshot, blkdiscard, power)
       validate-cluster     Validate cluster prerequisites
       version              Print version information
 
@@ -107,6 +110,11 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
     ctx.obj.kubeconfig = kubeconfig
     ctx.obj.timeout = timeout
     ctx.obj.uuid = uuid
+
+    if kubeconfig:
+        os.environ['KUBECONFIG'] = kubeconfig
+
+    os.environ['VIRTBENCH_COMMAND_ARGS'] = json.dumps(['virtbench'] + sys.argv[1:])
     
     # Initialize context (find repo root)
     ctx.obj.initialize()
@@ -131,4 +139,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

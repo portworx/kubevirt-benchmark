@@ -9,8 +9,6 @@ For boot-storm scenarios (mass simultaneous VM startup), see the dedicated
 
 ## Basic VM Creation Test
 
-### Using virtbench CLI
-
 ```bash
 # Run performance test using the vm template
 virtbench datasource-clone \
@@ -20,7 +18,7 @@ virtbench datasource-clone \
   --namespace-prefix NS-PREFIX \
   --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
   --save-results \
-  --storage-version STORAGE-VERSION
+  --storage-driver STORAGE-DRIVER
 ```
 
 ```bash
@@ -32,23 +30,7 @@ virtbench datasource-clone \
   --namespace-prefix NS-PREFIX \
   --storage-class YOUR-STORAGE-CLASS \
   --save-results \
-  --storage-version STORAGE-VERSION
-```
-
-### Using Python Script
-
-```bash
-cd datasource-clone
-
-# Run performance test (requires pre-configured template)
-python3 measure-vm-creation-time.py \
-  --start 1 \
-  --end 100 \
-  --vm-name VM-NAME \
-  --namespace-prefix NS-PREFIX \
-  --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
-  --save-results \
-  --storage-version STORAGE-VERSION
+  --storage-driver STORAGE-DRIVER
 ```
 
 ## Advanced Options
@@ -65,7 +47,7 @@ virtbench datasource-clone \
   --storage-class YOUR-STORAGE-CLASS \
   --namespace-batch-size 30 \
   --save-results \
-  --storage-version STORAGE-VERSION
+  --storage-driver STORAGE-DRIVER
 ```
 
 ### Save Results
@@ -79,8 +61,16 @@ virtbench datasource-clone \
   --namespace-prefix NS-PREFIX \
   --storage-class YOUR-STORAGE-CLASS \
   --save-results \
-  --storage-version STORAGE-VERSION
+  --storage-driver STORAGE-DRIVER
 ```
+
+Saved runs are written under:
+
+```text
+results/{storage-driver}/{num-disks}-disk/{timestamp}_{namespace-prefix}_{start}-{end}/
+```
+
+The run log is saved in the same folder as the JSON and CSV result files.
 
 ## Cleanup
 

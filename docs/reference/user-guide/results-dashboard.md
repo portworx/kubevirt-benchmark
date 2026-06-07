@@ -6,7 +6,7 @@ The virtbench suite includes an interactive HTML dashboard generator to visualiz
 
 After running tests with `--save-results`, you can generate a rich, interactive dashboard that provides:
 
-- **Multi-level Organization**: Results organized by Storage Version → Disk Count → VM Size
+- **Multi-level Organization**: Results organized by Storage Driver → Disk Count → VM Size
 - **Interactive Charts**: Plotly-based bar charts showing duration metrics
 - **Detailed Tables**: Sortable and searchable DataTables for all test results
 - **Cluster Information**: Display cluster metadata and configuration
@@ -17,27 +17,16 @@ After running tests with `--save-results`, you can generate a rich, interactive 
 
 ### Basic Usage
 
-```bash
-# Generate dashboard for last 15 days of results
-python3 dashboard/generate_dashboard.py
-```
-
-This will:
+Generate the dashboard from the saved `results/` directory after benchmark
+runs complete. This will:
 1. Scan the `results/` directory for test results
 2. Process all results from the last 15 days
 3. Generate `results_dashboard.html` in the current directory
 
 ### Custom Configuration
 
-```bash
-# Custom time range and configuration
-python3 dashboard/generate_dashboard.py \
-  --days 50 \
-  --base-dir results \
-  --cluster-info dashboard/cluster_info.yaml \
-  --manual-results dashboard/manual_results.yaml \
-  --output-html results_dashboard.html
-```
+Use the dashboard options below to select the results directory, time range,
+cluster information file, manual results file, and output HTML path.
 
 ## Dashboard Options
 
@@ -84,7 +73,7 @@ cluster_name: "Production OCP Cluster"
 ocp_version: "4.14.8"
 kubevirt_version: "4.14.2"
 storage_backend: "Portworx Enterprise"
-storage_version: "3.2.0"
+storage_driver: "portworx-3.6"
 node_count: 6
 worker_nodes:
   - name: "worker-1"
@@ -107,7 +96,7 @@ Include manually collected results in `manual_results.yaml`:
 manual_tests:
   - test_type: "vm_creation"
     date: "2024-01-15"
-    storage_version: "3.1.0"
+    storage_driver: "portworx-3.6"
     disk_count: 10
     vm_count: 100
     avg_time_to_running: 12.5
@@ -116,7 +105,7 @@ manual_tests:
   
   - test_type: "migration"
     date: "2024-01-16"
-    storage_version: "3.1.0"
+    storage_driver: "portworx-3.6"
     vm_count: 50
     avg_migration_duration: 25.4
     success_rate: 100
@@ -139,7 +128,7 @@ High-level statistics across all test types:
 
 ### 3. VM Creation Results
 
-Organized by storage version and disk count:
+Organized by storage driver and disk count:
 - Interactive charts for time to Running and time to Ping
 - Detailed tables with all test runs
 - Filtering and sorting capabilities
@@ -175,7 +164,7 @@ Chaos testing outcomes:
 
 ### Filtering Results
 
-- Filter by storage version
+- Filter by storage driver
 - Filter by disk count
 - Filter by date range
 - Filter by test type
@@ -189,7 +178,7 @@ Chaos testing outcomes:
 ## Best Practices
 
 1. **Regular Generation**: Generate dashboard after each test run to track trends
-2. **Version Tracking**: Use `--storage-version` to organize results by storage backend version
+2. **Driver Tracking**: Use `--storage-driver` to organize DataSource clone and boot-storm results by backend driver, such as `portworx-3.6` or `ceph`
 3. **Cluster Info**: Keep `cluster_info.yaml` updated with current configuration
 4. **Manual Results**: Document baseline tests and special scenarios
 5. **Archive Dashboards**: Save dashboard HTML files for historical reference
@@ -228,4 +217,3 @@ Chaos testing outcomes:
 - [Output and Results](output-and-results.md) - Understanding test output
 - [Configuration Options](configuration.md) - Test configuration reference
 - [User Guide](test-scenarios/overview.md) - Running performance tests
-

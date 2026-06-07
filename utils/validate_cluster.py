@@ -360,11 +360,21 @@ Examples:
         help='Run all validation checks'
     )
     parser.add_argument(
+        '--quick',
+        action='store_true',
+        help='Run only core connectivity, virtualization, permission, worker-node, and storage-class checks'
+    )
+    parser.add_argument(
         '--log-level',
         type=str,
         default='INFO',
         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
         help='Logging level (default: INFO)'
+    )
+    parser.add_argument(
+        '--kubeconfig',
+        type=str,
+        help='Path to kubeconfig file'
     )
     
     return parser.parse_args()
@@ -373,6 +383,9 @@ Examples:
 def main():
     """Main execution function"""
     args = parse_args()
+
+    if args.kubeconfig:
+        os.environ['KUBECONFIG'] = args.kubeconfig
     
     # Setup logging
     logger = setup_logging(log_file=None, log_level=args.log_level)
@@ -384,7 +397,10 @@ def main():
     validator = ClusterValidator(logger)
     
     # Core checks (always run)
-    validator.run_check("kubectl access", validator.check_kubectl_access)
+    if not validator.run_check("kubectl access", validator.check_kubectl_access):
+        validator.print_summary()
+        sys.exit(1)
+
     validator.run_check("OpenShift Virtualization installation", validator.check_kubevirt_installed)
     validator.run_check("User permissions", validator.check_permissions)
     validator.run_check("Worker nodes", validator.check_worker_nodes, args.min_worker_nodes)
@@ -396,7 +412,7 @@ def main():
         logger.warning("No storage class specified. Use --storage-class to validate.")
     
     # Optional checks
-    if args.all or args.datasource:
+    if not args.quick and (args.all or args.datasource):
         validator.run_check(
             f"DataSource '{args.datasource}'",
             validator.check_datasource,
@@ -404,7 +420,7 @@ def main():
             args.datasource_namespace
         )
     
-    if args.all or args.ssh_pod:
+    if not args.quick and (args.all or args.ssh_pod):
         validator.run_check(
             f"SSH test pod '{args.ssh_pod}'",
             validator.check_ssh_pod,
@@ -413,7 +429,8 @@ def main():
         )
     
     # Resource checks
-    validator.run_check("Node resources", validator.check_node_resources)
+    if not args.quick:
+        validator.run_check("Node resources", validator.check_node_resources)
     
     # Print summary
     success = validator.print_summary()
@@ -423,4 +440,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

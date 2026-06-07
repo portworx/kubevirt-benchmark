@@ -15,6 +15,13 @@ console = Console()
 
 @click.command('validate-cluster')
 @click.option('--storage-class', help='Storage class name to validate')
+@click.option('--datasource', default='rhel9', help='DataSource name to validate')
+@click.option('--datasource-namespace', default='openshift-virtualization-os-images',
+              help='DataSource namespace')
+@click.option('--ssh-pod', default='ssh-test-pod', help='SSH test pod name')
+@click.option('--ssh-pod-namespace', default='default', help='SSH test pod namespace')
+@click.option('--min-worker-nodes', default=1, type=int, help='Minimum required worker nodes')
+@click.option('--all', 'run_all', is_flag=True, help='Run all validation checks')
 @click.option('--quick', is_flag=True, help='Run quick validation (skip some checks)')
 @click.pass_context
 def validate_cluster(ctx, **kwargs):
@@ -34,6 +41,10 @@ def validate_cluster(ctx, **kwargs):
 
       # Quick validation
       virtbench validate-cluster --quick
+
+      # Validate a custom DataSource
+      virtbench validate-cluster --storage-class YOUR-STORAGE-CLASS \\
+        --datasource fedora --datasource-namespace openshift-virtualization-os-images
     """
     print_banner("Cluster Validation")
     
@@ -50,6 +61,11 @@ def validate_cluster(ctx, **kwargs):
     # Map CLI args to Python script args
     python_args = {
         'log-level': ctx.obj.log_level.upper(),
+        'datasource': kwargs['datasource'],
+        'datasource-namespace': kwargs['datasource_namespace'],
+        'ssh-pod': kwargs['ssh_pod'],
+        'ssh-pod-namespace': kwargs['ssh_pod_namespace'],
+        'min-worker-nodes': kwargs['min_worker_nodes'],
     }
     
     # Add optional args
@@ -59,6 +75,8 @@ def validate_cluster(ctx, **kwargs):
     # Add boolean flags
     if kwargs['quick']:
         python_args['quick'] = True
+    if kwargs['run_all']:
+        python_args['all'] = True
     
     # Add global flags from context
     if ctx.obj.kubeconfig:
@@ -79,4 +97,3 @@ def validate_cluster(ctx, **kwargs):
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
-

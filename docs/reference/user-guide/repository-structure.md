@@ -35,7 +35,6 @@ kubevirt-benchmark/
 │   └── elbencho/
 ├── vm-ops/                       # VM operations scripts
 │   ├── drain-nodes.py
-│   ├── hotplug-disks.py
 │   ├── power-toggle-vms.py
 │   ├── rebalance-vms.py
 │   ├── run-blkdiscard.py
@@ -71,7 +70,7 @@ kubevirt-benchmark/
 │   └── community/                # Community docs
 │
 ├── results/                      # Test results (auto-generated)
-│   └── {storage-version}/
+│   └── {storage-driver}/
 │       └── {num-disks}-disk/
 │           └── {timestamp}_{test}_{vms}vms/
 │
@@ -123,7 +122,7 @@ The `results/` directory is auto-generated when running tests with `--save-resul
 
 ```
 results/
-├── {storage-version}/          # e.g., "3.2.0" or "default"
+├── {storage-driver}/           # e.g., "portworx-3.6", "ceph"
 │   ├── {num-disks}-disk/       # e.g., "1-disk", "2-disk"
 │   │   ├── {timestamp}_{test}_{vms}vms/
 │   │   │   ├── *_results.json  # Detailed results
@@ -195,4 +194,3 @@ Python dependencies with version constraints:
 - [Installation Guide](../../install.md) - How to install virtbench
 - [Configuration Options](configuration.md) - Configuration reference
 - [Output and Results](output-and-results.md) - Results structure and format
-
