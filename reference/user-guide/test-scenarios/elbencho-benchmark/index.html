@@ -12,13 +12,13 @@
         <meta name="author" content="KubeVirt Benchmark Suite Contributors">
       
       
-        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/fio-benchmark/">
+        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/elbencho-benchmark/">
       
       
-        <link rel="prev" href="../cluster-validation/">
+        <link rel="prev" href="../fio-benchmark/">
       
       
-        <link rel="next" href="../elbencho-benchmark/">
+        <link rel="next" href="../vm-ops/overview/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>FIO Benchmark - virtbench</title>
+        <title>Elbencho Benchmark - virtbench</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fio-storage-io-benchmark" class="md-skip">
+        <a href="#elbencho-storage-io-benchmark" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              FIO Benchmark
+              Elbencho Benchmark
             
           </span>
         </div>
@@ -782,6 +782,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../fio-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FIO Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -801,7 +829,7 @@
   <span class="md-ellipsis">
     
   
-    FIO Benchmark
+    Elbencho Benchmark
   
 
     
@@ -819,7 +847,7 @@
   <span class="md-ellipsis">
     
   
-    FIO Benchmark
+    Elbencho Benchmark
   
 
     
@@ -856,6 +884,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -884,6 +923,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#step-by-step-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step-by-Step Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Actions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration-options" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -896,10 +957,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#action-and-targeting" class="md-nav__link">
+  <a href="#required" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Action and Targeting
+        Required
       
     </span>
   </a>
@@ -907,10 +968,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fio-parameters" class="md-nav__link">
+  <a href="#deploy-run-all" class="md-nav__link">
     <span class="md-ellipsis">
       
-        FIO Parameters
+        Deploy / run-all
       
     </span>
   </a>
@@ -918,10 +979,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#result-collection" class="md-nav__link">
+  <a href="#workload" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Result Collection
+        Workload
       
     </span>
   </a>
@@ -929,10 +990,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#output" class="md-nav__link">
+  <a href="#results" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Output
+        Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SSH
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution
       
     </span>
   </a>
@@ -945,10 +1028,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#disk-space-requirements" class="md-nav__link">
+  <a href="#workload-mode-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Disk Space Requirements
+        Workload Mode Examples
       
     </span>
   </a>
@@ -956,18 +1039,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#workload-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workload Examples
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#results" class="md-nav__link">
+  <a href="#results_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Results
@@ -990,6 +1062,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#aggregated-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aggregated JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#view-in-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1005,38 +1088,21 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../elbencho-benchmark/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Elbencho Benchmark
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1744,6 +1810,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1772,6 +1849,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#step-by-step-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step-by-Step Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Actions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration-options" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1784,10 +1883,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#action-and-targeting" class="md-nav__link">
+  <a href="#required" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Action and Targeting
+        Required
       
     </span>
   </a>
@@ -1795,10 +1894,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fio-parameters" class="md-nav__link">
+  <a href="#deploy-run-all" class="md-nav__link">
     <span class="md-ellipsis">
       
-        FIO Parameters
+        Deploy / run-all
       
     </span>
   </a>
@@ -1806,10 +1905,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#result-collection" class="md-nav__link">
+  <a href="#workload" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Result Collection
+        Workload
       
     </span>
   </a>
@@ -1817,10 +1916,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#output" class="md-nav__link">
+  <a href="#results" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Output
+        Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ssh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SSH
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution
       
     </span>
   </a>
@@ -1833,10 +1954,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#disk-space-requirements" class="md-nav__link">
+  <a href="#workload-mode-examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Disk Space Requirements
+        Workload Mode Examples
       
     </span>
   </a>
@@ -1844,18 +1965,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#workload-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workload Examples
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#results" class="md-nav__link">
+  <a href="#results_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Results
@@ -1878,6 +1988,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#aggregated-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aggregated JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#view-in-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1890,6 +2011,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1913,137 +2045,175 @@
   
 
 
-<h1 id="fio-storage-io-benchmark">FIO Storage I/O Benchmark</h1>
-<p>Tests storage I/O performance by running FIO benchmarks across multiple VMs in parallel.</p>
-<p><strong>Use Case</strong>: Measure storage IOPS, bandwidth, and latency under various workload patterns.</p>
+<h1 id="elbencho-storage-io-benchmark">Elbencho Storage I/O Benchmark</h1>
+<p>Manages <a href="https://github.com/breuner/elbencho">elbencho</a> storage benchmark workloads on VMs across many namespaces. Supports deploying VMs, running rate-limited or max-throughput workloads, and gathering aggregated results.</p>
+<p><strong>Use Case</strong>: Sustain controlled IO load (constant IOPS or read/write mix at line rate) across many VMs and measure aggregated IOPS, throughput, and latency.</p>
 <h2 id="how-it-works">How It Works</h2>
-<p>FIO is baked into the VM template and runs on boot. The benchmark workflow has four stages, each runnable on its own:</p>
-<ol>
-<li><strong>deploy</strong> - Create namespaces and VMs; FIO starts automatically.</li>
-<li><strong>status</strong> - Poll VM and FIO state.</li>
-<li><strong>gather-results</strong> - Collect FIO JSON output from each VM via SSH.</li>
-<li><strong>cleanup</strong> - Delete VMs and namespaces.</li>
-</ol>
-<p><code>run-all</code> (default) chains all four with a wait between deploy and gather.</p>
+<p>Each VM runs an <code>elbencho</code> systemd service against one or more block devices. The script drives the workload by SSHing into each VM through a helper pod and supports two workload modes:</p>
+<ul>
+<li><strong>IOPS mode</strong> (<code>--iops</code>) - Fixed total IOPS, split 50/50 between read and write.</li>
+<li><strong>RWMIX mode</strong> (<code>--rwmixpct</code>) - Maximum throughput at a specified read/write ratio.</li>
+</ul>
+<p>The full workflow (<code>run-all</code>) deploys VMs, starts the workload, waits for <code>--duration</code> seconds, gathers results, and optionally cleans up.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li><code>kubectl</code> configured against the target cluster.</li>
+<li>An SSH helper pod with <code>sshpass</code> deployed in the cluster (default: <code>ssh-test-pod</code> in <code>default</code>).</li>
+<li>A VM template whose image has <code>elbencho</code> installed at <code>/root/elbencho/bin/elbencho</code> and a configured systemd service. Use any KubeVirt <code>VirtualMachine</code> template that exposes the disks you want to drive.</li>
+<li>The VM image must allow SSH login as the <code>root</code> user with password authentication (default credentials: <code>--vm-user root</code> / <code>--vm-password Password1</code>), and <code>root</code> must be able to run <code>elbencho</code> directly (the binary on <code>PATH</code> or invokable at <code>/root/elbencho/bin/elbencho</code>).</li>
+</ul>
 <h2 id="basic-usage">Basic Usage</h2>
 <h3 id="virtbench-cli">virtbench CLI</h3>
-<pre><code class="language-bash"># Full workflow (deploy + wait + gather + save)
-virtbench fio --action run-all \
-  --start 1 --end 10 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --save-results
+<pre><code class="language-bash"># Full workflow: deploy 10 VMs, run for 5 minutes, gather + save results
+virtbench elbencho \
+  --namespace-prefix perf-test --start 1 --end 10 \
+  --vm-name rhel-elbencho-1 --action run-all \
+  --vm-template examples/vm-templates/YOUR-ELBENCHO-VM.yaml \
+  --iops 1000 --block-size 4K --duration 300 \
+  --save-results --storage-driver portworx-3.6
 
-# Custom FIO parameters
-virtbench fio --action run-all \
-  --start 1 --end 20 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --fio-runtime 300 --fio-rw randrw --fio-bs 4k --fio-iodepth 64 \
-  --save-results --cleanup
-
-# Step-by-step workflow
-virtbench fio --action deploy -s 1 -e 10 --storage-class YOUR-STORAGE-CLASS
-virtbench fio --action status -s 1 -e 10
-virtbench fio --action gather-results -s 1 -e 10 --save-results
-virtbench fio --action cleanup -s 1 -e 10
+# RWMIX mode: 70% read at max throughput for 10 minutes
+virtbench elbencho \
+  --namespace-prefix perf-test --start 1 --end 10 \
+  --vm-name rhel-elbencho-1 --action run-all \
+  --vm-template examples/vm-templates/YOUR-ELBENCHO-VM.yaml \
+  --rwmixpct 70 --block-size 32K --iodepth 2 --threads 12 \
+  --duration 600 --save-results
 </code></pre>
-<p>!!! note "<code>--save-results</code> vs <code>--action gather-results</code>"
-    <code>--save-results</code> is a <strong>flag</strong> that writes summary JSON/CSV files to the output directory. <code>--action gather-results</code> is an <strong>action</strong> that collects raw FIO output from VMs over SSH. Use them together (<code>--action gather-results --save-results</code>) to both fetch and persist.</p>
-<h2 id="configuration-options">Configuration Options</h2>
-<h3 id="action-and-targeting">Action and Targeting</h3>
+<h2 id="step-by-step-workflow">Step-by-Step Workflow</h2>
+<pre><code class="language-bash"># 1. Deploy VMs
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 -a deploy \
+  --vm-template examples/vm-templates/YOUR-ELBENCHO-VM.yaml
+
+# 2. Check status
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 -a status
+
+# 3. Start a workload (1000 IOPS total, 4K blocks)
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
+  -a change-workload --iops 1000 --block-size 4K
+
+# 4. Switch workload mid-run (70% read at max throughput)
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
+  -a change-workload --rwmixpct 70 --block-size 32K --threads 12
+
+# 5. Stop IO and gather results
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
+  -a gather-results --save-results --storage-driver portworx-3.6
+
+# 6. Cleanup VMs and namespaces
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 -a cleanup
+</code></pre>
+<h2 id="actions">Actions</h2>
 <table>
 <thead>
 <tr>
-<th>Option</th>
-<th>Default</th>
+<th>Action</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>--action</code>, <code>-a</code></td>
 <td><code>run-all</code></td>
-<td>One of: <code>deploy</code>, <code>status</code>, <code>gather-results</code>, <code>cleanup</code>, <code>run-all</code></td>
+<td>Full workflow: deploy + workload + wait + gather (requires <code>--duration</code>)</td>
+</tr>
+<tr>
+<td><code>deploy</code></td>
+<td>Deploy VMs (requires <code>--vm-template</code>)</td>
+</tr>
+<tr>
+<td><code>start</code></td>
+<td>Start the default 1 IOPS systemd service</td>
+</tr>
+<tr>
+<td><code>stop</code></td>
+<td>Stop the systemd service</td>
+</tr>
+<tr>
+<td><code>restart</code></td>
+<td>Restart the systemd service</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>Check elbencho service status</td>
+</tr>
+<tr>
+<td><code>stop-all</code></td>
+<td>Stop all elbencho processes (service + manual)</td>
+</tr>
+<tr>
+<td><code>change-workload</code></td>
+<td>Stop current workload and start a new one</td>
+</tr>
+<tr>
+<td><code>gather-results</code></td>
+<td>Stop IO and collect results from all VMs</td>
+</tr>
+<tr>
+<td><code>cleanup</code></td>
+<td>Delete VMs and namespaces</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration-options">Configuration Options</h2>
+<h3 id="required">Required</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--namespace-prefix</code>, <code>-p</code></td>
+<td>Namespace prefix (e.g., <code>perf-test</code> &rarr; <code>perf-test-1</code>, <code>perf-test-2</code>, ...)</td>
 </tr>
 <tr>
 <td><code>--start</code>, <code>-s</code></td>
-<td>(required)</td>
-<td>Starting namespace index</td>
+<td>Start namespace index</td>
 </tr>
 <tr>
 <td><code>--end</code>, <code>-e</code></td>
-<td>(required)</td>
-<td>Ending namespace index</td>
+<td>End namespace index</td>
 </tr>
 <tr>
-<td><code>--storage-class</code></td>
-<td>(required for <code>deploy</code>/<code>run-all</code>)</td>
-<td>Storage class name</td>
+<td><code>--vm-name</code>, <code>-n</code></td>
+<td>VM name in each namespace</td>
 </tr>
 <tr>
-<td><code>--namespace-prefix</code></td>
-<td><code>fio-benchmark</code></td>
-<td>Namespace prefix (creates <code>fio-benchmark-1</code>, ...)</td>
+<td><code>--action</code>, <code>-a</code></td>
+<td>Action to perform (see table above)</td>
 </tr>
+</tbody>
+</table>
+<h3 id="deploy-run-all">Deploy / run-all</h3>
+<table>
+<thead>
 <tr>
-<td><code>--vm-name</code></td>
-<td><code>fio-vm</code></td>
-<td>VM resource name in each namespace</td>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
 </tr>
+</thead>
+<tbody>
 <tr>
 <td><code>--vm-template</code></td>
-<td><code>../examples/vm-templates/fio-vm-template.yaml</code></td>
+<td>(required for <code>deploy</code>/<code>run-all</code>)</td>
 <td>Path to VM template YAML</td>
 </tr>
 <tr>
-<td><code>--concurrency</code>, <code>-c</code></td>
-<td><code>20</code></td>
-<td>Max parallel threads for deploy/status/cleanup</td>
+<td><code>--secret-yaml</code></td>
+<td>(none)</td>
+<td>Path to cloud-init secret YAML</td>
 </tr>
-</tbody>
-</table>
-<h3 id="fio-parameters">FIO Parameters</h3>
-<table>
-<thead>
 <tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--fio-runtime</code></td>
+<td><code>--ping-timeout</code></td>
 <td><code>300</code></td>
-<td>FIO test duration in seconds</td>
-</tr>
-<tr>
-<td><code>--fio-rw</code></td>
-<td><code>randwrite</code></td>
-<td>I/O pattern: <code>read</code>, <code>write</code>, <code>randread</code>, <code>randwrite</code>, <code>randrw</code>, <code>rw</code></td>
-</tr>
-<tr>
-<td><code>--fio-bs</code></td>
-<td><code>4k</code></td>
-<td>Block size (e.g., <code>4k</code>, <code>8k</code>, <code>64k</code>, <code>1M</code>)</td>
-</tr>
-<tr>
-<td><code>--fio-iodepth</code></td>
-<td><code>64</code></td>
-<td>I/O queue depth</td>
-</tr>
-<tr>
-<td><code>--fio-numjobs</code></td>
-<td><code>4</code></td>
-<td>Number of parallel FIO jobs per VM</td>
-</tr>
-<tr>
-<td><code>--fio-size</code></td>
-<td><code>10G</code></td>
-<td>Test file size per job</td>
+<td>Seconds to wait for VMs to become reachable</td>
 </tr>
 </tbody>
 </table>
-<h3 id="result-collection">Result Collection</h3>
+<h3 id="workload">Workload</h3>
 <table>
 <thead>
 <tr>
@@ -2054,43 +2224,43 @@ virtbench fio --action cleanup -s 1 -e 10
 </thead>
 <tbody>
 <tr>
-<td><code>--collect-retries</code></td>
-<td><code>8</code></td>
-<td>Max retries for collecting results from VMs</td>
+<td><code>--iops</code></td>
+<td><code>0</code></td>
+<td>IOPS mode: total IOPS (must be even, split 50/50 read/write). Mutually exclusive with <code>--rwmixpct</code>.</td>
 </tr>
 <tr>
-<td><code>--collect-retry-delay</code></td>
-<td><code>20</code></td>
-<td>Delay (seconds) between collection retries</td>
+<td><code>--rwmixpct</code></td>
+<td><code>0</code></td>
+<td>RWMIX mode: read percentage (0-100), max throughput</td>
 </tr>
 <tr>
-<td><code>--collect-concurrency</code></td>
-<td><code>5</code></td>
-<td>Max concurrent result collections</td>
+<td><code>--block-size</code></td>
+<td><code>4K</code></td>
+<td>Block size (e.g., <code>4K</code>, <code>32K</code>, <code>1M</code>)</td>
 </tr>
 <tr>
-<td><code>--ssh-pod</code></td>
-<td><code>ssh-test-pod</code></td>
-<td>SSH helper pod name (must have <code>sshpass</code>)</td>
+<td><code>--num-disks</code></td>
+<td><code>0</code></td>
+<td>Number of disks (0 = all available)</td>
 </tr>
 <tr>
-<td><code>--ssh-pod-ns</code></td>
-<td><code>default</code></td>
-<td>SSH helper pod namespace</td>
+<td><code>--iodepth</code></td>
+<td><code>1</code></td>
+<td>IO depth per thread</td>
 </tr>
 <tr>
-<td><code>--vm-user</code></td>
-<td><code>cloud-user</code></td>
-<td>VM SSH user</td>
+<td><code>--threads</code></td>
+<td><code>0</code></td>
+<td>Threads per VM (0 = same as <code>num-disks</code>)</td>
 </tr>
 <tr>
-<td><code>--vm-password</code></td>
-<td><code>changeme</code></td>
-<td>VM SSH password</td>
+<td><code>--duration</code></td>
+<td><code>0</code></td>
+<td>Duration in seconds (0 = infinite; <strong>required</strong> for <code>run-all</code>)</td>
 </tr>
 </tbody>
 </table>
-<h3 id="output">Output</h3>
+<h3 id="results">Results</h3>
 <table>
 <thead>
 <tr>
@@ -2103,11 +2273,11 @@ virtbench fio --action cleanup -s 1 -e 10
 <tr>
 <td><code>--save-results</code></td>
 <td><code>false</code></td>
-<td>Save summary JSON/CSV to the output directory</td>
+<td>Save aggregated JSON summary</td>
 </tr>
 <tr>
 <td><code>--results-dir</code></td>
-<td><code>results</code></td>
+<td><code>./results</code></td>
 <td>Base directory for results</td>
 </tr>
 <tr>
@@ -2121,79 +2291,140 @@ virtbench fio --action cleanup -s 1 -e 10
 <td>Disks-per-VM label (folder component); auto-detected from VM spec</td>
 </tr>
 <tr>
-<td><code>--cleanup</code></td>
-<td><code>false</code></td>
-<td>Delete VMs and namespaces after <code>run-all</code></td>
+<td><code>--run-name</code></td>
+<td>(auto)</td>
+<td>Override run folder name (default: <code>{timestamp}_elbencho_{N}vms</code>)</td>
+</tr>
+<tr>
+<td><code>--output-dir</code></td>
+<td>(none)</td>
+<td><strong>Deprecated</strong>: full output path that bypasses the structured layout</td>
 </tr>
 </tbody>
 </table>
-<h2 id="disk-space-requirements">Disk Space Requirements</h2>
-<p>FIO creates test files based on <code>--fio-size</code> and <code>--fio-numjobs</code>:</p>
+<h3 id="ssh">SSH</h3>
 <table>
 <thead>
 <tr>
-<th>Setting</th>
-<th>Calculation</th>
-<th>Example</th>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Test files per VM</td>
-<td><code>fio-size × fio-numjobs</code></td>
-<td>10G × 4 = <strong>40GB</strong></td>
+<td><code>--ssh-pod</code></td>
+<td><code>ssh-test-pod</code></td>
+<td>SSH helper pod name (must have <code>sshpass</code>)</td>
 </tr>
 <tr>
-<td>Scratch disk size</td>
-<td>Must be &gt; test files</td>
-<td>50GB (in VM template)</td>
+<td><code>--ssh-pod-ns</code></td>
+<td><code>default</code></td>
+<td>SSH helper pod namespace</td>
+</tr>
+<tr>
+<td><code>--vm-user</code></td>
+<td><code>root</code></td>
+<td>VM SSH user</td>
+</tr>
+<tr>
+<td><code>--vm-password</code></td>
+<td><code>Password1</code></td>
+<td>VM SSH password</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Data written during test</strong> depends on achieved IOPS:</p>
-<pre><code>Data Written = Write IOPS × Block Size × Runtime
+<h3 id="execution">Execution</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--concurrency</code>, <code>-c</code></td>
+<td><code>20</code></td>
+<td>Max concurrent operations</td>
+</tr>
+<tr>
+<td><code>--log-level</code></td>
+<td><code>INFO</code></td>
+<td><code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code></td>
+</tr>
+<tr>
+<td><code>--log-file</code></td>
+<td>(auto)</td>
+<td>Log file path. With <code>--save-results</code>, defaults to <code>elbencho_&lt;action&gt;_&lt;timestamp&gt;.log</code> inside the run result folder.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="workload-mode-examples">Workload Mode Examples</h2>
+<pre><code class="language-bash"># IOPS mode: 2000 total IOPS (1000 read + 1000 write), 8K blocks, 4 disks
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
+  -a change-workload --iops 2000 --block-size 8K --num-disks 4
 
-Example: 21,000 IOPS × 4KB × 60s ≈ 5GB written
+# IOPS mode: 500 IOPS for 5 minutes
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
+  -a change-workload --iops 500 --block-size 4K \
+  --threads 4 --iodepth 2 --duration 300
+
+# RWMIX mode: 100% read at max throughput
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
+  -a change-workload --rwmixpct 100 --block-size 64K \
+  --iodepth 4 --threads 8
+
+# RWMIX mode: 70% read / 30% write at max throughput
+virtbench elbencho -p perf-test -s 1 -e 10 -n rhel-elbencho-1 \
+  -a change-workload --rwmixpct 70 --block-size 32K \
+  --iodepth 2 --threads 12 --num-disks 2
 </code></pre>
-<h2 id="workload-examples">Workload Examples</h2>
-<pre><code class="language-bash"># Sequential read (max bandwidth)
-virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
-  --fio-rw read --fio-bs 1M --fio-iodepth 32 --save-results
-
-# Random write (database workload)
-virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
-  --fio-rw randwrite --fio-bs 4k --fio-iodepth 64 --save-results
-
-# Mixed read/write 50/50 (general workload)
-virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
-  --fio-rw randrw --fio-bs 4k --fio-iodepth 64 --save-results
-</code></pre>
-<h2 id="results">Results</h2>
-<p>Results include per-VM and aggregated metrics:</p>
+<h2 id="results_1">Results</h2>
+<p><code>gather-results</code> (and <code>run-all</code>) produce per-VM raw output plus an aggregated JSON summary:</p>
 <ul>
-<li><strong>IOPS</strong>: Read/Write operations per second</li>
-<li><strong>Bandwidth</strong>: Read/Write throughput in MiB/s</li>
-<li><strong>Latency</strong>: Read/Write latency in milliseconds</li>
+<li><strong>IOPS</strong> - total / read / write</li>
+<li><strong>Throughput</strong> - total / read / write (bytes/sec)</li>
+<li><strong>Latency</strong> - average / min / max (microseconds)</li>
 </ul>
 <h3 id="output-structure">Output Structure</h3>
-<pre><code>{results-dir}/{storage-driver}/{disks-per-vm}/{timestamp}_fio_benchmark_{N}vms/
-├── summary_fio_benchmark.json     # Aggregated summary across all VMs
-├── fio_benchmark_results.json     # Per-VM results (JSON array)
-├── fio_benchmark_results.csv      # Per-VM results (CSV)
-└── per-vm-results/                # Raw FIO output per VM
-    ├── fio-benchmark-1/
-    │   └── fio_raw.json
-    └── ...
+<pre><code>{results-dir}/{storage-driver}/{disks-per-vm}/{run-name}/
+├── aggregated_results.json        # Summary across all VMs
+├── elbencho_gather.log            # Execution log
+└── perf-test-1/                   # Per-VM raw output
+    ├── rwmix_&lt;timestamp&gt;.json
+    ├── rwmix_&lt;timestamp&gt;.txt
+    ├── rwmix_&lt;timestamp&gt;.csv
+    └── rwmix_&lt;timestamp&gt;_live.csv
 </code></pre>
-<p>Example: <code>results/portworx-3.6/2-disk/20260308-141522_fio_benchmark_10vms/</code>. <code>--storage-driver</code> and <code>--disks-per-vm</code> are folder components only - they have no functional effect on the test.</p>
+<p>Default <code>run-name</code>: <code>{timestamp}_elbencho_{N}vms</code>.</p>
+<h3 id="aggregated-json">Aggregated JSON</h3>
+<pre><code class="language-json">{
+  &quot;timestamp&quot;: &quot;2026-03-13T16:39:23.123456&quot;,
+  &quot;vms_with_results&quot;: 10,
+  &quot;vms_skipped&quot;: 0,
+  &quot;elapsed_seconds&quot;: 15.61,
+  &quot;aggregated&quot;: {
+    &quot;total_iops&quot;: 45000,
+    &quot;read_iops&quot;: 31500,
+    &quot;write_iops&quot;: 13500,
+    &quot;total_throughput_bytes&quot;: 1474560000,
+    &quot;read_throughput_bytes&quot;: 1032192000,
+    &quot;write_throughput_bytes&quot;: 442368000,
+    &quot;avg_latency_us&quot;: 4500,
+    &quot;min_latency_us&quot;: 500,
+    &quot;max_latency_us&quot;: 50000
+  },
+  &quot;per_vm_results&quot;: [ ... ]
+}
+</code></pre>
 <h3 id="view-in-dashboard">View in Dashboard</h3>
 <p>Generate the dashboard from the saved results directory after the run.</p>
-<p>The dashboard displays:</p>
-<ul>
-<li>KPI summary cards (Total IOPS, Bandwidth, Latency)</li>
-<li>IOPS + Latency dual-axis chart</li>
-<li>Per-VM breakdown with clickable namespaces</li>
-</ul>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p><strong>No JSON files generated.</strong> elbencho only writes JSON output when stopped gracefully via SIGINT. If files are missing, rerun <code>gather-results</code> with <code>--log-level DEBUG</code> and verify the elbencho process responds to signals.</p>
+<p><strong>VMs skipped in aggregation.</strong> A VM is skipped if no elbencho process is running, the VM IP cannot be retrieved, or SSH fails. Check <code>virtbench elbencho ... -a status</code> first.</p>
+<p><strong>Connection issues.</strong> Confirm the SSH helper pod is running (<code>kubectl get pod ssh-test-pod -n default</code>), the VMs are reachable from that pod, and <code>--vm-user</code> / <code>--vm-password</code> are correct.</p>
 
 
 

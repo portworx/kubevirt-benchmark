@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -620,7 +620,35 @@
   <span class="md-ellipsis">
     
   
-    Datasource Clone
+    VM Creation (DataSource Clone)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/boot-storm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm
   
 
     
@@ -648,7 +676,7 @@
   <span class="md-ellipsis">
     
   
-    Migration
+    Live Migration
   
 
     
@@ -774,9 +802,104 @@
 
               
             
-          </ul>
-        </nav>
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/elbencho-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elbencho Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VM Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/vm-ops/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -789,14 +912,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../user-guide/boot-storm-guide/" class="md-nav__link">
+      <a href="../user-guide/test-scenarios/vm-ops/drain-nodes/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Boot Storm Testing Guide
+    Drain Nodes
   
 
     
@@ -805,6 +928,134 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/vm-ops/rebalance-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rebalance VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/vm-ops/vm-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/vm-ops/run-blkdiscard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run blkdiscard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/test-scenarios/vm-ops/power-toggle-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Toggle VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2357,12 +2608,12 @@
   --end 50 \
   --storage-class YOUR-STORAGE-CLASS \
   --save-results \
-  --storage-version 3.2.0
+  --storage-driver portworx-3.6
 </code></pre>
 <h3 id="4-use-meaningful-test-names">4. Use Meaningful Test Names</h3>
-<p>Organize results with storage version and configuration details:</p>
-<pre><code class="language-bash">--storage-version &quot;portworx-3.2.0&quot;
---storage-version &quot;ceph-rbd-17.2&quot;
+<p>Organize results with a storage driver label:</p>
+<pre><code class="language-bash">--storage-driver &quot;portworx-3.6&quot;
+--storage-driver &quot;ceph&quot;
 </code></pre>
 <h3 id="5-monitor-cluster-resources">5. Monitor Cluster Resources</h3>
 <p>Watch cluster resources during tests:</p>
@@ -2459,17 +2710,15 @@ kubectl exec -it ssh-test-pod -- ping &lt;vm-ip&gt;
 <h3 id="2-use-appropriate-timeouts">2. Use Appropriate Timeouts</h3>
 <p>Set timeouts based on your RTO requirements:</p>
 <pre><code class="language-bash">virtbench failure-recovery \
-  --start 1 \
-  --end 10 \
+  --node worker-1 \
   --recovery-timeout 600  # 10 minutes
 </code></pre>
 <h3 id="3-clean-up-far-resources">3. Clean Up FAR Resources</h3>
 <p>Always clean up FAR resources after testing:</p>
 <pre><code class="language-bash">virtbench failure-recovery \
-  --start 1 \
-  --end 10 \
+  --node worker-1 \
   --cleanup \
-  --cleanup-vms
+  --yes
 </code></pre>
 <h2 id="logging-and-debugging">Logging and Debugging</h2>
 <h3 id="1-use-appropriate-log-levels">1. Use Appropriate Log Levels</h3>
@@ -2518,12 +2767,12 @@ kubectl exec -it ssh-test-pod -- ping &lt;vm-ip&gt;
 </code></pre>
 <h2 id="results-management">Results Management</h2>
 <h3 id="1-organize-results-by-version">1. Organize Results by Version</h3>
-<p>Use <code>--storage-version</code> to organize results:</p>
-<pre><code class="language-bash">--storage-version &quot;portworx-3.2.0&quot;
+<p>Use <code>--storage-driver</code> to organize results:</p>
+<pre><code class="language-bash">--storage-driver &quot;portworx-3.6&quot;
 </code></pre>
 <h3 id="2-generate-dashboards-regularly">2. Generate Dashboards Regularly</h3>
 <p>Create dashboards after each test run:</p>
-<pre><code class="language-bash">python3 dashboard/generate_dashboard.py --days 30
+<pre><code class="language-bash">Generate the results dashboard after each run and archive the produced HTML.
 </code></pre>
 <h3 id="3-archive-important-results">3. Archive Important Results</h3>
 <ul>

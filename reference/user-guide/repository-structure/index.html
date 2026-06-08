@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -889,7 +889,35 @@
   <span class="md-ellipsis">
     
   
-    Datasource Clone
+    VM Creation (DataSource Clone)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/boot-storm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm
   
 
     
@@ -917,7 +945,7 @@
   <span class="md-ellipsis">
     
   
-    Migration
+    Live Migration
   
 
     
@@ -1043,9 +1071,104 @@
 
               
             
-          </ul>
-        </nav>
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/elbencho-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elbencho Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VM Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1058,14 +1181,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../boot-storm-guide/" class="md-nav__link">
+      <a href="../test-scenarios/vm-ops/drain-nodes/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Boot Storm Testing Guide
+    Drain Nodes
   
 
     
@@ -1074,6 +1197,134 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/rebalance-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rebalance VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/vm-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/run-blkdiscard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run blkdiscard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/power-toggle-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Toggle VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1785,58 +2036,79 @@
 <h2 id="directory-layout">Directory Layout</h2>
 <pre><code>kubevirt-benchmark/
 ├── virtbench/                    # Main CLI package
-│   ├── __init__.py              # Package initialization
-│   ├── cli.py                   # CLI entry point and command definitions
-│   ├── commands/                # Individual command implementations
-│   │   ├── datasource_clone.py # DataSource clone benchmark
-│   │   ├── migration.py         # Migration benchmark
+│   ├── __init__.py
+│   ├── cli.py                    # CLI entry point and command definitions
+│   ├── commands/                 # Individual command implementations
 │   │   ├── chaos.py              # Chaos benchmark
-│   │   ├── failure_recovery.py  # Failure recovery benchmark
-│   │   └── validate_cluster.py  # Cluster validation
-│   └── utils/                   # Shared utilities
-│       ├── logger.py            # Logging utilities
-│       ├── k8s_utils.py         # Kubernetes helpers
-│       └── results.py           # Results processing
+│   │   ├── datasource_clone.py   # DataSource clone benchmark
+│   │   ├── elbencho.py           # elbencho IO benchmark
+│   │   ├── failure_recovery.py   # Failure recovery benchmark
+│   │   ├── fio.py                # FIO IO benchmark
+│   │   ├── migration.py          # Migration benchmark
+│   │   ├── validate.py           # Cluster validation
+│   │   ├── version.py            # Version subcommand
+│   │   └── vm_ops.py             # vm-ops command group
+│   └── utils/                    # Shared utilities (logger, k8s helpers, results)
 │
-├── scripts/                     # Legacy Python scripts (deprecated)
-│   ├── measure-vm-creation-time.py
-│   ├── measure-migration-time.py
-│   ├── measure-chaos.py
-│   └── measure-failure-recovery.py
+├── chaos-benchmark/              # Chaos benchmark Python script
+│   └── measure-chaos.py
+├── datasource-clone/             # DataSource-clone benchmark Python script
+│   └── measure-vm-creation-time.py
+├── migration/                    # Migration benchmark Python script
+│   └── measure-vm-migration-time.py
+├── failure-recovery/             # Failure-recovery Python script and FAR template
+│   ├── recovery-test.py
+│   └── far-template.yaml
+├── io-benchmark/                 # IO benchmark scripts
+│   ├── fio/
+│   └── elbencho/
+├── vm-ops/                       # VM operations scripts
+│   ├── drain-nodes.py
+│   ├── power-toggle-vms.py
+│   ├── rebalance-vms.py
+│   ├── run-blkdiscard.py
+│   └── snapshot-vms.py
 │
-├── dashboard/                   # Dashboard generation
-│   ├── generate_dashboard.py   # Dashboard generator script
-│   ├── cluster_info.yaml       # Cluster metadata template
-│   └── manual_results.yaml     # Manual results template
+├── utils/                        # Shared shell/python helpers
+│   ├── apply_template.sh         # VM template helper
+│   ├── replace-storage-class.sh
+│   ├── common.py
+│   └── validate_cluster.py       # Cluster validation Python script
 │
-├── templates/                   # VM and resource templates
-│   ├── vm-template.yaml        # Base VM template
-│   ├── datasource-template.yaml# DataSource template
-│   └── far-template.yaml       # FAR template
+├── dashboard/                    # Dashboard generation
+│   ├── generate_dashboard.py
+│   ├── cluster_info.yaml         # Cluster metadata template
+│   ├── manual_results.yaml       # Manual results template
+│   └── README.md
 │
-├── docs/                        # Documentation
-│   ├── index.md                # Landing page
-│   ├── install.md              # Installation guide
-│   ├── reference/              # Reference documentation
-│   │   ├── user-guide/         # User guides
-│   │   │   └── test-scenarios/ # Test scenario guides
-│   │   ├── configuration.md    # Configuration reference
+├── examples/                     # Reference YAML and shell examples
+│   ├── vm-templates/             # VM templates (vm-template.yaml, fio-vm-template.yaml, …)
+│   ├── benchmarks/               # Sample benchmark resources
+│   ├── scripts/                  # Reference shell scripts (migration scenarios, …)
+│   └── utilities/                # Helper resources (e.g. ssh-pod.yaml)
+│
+├── docs/                         # Documentation (MkDocs)
+│   ├── index.md                  # Landing page
+│   ├── install.md                # Installation guide
+│   ├── reference/                # Reference documentation
+│   │   ├── user-guide/
+│   │   │   └── test-scenarios/
+│   │   ├── configuration.md
 │   │   ├── output-and-results.md
 │   │   └── results-dashboard.md
-│   └── community/              # Community docs
+│   └── community/                # Community docs
 │
-├── results/                     # Test results (auto-generated)
-│   └── {storage-version}/
+├── results/                      # Test results (auto-generated)
+│   └── {storage-driver}/
 │       └── {num-disks}-disk/
 │           └── {timestamp}_{test}_{vms}vms/
 │
-├── setup.py                     # Python package setup
-├── requirements.txt             # Python dependencies
-├── install.sh                   # Installation script
-├── mkdocs.yml                   # Documentation configuration
-├── README.md                    # Repository README
-├── LICENSE                      # Apache 2.0 license
-└── CHANGELOG.md                 # Version history
+├── setup.py                      # Python package setup
+├── requirements.txt              # Python dependencies
+├── install.sh                    # Installation script
+├── mkdocs.yml                    # Documentation configuration
+├── README.md                     # Repository README
+└── LICENSE                       # Apache 2.0 license
 </code></pre>
 <h2 id="key-components">Key Components</h2>
 <h3 id="virtbench-cli-package">virtbench CLI Package</h3>
@@ -1847,11 +2119,15 @@
 <li><strong>utils/</strong>: Shared utility functions for Kubernetes operations, logging, and results processing</li>
 </ul>
 <h3 id="templates">Templates</h3>
-<p>The <code>templates/</code> directory contains YAML templates for:</p>
+<p>VM and resource templates live under <code>examples/vm-templates/</code> (with the
+exception of <code>failure-recovery/far-template.yaml</code>, which sits next to the
+script that consumes it):</p>
 <ul>
-<li><strong>VM templates</strong>: Base VM configurations for different scenarios</li>
-<li><strong>DataSource templates</strong>: For VM cloning operations</li>
-<li><strong>FAR templates</strong>: For failure and recovery testing</li>
+<li><strong>VM templates</strong> (<code>examples/vm-templates/</code>): Base VM configurations
+  (<code>vm-template.yaml</code>, <code>fio-vm-template.yaml</code>, <code>rhel9-vm-datasource.yaml</code>,
+  <code>rhel9-vm-registry.yaml</code>)</li>
+<li><strong>FAR template</strong> (<code>failure-recovery/far-template.yaml</code>): For failure and
+  recovery testing</li>
 </ul>
 <h3 id="dashboard">Dashboard</h3>
 <p>The <code>dashboard/</code> directory contains tools for generating interactive HTML dashboards from test results.</p>
@@ -1865,7 +2141,7 @@
 <h3 id="results-directory">Results Directory</h3>
 <p>The <code>results/</code> directory is auto-generated when running tests with <code>--save-results</code>. It follows a hierarchical structure:</p>
 <pre><code>results/
-├── {storage-version}/          # e.g., &quot;3.2.0&quot; or &quot;default&quot;
+├── {storage-driver}/           # e.g., &quot;portworx-3.6&quot;, &quot;ceph&quot;
 │   ├── {num-disks}-disk/       # e.g., &quot;1-disk&quot;, &quot;2-disk&quot;
 │   │   ├── {timestamp}_{test}_{vms}vms/
 │   │   │   ├── *_results.json  # Detailed results

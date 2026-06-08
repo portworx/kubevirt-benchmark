@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -622,7 +622,35 @@
   <span class="md-ellipsis">
     
   
-    Datasource Clone
+    VM Creation (DataSource Clone)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/boot-storm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm
   
 
     
@@ -650,7 +678,7 @@
   <span class="md-ellipsis">
     
   
-    Migration
+    Live Migration
   
 
     
@@ -776,9 +804,104 @@
 
               
             
-          </ul>
-        </nav>
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/elbencho-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elbencho Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VM Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -791,14 +914,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../boot-storm-guide/" class="md-nav__link">
+      <a href="../test-scenarios/vm-ops/drain-nodes/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Boot Storm Testing Guide
+    Drain Nodes
   
 
     
@@ -807,6 +930,134 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/rebalance-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rebalance VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/vm-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/run-blkdiscard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run blkdiscard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/power-toggle-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Toggle VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2219,12 +2470,15 @@ Statistics:
 [INFO] 2024-01-15 10:30:21 - [kubevirt-perf-test-1] Ping successful at 11.23s
 </code></pre>
 <h2 id="saved-results">Saved Results</h2>
-<p>When using <code>--save-results</code>, tests generate structured output files:</p>
+<p>When using <code>--save-results</code>, tests generate structured output files. For
+DataSource clone and boot-storm runs, the log file is saved in the same
+timestamped folder as the JSON and CSV files.</p>
 <h3 id="file-structure">File Structure</h3>
 <pre><code>results/
-├── {storage-version}/
+├── {storage-driver}/
 │   ├── {num-disks}-disk/
 │   │   ├── {timestamp}_vm_creation_{num_vms}vms/
+│   │   │   ├── datasource-clone.log
 │   │   │   ├── vm_creation_results.json
 │   │   │   ├── vm_creation_results.csv
 │   │   │   └── summary_vm_creation.json
@@ -2327,7 +2581,7 @@ kubevirt-perf-test-3,rhel-9-vm,8.89,11.98,Success
 - Check if your storage class supports volume expansion:
   <code>bash
   kubectl get storageclass YOUR-STORAGE-CLASS -o jsonpath='{.allowVolumeExpansion}'</code>
-- If <code>false</code>, use <code>--skip-resize-job</code> to skip this phase
+- If <code>false</code>, use <code>--skip-resize</code> to skip this phase
 - Check storage backend limits and quotas</p>
 <h4 id="snapshot-creation-fails">Snapshot creation fails</h4>
 <p><strong>Symptoms</strong>: Snapshot phase fails</p>
@@ -2335,7 +2589,7 @@ kubevirt-perf-test-3,rhel-9-vm,8.89,11.98,Success
 - Check if VolumeSnapshotClass is configured:
   <code>bash
   kubectl get volumesnapshotclass</code>
-- If not available, use <code>--skip-snapshot-job</code> to skip this phase
+- If not available, use <code>--skip-snapshot</code> to skip this phase
 - Verify storage backend supports CSI snapshots</p>
 <h4 id="out-of-resources-vm-creation-fails">Out of resources (VM creation fails)</h4>
 <p><strong>Symptoms</strong>: VMs stuck in Scheduling state, capacity limit reached</p>
@@ -2368,8 +2622,7 @@ kubevirt-perf-test-3,rhel-9-vm,8.89,11.98,Success
 <pre><code class="language-bash"># Using virtbench CLI
 virtbench datasource-clone --log-level DEBUG --start 1 --end 5
 
-# Using Python script
-python3 measure-vm-creation-time.py --log-level DEBUG --start 1 --end 5
+virtbench datasource-clone --log-level DEBUG --start 1 --end 5
 </code></pre>
 <h2 id="performance-baselines">Performance Baselines</h2>
 <h3 id="expected-performance-ranges">Expected Performance Ranges</h3>

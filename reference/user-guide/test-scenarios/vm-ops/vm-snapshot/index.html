@@ -12,31 +12,31 @@
         <meta name="author" content="KubeVirt Benchmark Suite Contributors">
       
       
-        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/boot-storm-guide/">
+        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/vm-ops/vm-snapshot/">
       
       
-        <link rel="prev" href="../test-scenarios/fio-benchmark/">
+        <link rel="prev" href="../rebalance-vms/">
       
       
-        <link rel="next" href="../vm-template-guide/">
+        <link rel="next" href="../run-blkdiscard/">
       
       
         
       
       
-      <link rel="icon" href="../../../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <link rel="icon" href="../../../../../favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Boot Storm Testing Guide - virtbench</title>
+        <title>VM Snapshot - virtbench</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -55,9 +55,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#boot-storm-testing-guide" class="md-skip">
+        <a href="#vm-snapshot" class="md-skip">
           Skip to content
         </a>
       
@@ -98,9 +98,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="virtbench" class="md-header__button md-logo" aria-label="virtbench" data-md-component="logo">
+    <a href="../../../../.." title="virtbench" class="md-header__button md-logo" aria-label="virtbench" data-md-component="logo">
       
-  <img src="../../../virtbench-transparent.png" alt="logo">
+  <img src="../../../../../virtbench-transparent.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Boot Storm Testing Guide
+              VM Snapshot
             
           </span>
         </div>
@@ -219,9 +219,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="virtbench" class="md-nav__button md-logo" aria-label="virtbench" data-md-component="logo">
+    <a href="../../../../.." title="virtbench" class="md-nav__button md-logo" aria-label="virtbench" data-md-component="logo">
       
-  <img src="../../../virtbench-transparent.png" alt="logo">
+  <img src="../../../../../virtbench-transparent.png" alt="logo">
 
     </a>
     virtbench
@@ -295,7 +295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href="../../../../.." class="md-nav__link">
         
   
   
@@ -323,7 +323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../install/" class="md-nav__link">
+      <a href="../../../../../install/" class="md-nav__link">
         
   
   
@@ -351,7 +351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../release-notes/" class="md-nav__link">
+      <a href="../../../../../release-notes/" class="md-nav__link">
         
   
   
@@ -379,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../license/" class="md-nav__link">
+      <a href="../../../../../license/" class="md-nav__link">
         
   
   
@@ -463,7 +463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../repository-structure/" class="md-nav__link">
+      <a href="../../../repository-structure/" class="md-nav__link">
         
   
   
@@ -537,18 +537,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1" checked>
         
           
           <label class="md-nav__link" for="__nav_2_2_1" id="__nav_2_2_1_label" tabindex="0">
@@ -569,7 +571,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2_2_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -587,7 +589,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/overview/" class="md-nav__link">
+      <a href="../../overview/" class="md-nav__link">
         
   
   
@@ -615,14 +617,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/datasource-clone/" class="md-nav__link">
+      <a href="../../datasource-clone/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Datasource Clone
+    VM Creation (DataSource Clone)
   
 
     
@@ -643,14 +645,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/migration/" class="md-nav__link">
+      <a href="../../boot-storm/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Migration
+    Boot Storm
   
 
     
@@ -671,7 +673,35 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/chaos-benchmark/" class="md-nav__link">
+      <a href="../../migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chaos-benchmark/" class="md-nav__link">
         
   
   
@@ -699,7 +729,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/failure-recovery/" class="md-nav__link">
+      <a href="../../failure-recovery/" class="md-nav__link">
         
   
   
@@ -727,7 +757,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/cluster-validation/" class="md-nav__link">
+      <a href="../../cluster-validation/" class="md-nav__link">
         
   
   
@@ -755,7 +785,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../test-scenarios/fio-benchmark/" class="md-nav__link">
+      <a href="../../fio-benchmark/" class="md-nav__link">
         
   
   
@@ -776,9 +806,162 @@
 
               
             
-          </ul>
-        </nav>
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../elbencho-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elbencho Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_2_1_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VM Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../drain-nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drain Nodes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rebalance-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rebalance VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -807,7 +990,7 @@
   <span class="md-ellipsis">
     
   
-    Boot Storm Testing Guide
+    VM Snapshot
   
 
     
@@ -825,7 +1008,7 @@
   <span class="md-ellipsis">
     
   
-    Boot Storm Testing Guide
+    VM Snapshot
   
 
     
@@ -851,10 +1034,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-is-boot-storm-testing" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is Boot Storm Testing?
+        How It Works
       
     </span>
   </a>
@@ -862,55 +1045,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#boot-storm-test-workflow" class="md-nav__link">
+  <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Boot Storm Test Workflow
+        Basic Usage
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Boot Storm Test Workflow">
+    <nav class="md-nav" aria-label="Basic Usage">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#phase-1-initial-vm-creation" class="md-nav__link">
+  <a href="#using-virtbench-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1: Initial VM Creation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-2-shutdown-all-vms" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 2: Shutdown All VMs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-3-boot-storm-simultaneous-startup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 3: Boot Storm (Simultaneous Startup)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-4-comparison" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 4: Comparison
+        Using virtbench CLI
       
     </span>
   </a>
@@ -923,99 +1073,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#testing-scenarios" class="md-nav__link">
+  <a href="#full-example-with-all-options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Testing Scenarios
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Testing Scenarios">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#single-node-boot-storm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Single Node Boot Storm
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#multi-node-boot-storm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Multi-Node Boot Storm
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#interpreting-boot-storm-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Interpreting Boot Storm Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Interpreting Boot Storm Results">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-metrics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Metrics
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#what-to-look-for" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What to Look For
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#common-bottlenecks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Bottlenecks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Best Practices
+        Full Example with All Options
       
     </span>
   </a>
@@ -1023,41 +1084,35 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#advanced-options" class="md-nav__link">
+  <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Advanced Options
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Advanced Options">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#namespace-batch-size" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Namespace Batch Size
+        Options
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#concurrency-control" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Concurrency Control
+        Output
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1088,7 +1143,79 @@
   
   
     <li class="md-nav__item">
-      <a href="../vm-template-guide/" class="md-nav__link">
+      <a href="../run-blkdiscard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run blkdiscard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../power-toggle-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Toggle VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../vm-template-guide/" class="md-nav__link">
         
   
   
@@ -1116,7 +1243,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../../configuration/" class="md-nav__link">
         
   
   
@@ -1144,7 +1271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../output-and-results/" class="md-nav__link">
+      <a href="../../../output-and-results/" class="md-nav__link">
         
   
   
@@ -1172,7 +1299,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../results-dashboard/" class="md-nav__link">
+      <a href="../../../results-dashboard/" class="md-nav__link">
         
   
   
@@ -1200,7 +1327,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cleanup-guide/" class="md-nav__link">
+      <a href="../../../cleanup-guide/" class="md-nav__link">
         
   
   
@@ -1236,7 +1363,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../troubleshooting/" class="md-nav__link">
+      <a href="../../../../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1264,7 +1391,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../best-practices/" class="md-nav__link">
+      <a href="../../../../best-practices/" class="md-nav__link">
         
   
   
@@ -1346,7 +1473,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../community/" class="md-nav__link">
+      <a href="../../../../../community/" class="md-nav__link">
         
   
   
@@ -1374,7 +1501,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../community/contributing/" class="md-nav__link">
+      <a href="../../../../../community/contributing/" class="md-nav__link">
         
   
   
@@ -1458,7 +1585,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../community/support/" class="md-nav__link">
+      <a href="../../../../../community/support/" class="md-nav__link">
         
   
   
@@ -1486,7 +1613,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../community/code-of-conduct/" class="md-nav__link">
+      <a href="../../../../../community/code-of-conduct/" class="md-nav__link">
         
   
   
@@ -1541,10 +1668,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-is-boot-storm-testing" class="md-nav__link">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is Boot Storm Testing?
+        How It Works
       
     </span>
   </a>
@@ -1552,55 +1679,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#boot-storm-test-workflow" class="md-nav__link">
+  <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Boot Storm Test Workflow
+        Basic Usage
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Boot Storm Test Workflow">
+    <nav class="md-nav" aria-label="Basic Usage">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#phase-1-initial-vm-creation" class="md-nav__link">
+  <a href="#using-virtbench-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1: Initial VM Creation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-2-shutdown-all-vms" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 2: Shutdown All VMs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-3-boot-storm-simultaneous-startup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 3: Boot Storm (Simultaneous Startup)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phase-4-comparison" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 4: Comparison
+        Using virtbench CLI
       
     </span>
   </a>
@@ -1613,99 +1707,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#testing-scenarios" class="md-nav__link">
+  <a href="#full-example-with-all-options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Testing Scenarios
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Testing Scenarios">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#single-node-boot-storm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Single Node Boot Storm
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#multi-node-boot-storm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Multi-Node Boot Storm
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#interpreting-boot-storm-results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Interpreting Boot Storm Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Interpreting Boot Storm Results">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#key-metrics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Metrics
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#what-to-look-for" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What to Look For
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#common-bottlenecks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Bottlenecks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Best Practices
+        Full Example with All Options
       
     </span>
   </a>
@@ -1713,41 +1718,35 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#advanced-options" class="md-nav__link">
+  <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Advanced Options
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Advanced Options">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#namespace-batch-size" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Namespace Batch Size
+        Options
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#concurrency-control" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Concurrency Control
+        Output
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1782,146 +1781,131 @@
   
 
 
-<h1 id="boot-storm-testing-guide">Boot Storm Testing Guide</h1>
-<p>A "boot storm" occurs when many VMs start simultaneously, creating high demand on storage I/O, network resources, compute resources, and hypervisor scheduling. This guide explains how to test and understand boot storm performance.</p>
-<h2 id="what-is-boot-storm-testing">What is Boot Storm Testing?</h2>
-<p>Boot storm testing helps you understand:</p>
+<h1 id="vm-snapshot">VM Snapshot</h1>
+<p>Create <code>VirtualMachineSnapshot</code> objects across many namespaces in
+configurable batches, with a fixed delay between batches to throttle
+load on the snapshot controller.</p>
+<p><strong>Use Case</strong>: Snapshot large fleets of VMs at controlled rates, or measure
+snapshot performance under burst conditions.</p>
+<h2 id="how-it-works">How It Works</h2>
+<p>For each VM in the namespace range the operation:</p>
 <ol>
-<li><strong>Concurrent Startup Performance</strong>: How your infrastructure handles simultaneous VM startups</li>
-<li><strong>Performance Degradation</strong>: Impact of load on individual VM boot times</li>
-<li><strong>Bottleneck Identification</strong>: Discover limits in storage, network, or compute</li>
-<li><strong>Recovery Time Objectives (RTO)</strong>: Realistic expectations for disaster recovery scenarios</li>
+<li>Builds a <code>VirtualMachineSnapshot</code> named
+   <code>&lt;snapshot-prefix&gt;-&lt;timestamp&gt;-&lt;index&gt;</code>.</li>
+<li>Submits up to <code>--batch-size</code> snapshots concurrently (bounded by
+   <code>--concurrency</code>).</li>
+<li>Sleeps <code>--interval</code> seconds between batches.</li>
+<li>Records per-snapshot success/failure and total run time in the log.</li>
 </ol>
-<h2 id="boot-storm-test-workflow">Boot Storm Test Workflow</h2>
-<p>The boot storm test follows a four-phase workflow:</p>
-<h3 id="phase-1-initial-vm-creation">Phase 1: Initial VM Creation</h3>
-<ol>
-<li>Creates all test namespaces in parallel batches</li>
-<li>Creates and starts all VMs simultaneously</li>
-<li>Measures time to Running state for each VM</li>
-<li>Measures time to network readiness (ping) for each VM</li>
-<li>Displays initial creation performance results</li>
-</ol>
-<p>This phase establishes a baseline for comparison.</p>
-<h3 id="phase-2-shutdown-all-vms">Phase 2: Shutdown All VMs</h3>
-<ol>
-<li>Issues stop commands to all VMs in parallel</li>
-<li>Waits for all VMIs to be deleted (VMs fully stopped)</li>
-<li>Confirms all VMs are in stopped state</li>
-</ol>
-<p>This ensures a clean starting point for the boot storm test.</p>
-<h3 id="phase-3-boot-storm-simultaneous-startup">Phase 3: Boot Storm (Simultaneous Startup)</h3>
-<ol>
-<li>Issues start commands to ALL VMs at once</li>
-<li>Creates maximum load on infrastructure</li>
-<li>Measures time to Running state for each VM</li>
-<li>Measures time to network readiness for each VM</li>
-<li>Displays boot storm performance results</li>
-</ol>
-<p>This is the actual boot storm test.</p>
-<h3 id="phase-4-comparison">Phase 4: Comparison</h3>
-<p>Compare initial creation vs boot storm metrics to understand:
-- Performance differences between cold start and warm start
-- Impact of concurrent operations
-- Storage backend behavior under load
-- Infrastructure capacity limits</p>
-<h2 id="testing-scenarios">Testing Scenarios</h2>
-<h3 id="single-node-boot-storm">Single Node Boot Storm</h3>
-<p>Tests VM startup performance on a single node when powering on multiple VMs simultaneously.</p>
-<p><strong>Use Case</strong>: Validates node-level capacity and boot storm performance (e.g., how many VMs can a single node handle during boot storm).</p>
-<p><strong>Command:</strong></p>
-<pre><code class="language-bash">virtbench datasource-clone \
-  --start 1 \
-  --end 50 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --single-node \
-  --boot-storm \
-  --save-results
+<h2 id="basic-usage">Basic Usage</h2>
+<h3 id="using-virtbench-cli">Using virtbench CLI</h3>
+<pre><code class="language-bash"># Snapshot 50 VMs in default 50-VM batches, 15 minutes apart
+virtbench vm-ops vm-snapshot \
+  --namespace-prefix migration \
+  --start 1 --end 50 \
+  --vm-name rhel-9-vm
+
+# Snapshot in smaller batches with a tighter interval
+virtbench vm-ops vm-snapshot \
+  --namespace-prefix migration \
+  --start 1 --end 100 \
+  --vm-name rhel-9-vm \
+  --batch-size 25 \
+  --interval 300
+
+# Custom snapshot prefix and concurrency
+virtbench vm-ops vm-snapshot \
+  --namespace-prefix perf-test \
+  --start 1 --end 200 \
+  --vm-name rhel-9-vm \
+  --snapshot-prefix nightly-snap \
+  --concurrency 25
 </code></pre>
-<p><strong>What it does</strong>:
-1. Selects a single node (random or specified with <code>--node-name</code>)
-2. Creates and starts all VMs on that node (initial test)
-3. Stops all VMs and waits for complete shutdown
-4. Starts all VMs simultaneously on the same node (boot storm)
-5. Measures time to Running state and time to ping for each VM
-6. Provides separate statistics for initial creation and boot storm</p>
-<h3 id="multi-node-boot-storm">Multi-Node Boot Storm</h3>
-<p>Tests VM startup performance across all nodes when powering on multiple VMs simultaneously.</p>
-<p><strong>Use Case</strong>: Validates cluster-wide performance under boot storm conditions (e.g., after maintenance, power outage recovery).</p>
-<p><strong>Command:</strong></p>
-<pre><code class="language-bash">virtbench datasource-clone \
-  --start 1 \
-  --end 100 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --boot-storm \
-  --save-results
-</code></pre>
-<p><strong>What it does</strong>:
-1. Creates and starts all VMs (distributed across nodes)
-2. Stops all VMs and waits for complete shutdown
-3. Starts all VMs simultaneously (boot storm)
-4. Measures time to Running state and time to ping for each VM
-5. Provides separate statistics for initial creation and boot storm</p>
-<h2 id="interpreting-boot-storm-results">Interpreting Boot Storm Results</h2>
-<h3 id="key-metrics">Key Metrics</h3>
-<ul>
-<li><strong>Time to Running</strong>: How long until VM reaches Running state</li>
-<li><strong>Time to Ping</strong>: How long until VM is network-reachable</li>
-<li><strong>Average Times</strong>: Mean performance across all VMs</li>
-<li><strong>Max Times</strong>: Worst-case performance (important for SLA planning)</li>
-<li><strong>Success Rate</strong>: Percentage of VMs that successfully started</li>
-</ul>
-<h3 id="what-to-look-for">What to Look For</h3>
-<p><strong>Good Performance Indicators:</strong>
-- Boot storm times similar to initial creation times
-- Consistent performance across all VMs
-- High success rate (100%)
-- Predictable max times</p>
-<p><strong>Performance Issues:</strong>
-- Boot storm times significantly higher than initial creation
-- Wide variance in boot times
-- VMs failing to start
-- Increasing times as more VMs start</p>
-<h3 id="common-bottlenecks">Common Bottlenecks</h3>
-<ol>
-<li><strong>Storage I/O</strong>: High disk read/write contention</li>
-<li><strong>Network</strong>: Bandwidth saturation during image pulls</li>
-<li><strong>Compute</strong>: CPU/memory exhaustion on nodes</li>
-<li><strong>Hypervisor</strong>: KubeVirt scheduling delays</li>
-</ol>
-<h2 id="best-practices">Best Practices</h2>
-<ol>
-<li><strong>Start Small</strong>: Begin with 10-20 VMs to establish baseline</li>
-<li><strong>Incremental Testing</strong>: Gradually increase VM count to find limits</li>
-<li><strong>Monitor Resources</strong>: Watch node CPU, memory, and storage I/O during tests</li>
-<li><strong>Multiple Runs</strong>: Run tests multiple times for consistent results</li>
-<li><strong>Save Results</strong>: Always use <code>--save-results</code> to track performance over time</li>
-<li><strong>Clean Environment</strong>: Ensure cluster is not under load before testing</li>
-</ol>
-<h2 id="advanced-options">Advanced Options</h2>
-<h3 id="namespace-batch-size">Namespace Batch Size</h3>
-<p>Control how many namespaces are created in parallel:</p>
-<pre><code class="language-bash">virtbench datasource-clone \
-  --start 1 \
-  --end 100 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --boot-storm \
-  --namespace-batch-size 50
-</code></pre>
-<h3 id="concurrency-control">Concurrency Control</h3>
-<p>Adjust monitoring concurrency for large-scale tests:</p>
-<pre><code class="language-bash">virtbench datasource-clone \
+<h2 id="full-example-with-all-options">Full Example with All Options</h2>
+<pre><code class="language-bash">virtbench vm-ops vm-snapshot \
+  --namespace-prefix migration \
   --start 1 \
   --end 200 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --boot-storm \
-  --concurrency 200
+  --vm-name rhel-9-vm \
+  --batch-size 50 \
+  --interval 600 \
+  --concurrency 50 \
+  --snapshot-prefix bench-snap \
+  --log-file vm-snapshot-2026-05-08.log
 </code></pre>
+<h2 id="options">Options</h2>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--namespace-prefix</code> <em>(required)</em></td>
+<td>Namespace prefix (e.g., <code>perf-test</code>).</td>
+</tr>
+<tr>
+<td><code>--start</code> <em>(required)</em></td>
+<td>Start namespace index.</td>
+</tr>
+<tr>
+<td><code>--end</code> <em>(required)</em></td>
+<td>End namespace index.</td>
+</tr>
+<tr>
+<td><code>--vm-name</code> <em>(required)</em></td>
+<td>VM name in each namespace.</td>
+</tr>
+<tr>
+<td><code>--batch-size</code></td>
+<td>VMs per batch (default: 50).</td>
+</tr>
+<tr>
+<td><code>--interval</code></td>
+<td>Seconds between batches (default: 900).</td>
+</tr>
+<tr>
+<td><code>--concurrency</code></td>
+<td>Max concurrent snapshot operations within a batch (default: 50).</td>
+</tr>
+<tr>
+<td><code>--snapshot-prefix</code></td>
+<td>Snapshot name prefix (default: <code>vm-snap</code>).</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Show what would be done without doing it.</td>
+</tr>
+<tr>
+<td><code>--log-file</code></td>
+<td>Path to a log file (auto-generated if omitted).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="output">Output</h2>
+<p>The log captures, per batch:</p>
+<ul>
+<li>Batch number, size, and start time</li>
+<li>Per-VM snapshot creation result</li>
+<li>Wait time before the next batch</li>
+<li>Final summary with success / failure counts and total elapsed time</li>
+</ul>
+<h2 id="notes">Notes</h2>
+<ul>
+<li>Snapshots are stored as <code>VirtualMachineSnapshot</code> resources; they are not
+  deleted automatically. Use <code>kubectl delete vmsnapshot -n &lt;ns&gt; --all</code> or
+  the <a href="../../../cleanup-guide/">Cleanup Guide</a> to remove them.</li>
+<li><code>--interval</code> is wall-clock — the script does not subtract the time spent
+  inside a batch.</li>
+<li>For sustained load tests, set <code>--batch-size</code> and <code>--concurrency</code> to the
+  same value so each batch is fully parallel.</li>
+</ul>
 <h2 id="see-also">See Also</h2>
 <ul>
-<li><a href="../test-scenarios/datasource-clone/">DataSource Clone Testing</a> - Full VM creation guide</li>
-<li><a href="../configuration/">Configuration Options</a> - All available options</li>
-<li><a href="../output-and-results/">Output and Results</a> - Understanding test output</li>
+<li><a href="../../../cleanup-guide/">Cleanup Guide</a> — for removing snapshots after the
+  test.</li>
 </ul>
 
 
@@ -1972,10 +1956,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": [], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

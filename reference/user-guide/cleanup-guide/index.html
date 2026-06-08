@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -622,7 +622,35 @@
   <span class="md-ellipsis">
     
   
-    Datasource Clone
+    VM Creation (DataSource Clone)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/boot-storm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm
   
 
     
@@ -650,7 +678,7 @@
   <span class="md-ellipsis">
     
   
-    Migration
+    Live Migration
   
 
     
@@ -776,9 +804,104 @@
 
               
             
-          </ul>
-        </nav>
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/elbencho-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elbencho Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VM Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -791,14 +914,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../boot-storm-guide/" class="md-nav__link">
+      <a href="../test-scenarios/vm-ops/drain-nodes/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Boot Storm Testing Guide
+    Drain Nodes
   
 
     
@@ -807,6 +930,134 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/rebalance-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rebalance VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/vm-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/run-blkdiscard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run blkdiscard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/power-toggle-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Toggle VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1895,7 +2146,9 @@
 <li>FenceAgentsRemediation (FAR) custom resources</li>
 <li>FAR annotations from VMs</li>
 <li>Uncordon nodes that were marked as failed</li>
-<li>Optionally: VMs, DataVolumes, PVCs, and namespaces (with <code>--cleanup-vms</code>)</li>
+<li>Optionally: VMs, DataVolumes, PVCs, and namespaces — only via the Python
+  script with <code>--cleanup-vms</code> (the <code>virtbench failure-recovery</code> wrapper
+  cleans up FAR resources only)</li>
 </ul>
 <h3 id="chaos-benchmark-tests">Chaos Benchmark Tests</h3>
 <ul>
@@ -1916,18 +2169,6 @@ virtbench datasource-clone --start 1 --end 50 --storage-class YOUR-STORAGE-CLASS
 # Clean up even if tests fail
 virtbench datasource-clone --start 1 --end 50 --storage-class YOUR-STORAGE-CLASS --cleanup-on-failure
 </code></pre>
-<p><strong>Python Script:</strong></p>
-<pre><code class="language-bash">cd datasource-clone
-
-# Clean up after test
-python3 measure-vm-creation-time.py --start 1 --end 50 --cleanup
-
-# Dry run to see what would be deleted
-python3 measure-vm-creation-time.py --start 1 --end 50 --dry-run-cleanup
-
-# Clean up even if tests fail
-python3 measure-vm-creation-time.py --start 1 --end 50 --cleanup-on-failure
-</code></pre>
 <h3 id="clean-up-after-migration-tests">Clean up after Migration Tests</h3>
 <p><strong>virtbench CLI:</strong></p>
 <pre><code class="language-bash"># Clean up VMIMs only (VMs were pre-existing)
@@ -1936,42 +2177,15 @@ virtbench migration --start 1 --end 10 --source-node worker-1 --cleanup
 # Clean up everything (VMs were created by test)
 virtbench migration --start 1 --end 10 --source-node worker-1 --create-vms --cleanup
 </code></pre>
-<p><strong>Python Script:</strong></p>
-<pre><code class="language-bash">cd migration
-
-# Clean up VMIMs only
-python3 measure-vm-migration-time.py --start 1 --end 10 --source-node worker-1 --cleanup
-
-# Clean up everything
-python3 measure-vm-migration-time.py --start 1 --end 10 --source-node worker-1 --create-vms --cleanup
-</code></pre>
 <h3 id="clean-up-after-failure-recovery-tests">Clean up after Failure Recovery Tests</h3>
 <p><strong>virtbench CLI:</strong></p>
-<pre><code class="language-bash"># Clean up FAR resources only
-virtbench failure-recovery --start 1 --end 10 --cleanup
-
-# Clean up FAR resources and VMs
-virtbench failure-recovery --start 1 --end 10 --cleanup --cleanup-vms
-</code></pre>
-<p><strong>Python Script:</strong></p>
-<pre><code class="language-bash">cd failure-recovery
-
-# Clean up FAR resources only
-python3 measure-recovery-time.py --start 1 --end 10 --cleanup
-
-# Clean up FAR resources and VMs
-python3 measure-recovery-time.py --start 1 --end 10 --cleanup --cleanup-vms
+<pre><code class="language-bash"># Clean up FAR resources after a recovery test
+virtbench failure-recovery --node worker-1 --cleanup --yes
 </code></pre>
 <h3 id="clean-up-after-chaos-benchmark">Clean up after Chaos Benchmark</h3>
 <p><strong>virtbench CLI:</strong></p>
 <pre><code class="language-bash"># Cleanup only (from previous run)
 virtbench chaos-benchmark --cleanup-only --concurrency 1
-</code></pre>
-<p><strong>Python Script:</strong></p>
-<pre><code class="language-bash">cd chaos-benchmark
-
-# Cleanup only (from previous run)
-python3 measure-chaos.py --cleanup-only --concurrency 1
 </code></pre>
 <h2 id="manual-cleanup">Manual Cleanup</h2>
 <p>If automated cleanup fails or you need to clean up manually:</p>

@@ -12,13 +12,13 @@
         <meta name="author" content="KubeVirt Benchmark Suite Contributors">
       
       
-        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/fio-benchmark/">
+        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/boot-storm/">
       
       
-        <link rel="prev" href="../cluster-validation/">
+        <link rel="prev" href="../datasource-clone/">
       
       
-        <link rel="next" href="../elbencho-benchmark/">
+        <link rel="next" href="../migration/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>FIO Benchmark - virtbench</title>
+        <title>Boot Storm - virtbench</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fio-storage-io-benchmark" class="md-skip">
+        <a href="#boot-storm-testing" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              FIO Benchmark
+              Boot Storm
             
           </span>
         </div>
@@ -642,10 +642,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../boot-storm/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -661,6 +688,259 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-boot-storm-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is Boot Storm Testing?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How It Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-initial-vm-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Initial VM Creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-shutdown-all-vms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: Shutdown All VMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-boot-storm-simultaneous-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Boot Storm (Simultaneous Startup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Scenarios
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing Scenarios">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-node-boot-storm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single Node Boot Storm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-node-boot-storm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Node Boot Storm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boot-storm-against-existing-vms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Boot Storm Against Existing VMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-boot-storm-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting Boot Storm Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interpreting Boot Storm Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-bottlenecks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Bottlenecks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#namespace-batch-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Namespace Batch Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrency-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -782,37 +1062,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    FIO Benchmark
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../fio-benchmark/" class="md-nav__link">
         
   
   
@@ -828,187 +1081,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How It Works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Basic Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#virtbench-cli" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-options" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration Options
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration Options">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#action-and-targeting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Action and Targeting
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fio-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        FIO Parameters
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#result-collection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Result Collection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#output" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#disk-space-requirements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Disk Space Requirements
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#workload-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workload Examples
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Results">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#output-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output Structure
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#view-in-dashboard" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View in Dashboard
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1733,6 +1805,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#what-is-boot-storm-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is Boot Storm Testing?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1741,25 +1824,47 @@
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
+    <nav class="md-nav" aria-label="How It Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-initial-vm-creation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Usage
+        Phase 1: Initial VM Creation
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Basic Usage">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#virtbench-cli" class="md-nav__link">
+  <a href="#phase-2-shutdown-all-vms" class="md-nav__link">
     <span class="md-ellipsis">
       
-        virtbench CLI
+        Phase 2: Shutdown All VMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-boot-storm-simultaneous-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Boot Storm (Simultaneous Startup)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Comparison
       
     </span>
   </a>
@@ -1772,22 +1877,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration-options" class="md-nav__link">
+  <a href="#testing-scenarios" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration Options
+        Testing Scenarios
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuration Options">
+    <nav class="md-nav" aria-label="Testing Scenarios">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#action-and-targeting" class="md-nav__link">
+  <a href="#single-node-boot-storm" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Action and Targeting
+        Single Node Boot Storm
       
     </span>
   </a>
@@ -1795,10 +1900,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fio-parameters" class="md-nav__link">
+  <a href="#multi-node-boot-storm" class="md-nav__link">
     <span class="md-ellipsis">
       
-        FIO Parameters
+        Multi-Node Boot Storm
       
     </span>
   </a>
@@ -1806,21 +1911,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#result-collection" class="md-nav__link">
+  <a href="#boot-storm-against-existing-vms" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Result Collection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#output" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output
+        Boot Storm Against Existing VMs
       
     </span>
   </a>
@@ -1833,44 +1927,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#disk-space-requirements" class="md-nav__link">
+  <a href="#interpreting-boot-storm-results" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Disk Space Requirements
+        Interpreting Boot Storm Results
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#workload-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Workload Examples
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Results">
+    <nav class="md-nav" aria-label="Interpreting Boot Storm Results">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#output-structure" class="md-nav__link">
+  <a href="#key-metrics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Output Structure
+        Key Metrics
       
     </span>
   </a>
@@ -1878,10 +1950,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#view-in-dashboard" class="md-nav__link">
+  <a href="#what-to-look-for" class="md-nav__link">
     <span class="md-ellipsis">
       
-        View in Dashboard
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-bottlenecks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Bottlenecks
       
     </span>
   </a>
@@ -1890,6 +1973,67 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#namespace-batch-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Namespace Batch Size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrency-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1913,286 +2057,239 @@
   
 
 
-<h1 id="fio-storage-io-benchmark">FIO Storage I/O Benchmark</h1>
-<p>Tests storage I/O performance by running FIO benchmarks across multiple VMs in parallel.</p>
-<p><strong>Use Case</strong>: Measure storage IOPS, bandwidth, and latency under various workload patterns.</p>
-<h2 id="how-it-works">How It Works</h2>
-<p>FIO is baked into the VM template and runs on boot. The benchmark workflow has four stages, each runnable on its own:</p>
+<h1 id="boot-storm-testing">Boot Storm Testing</h1>
+<p>A "boot storm" occurs when many VMs start simultaneously, creating high
+demand on storage I/O, network resources, compute resources, and hypervisor
+scheduling. This guide explains how to test and understand boot storm
+performance using the <code>--boot-storm</code> flag of <code>virtbench datasource-clone</code>.</p>
+<p><strong>Use Case</strong>: Validate concurrent VM startup performance, simulate disaster
+recovery / power-outage scenarios, and find infrastructure bottlenecks
+before they show up in production.</p>
+<h2 id="what-is-boot-storm-testing">What is Boot Storm Testing?</h2>
+<p>Boot storm testing helps you understand:</p>
 <ol>
-<li><strong>deploy</strong> - Create namespaces and VMs; FIO starts automatically.</li>
-<li><strong>status</strong> - Poll VM and FIO state.</li>
-<li><strong>gather-results</strong> - Collect FIO JSON output from each VM via SSH.</li>
-<li><strong>cleanup</strong> - Delete VMs and namespaces.</li>
+<li><strong>Concurrent Startup Performance</strong>: How your infrastructure handles
+   simultaneous VM startups</li>
+<li><strong>Performance Degradation</strong>: Impact of load on individual VM boot times</li>
+<li><strong>Bottleneck Identification</strong>: Discover limits in storage, network, or
+   compute</li>
+<li><strong>Recovery Time Objectives (RTO)</strong>: Realistic expectations for disaster
+   recovery scenarios</li>
 </ol>
-<p><code>run-all</code> (default) chains all four with a wait between deploy and gather.</p>
-<h2 id="basic-usage">Basic Usage</h2>
-<h3 id="virtbench-cli">virtbench CLI</h3>
-<pre><code class="language-bash"># Full workflow (deploy + wait + gather + save)
-virtbench fio --action run-all \
-  --start 1 --end 10 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --save-results
-
-# Custom FIO parameters
-virtbench fio --action run-all \
-  --start 1 --end 20 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --fio-runtime 300 --fio-rw randrw --fio-bs 4k --fio-iodepth 64 \
-  --save-results --cleanup
-
-# Step-by-step workflow
-virtbench fio --action deploy -s 1 -e 10 --storage-class YOUR-STORAGE-CLASS
-virtbench fio --action status -s 1 -e 10
-virtbench fio --action gather-results -s 1 -e 10 --save-results
-virtbench fio --action cleanup -s 1 -e 10
-</code></pre>
-<p>!!! note "<code>--save-results</code> vs <code>--action gather-results</code>"
-    <code>--save-results</code> is a <strong>flag</strong> that writes summary JSON/CSV files to the output directory. <code>--action gather-results</code> is an <strong>action</strong> that collects raw FIO output from VMs over SSH. Use them together (<code>--action gather-results --save-results</code>) to both fetch and persist.</p>
-<h2 id="configuration-options">Configuration Options</h2>
-<h3 id="action-and-targeting">Action and Targeting</h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--action</code>, <code>-a</code></td>
-<td><code>run-all</code></td>
-<td>One of: <code>deploy</code>, <code>status</code>, <code>gather-results</code>, <code>cleanup</code>, <code>run-all</code></td>
-</tr>
-<tr>
-<td><code>--start</code>, <code>-s</code></td>
-<td>(required)</td>
-<td>Starting namespace index</td>
-</tr>
-<tr>
-<td><code>--end</code>, <code>-e</code></td>
-<td>(required)</td>
-<td>Ending namespace index</td>
-</tr>
-<tr>
-<td><code>--storage-class</code></td>
-<td>(required for <code>deploy</code>/<code>run-all</code>)</td>
-<td>Storage class name</td>
-</tr>
-<tr>
-<td><code>--namespace-prefix</code></td>
-<td><code>fio-benchmark</code></td>
-<td>Namespace prefix (creates <code>fio-benchmark-1</code>, ...)</td>
-</tr>
-<tr>
-<td><code>--vm-name</code></td>
-<td><code>fio-vm</code></td>
-<td>VM resource name in each namespace</td>
-</tr>
-<tr>
-<td><code>--vm-template</code></td>
-<td><code>../examples/vm-templates/fio-vm-template.yaml</code></td>
-<td>Path to VM template YAML</td>
-</tr>
-<tr>
-<td><code>--concurrency</code>, <code>-c</code></td>
-<td><code>20</code></td>
-<td>Max parallel threads for deploy/status/cleanup</td>
-</tr>
-</tbody>
-</table>
-<h3 id="fio-parameters">FIO Parameters</h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--fio-runtime</code></td>
-<td><code>300</code></td>
-<td>FIO test duration in seconds</td>
-</tr>
-<tr>
-<td><code>--fio-rw</code></td>
-<td><code>randwrite</code></td>
-<td>I/O pattern: <code>read</code>, <code>write</code>, <code>randread</code>, <code>randwrite</code>, <code>randrw</code>, <code>rw</code></td>
-</tr>
-<tr>
-<td><code>--fio-bs</code></td>
-<td><code>4k</code></td>
-<td>Block size (e.g., <code>4k</code>, <code>8k</code>, <code>64k</code>, <code>1M</code>)</td>
-</tr>
-<tr>
-<td><code>--fio-iodepth</code></td>
-<td><code>64</code></td>
-<td>I/O queue depth</td>
-</tr>
-<tr>
-<td><code>--fio-numjobs</code></td>
-<td><code>4</code></td>
-<td>Number of parallel FIO jobs per VM</td>
-</tr>
-<tr>
-<td><code>--fio-size</code></td>
-<td><code>10G</code></td>
-<td>Test file size per job</td>
-</tr>
-</tbody>
-</table>
-<h3 id="result-collection">Result Collection</h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--collect-retries</code></td>
-<td><code>8</code></td>
-<td>Max retries for collecting results from VMs</td>
-</tr>
-<tr>
-<td><code>--collect-retry-delay</code></td>
-<td><code>20</code></td>
-<td>Delay (seconds) between collection retries</td>
-</tr>
-<tr>
-<td><code>--collect-concurrency</code></td>
-<td><code>5</code></td>
-<td>Max concurrent result collections</td>
-</tr>
-<tr>
-<td><code>--ssh-pod</code></td>
-<td><code>ssh-test-pod</code></td>
-<td>SSH helper pod name (must have <code>sshpass</code>)</td>
-</tr>
-<tr>
-<td><code>--ssh-pod-ns</code></td>
-<td><code>default</code></td>
-<td>SSH helper pod namespace</td>
-</tr>
-<tr>
-<td><code>--vm-user</code></td>
-<td><code>cloud-user</code></td>
-<td>VM SSH user</td>
-</tr>
-<tr>
-<td><code>--vm-password</code></td>
-<td><code>changeme</code></td>
-<td>VM SSH password</td>
-</tr>
-</tbody>
-</table>
-<h3 id="output">Output</h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--save-results</code></td>
-<td><code>false</code></td>
-<td>Save summary JSON/CSV to the output directory</td>
-</tr>
-<tr>
-<td><code>--results-dir</code></td>
-<td><code>results</code></td>
-<td>Base directory for results</td>
-</tr>
-<tr>
-<td><code>--storage-driver</code></td>
-<td><code>Not-Specified</code></td>
-<td>Storage driver label (folder component)</td>
-</tr>
-<tr>
-<td><code>--disks-per-vm</code></td>
-<td><code>auto</code></td>
-<td>Disks-per-VM label (folder component); auto-detected from VM spec</td>
-</tr>
-<tr>
-<td><code>--cleanup</code></td>
-<td><code>false</code></td>
-<td>Delete VMs and namespaces after <code>run-all</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="disk-space-requirements">Disk Space Requirements</h2>
-<p>FIO creates test files based on <code>--fio-size</code> and <code>--fio-numjobs</code>:</p>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Calculation</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Test files per VM</td>
-<td><code>fio-size × fio-numjobs</code></td>
-<td>10G × 4 = <strong>40GB</strong></td>
-</tr>
-<tr>
-<td>Scratch disk size</td>
-<td>Must be &gt; test files</td>
-<td>50GB (in VM template)</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Data written during test</strong> depends on achieved IOPS:</p>
-<pre><code>Data Written = Write IOPS × Block Size × Runtime
-
-Example: 21,000 IOPS × 4KB × 60s ≈ 5GB written
-</code></pre>
-<h2 id="workload-examples">Workload Examples</h2>
-<pre><code class="language-bash"># Sequential read (max bandwidth)
-virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
-  --fio-rw read --fio-bs 1M --fio-iodepth 32 --save-results
-
-# Random write (database workload)
-virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
-  --fio-rw randwrite --fio-bs 4k --fio-iodepth 64 --save-results
-
-# Mixed read/write 50/50 (general workload)
-virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
-  --fio-rw randrw --fio-bs 4k --fio-iodepth 64 --save-results
-</code></pre>
-<h2 id="results">Results</h2>
-<p>Results include per-VM and aggregated metrics:</p>
+<h2 id="how-it-works">How It Works</h2>
+<p>The boot storm test follows a four-phase workflow:</p>
+<h3 id="phase-1-initial-vm-creation">Phase 1: Initial VM Creation</h3>
+<ol>
+<li>Creates all test namespaces in parallel batches</li>
+<li>Creates and starts all VMs simultaneously</li>
+<li>Measures time to Running state for each VM</li>
+<li>Measures time to network readiness (ping) for each VM</li>
+<li>Displays initial creation performance results</li>
+</ol>
+<p>This phase establishes a baseline for comparison.</p>
+<h3 id="phase-2-shutdown-all-vms">Phase 2: Shutdown All VMs</h3>
+<ol>
+<li>Issues stop commands to all VMs in parallel</li>
+<li>Waits for all VMIs to be deleted (VMs fully stopped)</li>
+<li>Confirms all VMs are in stopped state</li>
+</ol>
+<p>This ensures a clean starting point for the boot storm test.</p>
+<h3 id="phase-3-boot-storm-simultaneous-startup">Phase 3: Boot Storm (Simultaneous Startup)</h3>
+<ol>
+<li>Issues start commands to ALL VMs at once</li>
+<li>Creates maximum load on infrastructure</li>
+<li>Measures time to Running state for each VM</li>
+<li>Measures time to network readiness for each VM</li>
+<li>Displays boot storm performance results</li>
+</ol>
+<p>This is the actual boot storm test.</p>
+<h3 id="phase-4-comparison">Phase 4: Comparison</h3>
+<p>Compare initial creation vs boot storm metrics to understand:</p>
 <ul>
-<li><strong>IOPS</strong>: Read/Write operations per second</li>
-<li><strong>Bandwidth</strong>: Read/Write throughput in MiB/s</li>
-<li><strong>Latency</strong>: Read/Write latency in milliseconds</li>
+<li>Performance differences between cold start and warm start</li>
+<li>Impact of concurrent operations</li>
+<li>Storage backend behavior under load</li>
+<li>Infrastructure capacity limits</li>
 </ul>
-<h3 id="output-structure">Output Structure</h3>
-<pre><code>{results-dir}/{storage-driver}/{disks-per-vm}/{timestamp}_fio_benchmark_{N}vms/
-├── summary_fio_benchmark.json     # Aggregated summary across all VMs
-├── fio_benchmark_results.json     # Per-VM results (JSON array)
-├── fio_benchmark_results.csv      # Per-VM results (CSV)
-└── per-vm-results/                # Raw FIO output per VM
-    ├── fio-benchmark-1/
-    │   └── fio_raw.json
-    └── ...
+<h2 id="testing-scenarios">Testing Scenarios</h2>
+<h3 id="single-node-boot-storm">Single Node Boot Storm</h3>
+<p>Tests VM startup performance on a single node when powering on multiple VMs
+simultaneously.</p>
+<p><strong>Use Case</strong>: Validates node-level capacity (e.g., how many VMs can a single
+node handle during boot storm).</p>
+<pre><code class="language-bash"># Run test on a single node (auto-selected) with your storage class
+virtbench datasource-clone \
+  --start 1 \
+  --end 50 \
+  --vm-name VM-NAME \
+  --namespace-prefix NS-PREFIX \
+  --storage-class YOUR-STORAGE-CLASS \
+  --single-node \
+  --boot-storm \
+  --save-results \
+  --storage-driver STORAGE-DRIVER
+
+# Or specify a specific node
+virtbench datasource-clone \
+  --start 1 \
+  --end 50 \
+  --vm-name VM-NAME \
+  --namespace-prefix NS-PREFIX \
+  --storage-class YOUR-STORAGE-CLASS \
+  --single-node \
+  --node-name worker-node-1 \
+  --boot-storm \
+  --save-results \
+  --storage-driver STORAGE-DRIVER
 </code></pre>
-<p>Example: <code>results/portworx-3.6/2-disk/20260308-141522_fio_benchmark_10vms/</code>. <code>--storage-driver</code> and <code>--disks-per-vm</code> are folder components only - they have no functional effect on the test.</p>
-<h3 id="view-in-dashboard">View in Dashboard</h3>
-<p>Generate the dashboard from the saved results directory after the run.</p>
-<p>The dashboard displays:</p>
+<p><strong>What it does</strong>:</p>
+<ol>
+<li>Selects a single node (random or specified with <code>--node-name</code>)</li>
+<li>Creates and starts all VMs on that node (initial test)</li>
+<li>Stops all VMs and waits for complete shutdown</li>
+<li>Starts all VMs simultaneously on the same node (boot storm)</li>
+<li>Measures time to Running state and time to ping for each VM</li>
+<li>Provides separate statistics for initial creation and boot storm</li>
+</ol>
+<h3 id="multi-node-boot-storm">Multi-Node Boot Storm</h3>
+<p>Tests VM startup performance across all nodes when powering on multiple VMs
+simultaneously.</p>
+<p><strong>Use Case</strong>: Validates cluster-wide performance under boot storm conditions
+(e.g., after maintenance, power outage recovery).</p>
+<pre><code class="language-bash">virtbench datasource-clone \
+  --start 1 \
+  --end 100 \
+  --vm-name VM-NAME \
+  --namespace-prefix NS-PREFIX \
+  --storage-class YOUR-STORAGE-CLASS \
+  --boot-storm \
+  --save-results \
+  --storage-driver STORAGE-DRIVER
+</code></pre>
+<p><strong>What it does</strong>:</p>
+<ol>
+<li>Creates and starts all VMs (distributed across nodes)</li>
+<li>Stops all VMs and waits for complete shutdown</li>
+<li>Starts all VMs simultaneously (boot storm)</li>
+<li>Measures time to Running state and time to ping for each VM</li>
+<li>Provides separate statistics for initial creation and boot storm</li>
+</ol>
+<h3 id="boot-storm-against-existing-vms">Boot Storm Against Existing VMs</h3>
+<p>Use <code>--skip-vm-creation</code> with <code>--boot-storm</code> to run the storm against VMs
+that are already deployed. This skips Phase 1 entirely and goes straight to
+stop &rarr; mass start:</p>
+<pre><code class="language-bash">virtbench datasource-clone \
+  --start 1 \
+  --end 100 \
+  --vm-name VM-NAME \
+  --namespace-prefix NS-PREFIX \
+  --boot-storm \
+  --skip-vm-creation \
+  --save-results \
+  --storage-driver STORAGE-DRIVER
+</code></pre>
+<p>Saved boot-storm runs are written under:</p>
+<pre><code class="language-text">results/{storage-driver}/{num-disks}-disk/{timestamp}_{namespace-prefix}_{start}-{end}/
+</code></pre>
+<p>The run log is saved in the same folder as the boot-storm JSON and CSV files.</p>
+<h2 id="interpreting-boot-storm-results">Interpreting Boot Storm Results</h2>
+<h3 id="key-metrics">Key Metrics</h3>
 <ul>
-<li>KPI summary cards (Total IOPS, Bandwidth, Latency)</li>
-<li>IOPS + Latency dual-axis chart</li>
-<li>Per-VM breakdown with clickable namespaces</li>
+<li><strong>Time to Running</strong>: How long until VM reaches Running state</li>
+<li><strong>Time to Ping</strong>: How long until VM is network-reachable</li>
+<li><strong>Average Times</strong>: Mean performance across all VMs</li>
+<li><strong>Max Times</strong>: Worst-case performance (important for SLA planning)</li>
+<li><strong>Success Rate</strong>: Percentage of VMs that successfully started</li>
+</ul>
+<h3 id="what-to-look-for">What to Look For</h3>
+<p><strong>Good performance indicators:</strong></p>
+<ul>
+<li>Boot storm times similar to initial creation times</li>
+<li>Consistent performance across all VMs</li>
+<li>High success rate (100%)</li>
+<li>Predictable max times</li>
+</ul>
+<p><strong>Performance issues:</strong></p>
+<ul>
+<li>Boot storm times significantly higher than initial creation</li>
+<li>Wide variance in boot times</li>
+<li>VMs failing to start</li>
+<li>Increasing times as more VMs start</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Performance Level</th>
+<th>Boot Storm vs Initial</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Good</td>
+<td>1.5-2x slower</td>
+<td>Infrastructure handles load well</td>
+</tr>
+<tr>
+<td>Concerning</td>
+<td>3x slower</td>
+<td>Investigate bottlenecks</td>
+</tr>
+<tr>
+<td>Critical</td>
+<td>5x+ slower</td>
+<td>Major infrastructure issues</td>
+</tr>
+</tbody>
+</table>
+<h3 id="common-bottlenecks">Common Bottlenecks</h3>
+<ol>
+<li><strong>Storage I/O</strong>: High disk read/write contention — increase storage
+   IOPS, use a faster storage tier, or enable caching</li>
+<li><strong>Network</strong>: Bandwidth saturation during image pulls; check DHCP server
+   capacity</li>
+<li><strong>Compute</strong>: CPU/memory exhaustion on nodes — add more worker nodes or
+   increase node resources</li>
+<li><strong>Hypervisor</strong>: KubeVirt scheduling delays</li>
+</ol>
+<h2 id="best-practices">Best Practices</h2>
+<ol>
+<li><strong>Start Small</strong>: Begin with 10-20 VMs to establish baseline</li>
+<li><strong>Incremental Testing</strong>: Gradually increase VM count to find limits</li>
+<li><strong>Monitor Resources</strong>: Watch node CPU, memory, and storage I/O during
+   tests</li>
+<li><strong>Multiple Runs</strong>: Run tests multiple times for consistent results</li>
+<li><strong>Save Results</strong>: Always use <code>--save-results</code> to track performance over
+   time</li>
+<li><strong>Clean Environment</strong>: Ensure cluster is not under load before testing</li>
+</ol>
+<h2 id="advanced-options">Advanced Options</h2>
+<h3 id="namespace-batch-size">Namespace Batch Size</h3>
+<p>Control how many namespaces are created in parallel:</p>
+<pre><code class="language-bash">virtbench datasource-clone \
+  --start 1 \
+  --end 100 \
+  --storage-class YOUR-STORAGE-CLASS \
+  --boot-storm \
+  --namespace-batch-size 50
+</code></pre>
+<h3 id="concurrency-control">Concurrency Control</h3>
+<p><code>--concurrency</code> caps the worker-thread pool used to issue VM stop/start
+commands and to monitor each VM's progression to Running and ping-ready.
+Increase it for large-scale tests so the boot storm is not throttled by the
+client:</p>
+<pre><code class="language-bash">virtbench datasource-clone \
+  --start 1 \
+  --end 200 \
+  --storage-class YOUR-STORAGE-CLASS \
+  --boot-storm \
+  --concurrency 200
+</code></pre>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../datasource-clone/">VM Creation (DataSource Clone)</a> — Full VM creation guide</li>
+<li><a href="../../configuration/">Configuration Options</a> — All available options</li>
+<li><a href="../../output-and-results/">Output and Results</a> — Understanding test output</li>
 </ul>
 
 

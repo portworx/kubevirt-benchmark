@@ -12,31 +12,31 @@
         <meta name="author" content="KubeVirt Benchmark Suite Contributors">
       
       
-        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/fio-benchmark/">
+        <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/vm-ops/power-toggle-vms/">
       
       
-        <link rel="prev" href="../cluster-validation/">
+        <link rel="prev" href="../run-blkdiscard/">
       
       
-        <link rel="next" href="../elbencho-benchmark/">
+        <link rel="next" href="../../../vm-template-guide/">
       
       
         
       
       
-      <link rel="icon" href="../../../../favicon.png">
+      <link rel="icon" href="../../../../../favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>FIO Benchmark - virtbench</title>
+        <title>Power Toggle VMs - virtbench</title>
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -55,9 +55,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fio-storage-io-benchmark" class="md-skip">
+        <a href="#power-toggle-vms" class="md-skip">
           Skip to content
         </a>
       
@@ -98,9 +98,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="virtbench" class="md-header__button md-logo" aria-label="virtbench" data-md-component="logo">
+    <a href="../../../../.." title="virtbench" class="md-header__button md-logo" aria-label="virtbench" data-md-component="logo">
       
-  <img src="../../../../virtbench-transparent.png" alt="logo">
+  <img src="../../../../../virtbench-transparent.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              FIO Benchmark
+              Power Toggle VMs
             
           </span>
         </div>
@@ -219,9 +219,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="virtbench" class="md-nav__button md-logo" aria-label="virtbench" data-md-component="logo">
+    <a href="../../../../.." title="virtbench" class="md-nav__button md-logo" aria-label="virtbench" data-md-component="logo">
       
-  <img src="../../../../virtbench-transparent.png" alt="logo">
+  <img src="../../../../../virtbench-transparent.png" alt="logo">
 
     </a>
     virtbench
@@ -295,7 +295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../.." class="md-nav__link">
+      <a href="../../../../.." class="md-nav__link">
         
   
   
@@ -323,7 +323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../install/" class="md-nav__link">
+      <a href="../../../../../install/" class="md-nav__link">
         
   
   
@@ -351,7 +351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../release-notes/" class="md-nav__link">
+      <a href="../../../../../release-notes/" class="md-nav__link">
         
   
   
@@ -379,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../license/" class="md-nav__link">
+      <a href="../../../../../license/" class="md-nav__link">
         
   
   
@@ -463,7 +463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../repository-structure/" class="md-nav__link">
+      <a href="../../../repository-structure/" class="md-nav__link">
         
   
   
@@ -589,6 +589,307 @@
   
   
     <li class="md-nav__item">
+      <a href="../../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../datasource-clone/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Creation (DataSource Clone)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../boot-storm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../chaos-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chaos Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../failure-recovery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Failure Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cluster-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cluster Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fio-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FIO Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../elbencho-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elbencho Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_2_1_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VM Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../overview/" class="md-nav__link">
         
   
@@ -617,14 +918,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../datasource-clone/" class="md-nav__link">
+      <a href="../drain-nodes/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    VM Creation (DataSource Clone)
+    Drain Nodes
   
 
     
@@ -645,14 +946,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../boot-storm/" class="md-nav__link">
+      <a href="../rebalance-vms/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Boot Storm
+    Rebalance VMs
   
 
     
@@ -673,14 +974,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../migration/" class="md-nav__link">
+      <a href="../vm-snapshot/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Live Migration
+    VM Snapshot
   
 
     
@@ -701,70 +1002,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../chaos-benchmark/" class="md-nav__link">
+      <a href="../run-blkdiscard/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Chaos Benchmark
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../failure-recovery/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Failure Recovery
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../cluster-validation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Cluster Validation
+    Run blkdiscard
   
 
     
@@ -801,7 +1046,7 @@
   <span class="md-ellipsis">
     
   
-    FIO Benchmark
+    Power Toggle VMs
   
 
     
@@ -819,7 +1064,7 @@
   <span class="md-ellipsis">
     
   
-    FIO Benchmark
+    Power Toggle VMs
   
 
     
@@ -853,6 +1098,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="How It Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-action-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --action off
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-action-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --action on
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -868,10 +1141,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#virtbench-cli" class="md-nav__link">
+  <a href="#using-virtbench-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
-        virtbench CLI
+        Using virtbench CLI
       
     </span>
   </a>
@@ -884,51 +1157,28 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration-options" class="md-nav__link">
+  <a href="#full-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration Options
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration Options">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#action-and-targeting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Action and Targeting
+        Full Example
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#fio-parameters" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        FIO Parameters
+        Options
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#result-collection" class="md-nav__link">
-    <span class="md-ellipsis">
       
-        Result Collection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
+        <li class="md-nav__item">
   <a href="#output" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -938,17 +1188,12 @@
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
       
         <li class="md-nav__item">
-  <a href="#disk-space-requirements" class="md-nav__link">
+  <a href="#notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Disk Space Requirements
+        Notes
       
     </span>
   </a>
@@ -956,52 +1201,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#workload-examples" class="md-nav__link">
+  <a href="#see-also" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workload Examples
+        See Also
       
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Results">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#output-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output Structure
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#view-in-dashboard" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View in Dashboard
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1014,249 +1220,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../elbencho-benchmark/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Elbencho Benchmark
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
-        
-          
-          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    VM Operations
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2_1_10">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    VM Operations
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../vm-ops/overview/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../vm-ops/drain-nodes/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Drain Nodes
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../vm-ops/rebalance-vms/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Rebalance VMs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../vm-ops/vm-snapshot/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    VM Snapshot
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../vm-ops/run-blkdiscard/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Run blkdiscard
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../vm-ops/power-toggle-vms/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Power Toggle VMs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1280,7 +1243,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../vm-template-guide/" class="md-nav__link">
+      <a href="../../../vm-template-guide/" class="md-nav__link">
         
   
   
@@ -1308,7 +1271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../configuration/" class="md-nav__link">
+      <a href="../../../configuration/" class="md-nav__link">
         
   
   
@@ -1336,7 +1299,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../output-and-results/" class="md-nav__link">
+      <a href="../../../output-and-results/" class="md-nav__link">
         
   
   
@@ -1364,7 +1327,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../results-dashboard/" class="md-nav__link">
+      <a href="../../../results-dashboard/" class="md-nav__link">
         
   
   
@@ -1392,7 +1355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cleanup-guide/" class="md-nav__link">
+      <a href="../../../cleanup-guide/" class="md-nav__link">
         
   
   
@@ -1428,7 +1391,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../troubleshooting/" class="md-nav__link">
+      <a href="../../../../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1456,7 +1419,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../best-practices/" class="md-nav__link">
+      <a href="../../../../best-practices/" class="md-nav__link">
         
   
   
@@ -1538,7 +1501,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../community/" class="md-nav__link">
+      <a href="../../../../../community/" class="md-nav__link">
         
   
   
@@ -1566,7 +1529,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../community/contributing/" class="md-nav__link">
+      <a href="../../../../../community/contributing/" class="md-nav__link">
         
   
   
@@ -1650,7 +1613,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../community/support/" class="md-nav__link">
+      <a href="../../../../../community/support/" class="md-nav__link">
         
   
   
@@ -1678,7 +1641,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../community/code-of-conduct/" class="md-nav__link">
+      <a href="../../../../../community/code-of-conduct/" class="md-nav__link">
         
   
   
@@ -1741,6 +1704,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="How It Works">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-action-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --action off
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-action-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --action on
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1756,10 +1747,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#virtbench-cli" class="md-nav__link">
+  <a href="#using-virtbench-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
-        virtbench CLI
+        Using virtbench CLI
       
     </span>
   </a>
@@ -1772,51 +1763,28 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration-options" class="md-nav__link">
+  <a href="#full-example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration Options
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuration Options">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#action-and-targeting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Action and Targeting
+        Full Example
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#fio-parameters" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        FIO Parameters
+        Options
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#result-collection" class="md-nav__link">
-    <span class="md-ellipsis">
       
-        Result Collection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
+        <li class="md-nav__item">
   <a href="#output" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1826,17 +1794,12 @@
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
       
         <li class="md-nav__item">
-  <a href="#disk-space-requirements" class="md-nav__link">
+  <a href="#notes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Disk Space Requirements
+        Notes
       
     </span>
   </a>
@@ -1844,52 +1807,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#workload-examples" class="md-nav__link">
+  <a href="#see-also" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Workload Examples
+        See Also
       
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#results" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Results
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Results">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#output-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output Structure
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#view-in-dashboard" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        View in Dashboard
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1913,286 +1837,148 @@
   
 
 
-<h1 id="fio-storage-io-benchmark">FIO Storage I/O Benchmark</h1>
-<p>Tests storage I/O performance by running FIO benchmarks across multiple VMs in parallel.</p>
-<p><strong>Use Case</strong>: Measure storage IOPS, bandwidth, and latency under various workload patterns.</p>
+<h1 id="power-toggle-vms">Power Toggle VMs</h1>
+<p>Power VMs on or off in bulk, with <code>--action {on, off}</code> selecting the
+direction. Designed to be symmetric: a single power-off run produces a
+snapshot file that a subsequent power-on run can consume to restore the
+exact same set of VMs.</p>
+<p><strong>Use Case</strong>: Free up node capacity before a benchmark, simulate partial
+node failure, or repeatedly power-cycle subsets of a fleet.</p>
 <h2 id="how-it-works">How It Works</h2>
-<p>FIO is baked into the VM template and runs on boot. The benchmark workflow has four stages, each runnable on its own:</p>
+<h3 id="-action-off"><code>--action off</code></h3>
 <ol>
-<li><strong>deploy</strong> - Create namespaces and VMs; FIO starts automatically.</li>
-<li><strong>status</strong> - Poll VM and FIO state.</li>
-<li><strong>gather-results</strong> - Collect FIO JSON output from each VM via SSH.</li>
-<li><strong>cleanup</strong> - Delete VMs and namespaces.</li>
+<li>Lists all <em>running</em> VMIs on <code>--node</code>.</li>
+<li>Randomly samples <code>--percentage</code> of them.</li>
+<li>Saves the selection to
+   <code>powered_off_vms_&lt;node&gt;_&lt;YYYYMMDD_HHMMSS&gt;.txt</code> (one
+   <code>namespace/name</code> per line).</li>
+<li>Issues <code>virtctl stop</code> (or <code>kubectl virt stop</code>) to every selected VM in
+   parallel.</li>
+<li>Waits up to <code>--wait-timeout</code> for each VMI to disappear or reach
+   <code>Succeeded</code>/<code>Failed</code>.</li>
 </ol>
-<p><code>run-all</code> (default) chains all four with a wait between deploy and gather.</p>
-<h2 id="basic-usage">Basic Usage</h2>
-<h3 id="virtbench-cli">virtbench CLI</h3>
-<pre><code class="language-bash"># Full workflow (deploy + wait + gather + save)
-virtbench fio --action run-all \
-  --start 1 --end 10 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --save-results
-
-# Custom FIO parameters
-virtbench fio --action run-all \
-  --start 1 --end 20 \
-  --storage-class YOUR-STORAGE-CLASS \
-  --fio-runtime 300 --fio-rw randrw --fio-bs 4k --fio-iodepth 64 \
-  --save-results --cleanup
-
-# Step-by-step workflow
-virtbench fio --action deploy -s 1 -e 10 --storage-class YOUR-STORAGE-CLASS
-virtbench fio --action status -s 1 -e 10
-virtbench fio --action gather-results -s 1 -e 10 --save-results
-virtbench fio --action cleanup -s 1 -e 10
-</code></pre>
-<p>!!! note "<code>--save-results</code> vs <code>--action gather-results</code>"
-    <code>--save-results</code> is a <strong>flag</strong> that writes summary JSON/CSV files to the output directory. <code>--action gather-results</code> is an <strong>action</strong> that collects raw FIO output from VMs over SSH. Use them together (<code>--action gather-results --save-results</code>) to both fetch and persist.</p>
-<h2 id="configuration-options">Configuration Options</h2>
-<h3 id="action-and-targeting">Action and Targeting</h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--action</code>, <code>-a</code></td>
-<td><code>run-all</code></td>
-<td>One of: <code>deploy</code>, <code>status</code>, <code>gather-results</code>, <code>cleanup</code>, <code>run-all</code></td>
-</tr>
-<tr>
-<td><code>--start</code>, <code>-s</code></td>
-<td>(required)</td>
-<td>Starting namespace index</td>
-</tr>
-<tr>
-<td><code>--end</code>, <code>-e</code></td>
-<td>(required)</td>
-<td>Ending namespace index</td>
-</tr>
-<tr>
-<td><code>--storage-class</code></td>
-<td>(required for <code>deploy</code>/<code>run-all</code>)</td>
-<td>Storage class name</td>
-</tr>
-<tr>
-<td><code>--namespace-prefix</code></td>
-<td><code>fio-benchmark</code></td>
-<td>Namespace prefix (creates <code>fio-benchmark-1</code>, ...)</td>
-</tr>
-<tr>
-<td><code>--vm-name</code></td>
-<td><code>fio-vm</code></td>
-<td>VM resource name in each namespace</td>
-</tr>
-<tr>
-<td><code>--vm-template</code></td>
-<td><code>../examples/vm-templates/fio-vm-template.yaml</code></td>
-<td>Path to VM template YAML</td>
-</tr>
-<tr>
-<td><code>--concurrency</code>, <code>-c</code></td>
-<td><code>20</code></td>
-<td>Max parallel threads for deploy/status/cleanup</td>
-</tr>
-</tbody>
-</table>
-<h3 id="fio-parameters">FIO Parameters</h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--fio-runtime</code></td>
-<td><code>300</code></td>
-<td>FIO test duration in seconds</td>
-</tr>
-<tr>
-<td><code>--fio-rw</code></td>
-<td><code>randwrite</code></td>
-<td>I/O pattern: <code>read</code>, <code>write</code>, <code>randread</code>, <code>randwrite</code>, <code>randrw</code>, <code>rw</code></td>
-</tr>
-<tr>
-<td><code>--fio-bs</code></td>
-<td><code>4k</code></td>
-<td>Block size (e.g., <code>4k</code>, <code>8k</code>, <code>64k</code>, <code>1M</code>)</td>
-</tr>
-<tr>
-<td><code>--fio-iodepth</code></td>
-<td><code>64</code></td>
-<td>I/O queue depth</td>
-</tr>
-<tr>
-<td><code>--fio-numjobs</code></td>
-<td><code>4</code></td>
-<td>Number of parallel FIO jobs per VM</td>
-</tr>
-<tr>
-<td><code>--fio-size</code></td>
-<td><code>10G</code></td>
-<td>Test file size per job</td>
-</tr>
-</tbody>
-</table>
-<h3 id="result-collection">Result Collection</h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--collect-retries</code></td>
-<td><code>8</code></td>
-<td>Max retries for collecting results from VMs</td>
-</tr>
-<tr>
-<td><code>--collect-retry-delay</code></td>
-<td><code>20</code></td>
-<td>Delay (seconds) between collection retries</td>
-</tr>
-<tr>
-<td><code>--collect-concurrency</code></td>
-<td><code>5</code></td>
-<td>Max concurrent result collections</td>
-</tr>
-<tr>
-<td><code>--ssh-pod</code></td>
-<td><code>ssh-test-pod</code></td>
-<td>SSH helper pod name (must have <code>sshpass</code>)</td>
-</tr>
-<tr>
-<td><code>--ssh-pod-ns</code></td>
-<td><code>default</code></td>
-<td>SSH helper pod namespace</td>
-</tr>
-<tr>
-<td><code>--vm-user</code></td>
-<td><code>cloud-user</code></td>
-<td>VM SSH user</td>
-</tr>
-<tr>
-<td><code>--vm-password</code></td>
-<td><code>changeme</code></td>
-<td>VM SSH password</td>
-</tr>
-</tbody>
-</table>
-<h3 id="output">Output</h3>
-<table>
-<thead>
-<tr>
-<th>Option</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>--save-results</code></td>
-<td><code>false</code></td>
-<td>Save summary JSON/CSV to the output directory</td>
-</tr>
-<tr>
-<td><code>--results-dir</code></td>
-<td><code>results</code></td>
-<td>Base directory for results</td>
-</tr>
-<tr>
-<td><code>--storage-driver</code></td>
-<td><code>Not-Specified</code></td>
-<td>Storage driver label (folder component)</td>
-</tr>
-<tr>
-<td><code>--disks-per-vm</code></td>
-<td><code>auto</code></td>
-<td>Disks-per-VM label (folder component); auto-detected from VM spec</td>
-</tr>
-<tr>
-<td><code>--cleanup</code></td>
-<td><code>false</code></td>
-<td>Delete VMs and namespaces after <code>run-all</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="disk-space-requirements">Disk Space Requirements</h2>
-<p>FIO creates test files based on <code>--fio-size</code> and <code>--fio-numjobs</code>:</p>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Calculation</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Test files per VM</td>
-<td><code>fio-size × fio-numjobs</code></td>
-<td>10G × 4 = <strong>40GB</strong></td>
-</tr>
-<tr>
-<td>Scratch disk size</td>
-<td>Must be &gt; test files</td>
-<td>50GB (in VM template)</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Data written during test</strong> depends on achieved IOPS:</p>
-<pre><code>Data Written = Write IOPS × Block Size × Runtime
-
-Example: 21,000 IOPS × 4KB × 60s ≈ 5GB written
-</code></pre>
-<h2 id="workload-examples">Workload Examples</h2>
-<pre><code class="language-bash"># Sequential read (max bandwidth)
-virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
-  --fio-rw read --fio-bs 1M --fio-iodepth 32 --save-results
-
-# Random write (database workload)
-virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
-  --fio-rw randwrite --fio-bs 4k --fio-iodepth 64 --save-results
-
-# Mixed read/write 50/50 (general workload)
-virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
-  --fio-rw randrw --fio-bs 4k --fio-iodepth 64 --save-results
-</code></pre>
-<h2 id="results">Results</h2>
-<p>Results include per-VM and aggregated metrics:</p>
+<h3 id="-action-on"><code>--action on</code></h3>
+<p>Powered-off VMs do not have a <code>nodeName</code> on their VMI (they have no VMI at
+all), so node-only discovery is not possible. You must specify a namespace
+range or a list file:</p>
 <ul>
-<li><strong>IOPS</strong>: Read/Write operations per second</li>
-<li><strong>Bandwidth</strong>: Read/Write throughput in MiB/s</li>
-<li><strong>Latency</strong>: Read/Write latency in milliseconds</li>
+<li><strong>Range mode</strong> — iterate <code>&lt;namespace-prefix&gt;-&lt;i&gt;</code> for <code>i</code> in
+  <code>[start, end]</code>, looking for <code>--vm-name</code> in each namespace. Optionally
+  filter by <code>--node</code> (matches the VM's
+  <code>spec.template.spec.nodeSelector.kubernetes.io/hostname</code>).</li>
+<li><strong>List-file mode</strong> — read <code>namespace/name</code> lines from <code>--vm-list-file</code>
+  (typically the file produced by a previous <code>--action off</code> run).</li>
 </ul>
-<h3 id="output-structure">Output Structure</h3>
-<pre><code>{results-dir}/{storage-driver}/{disks-per-vm}/{timestamp}_fio_benchmark_{N}vms/
-├── summary_fio_benchmark.json     # Aggregated summary across all VMs
-├── fio_benchmark_results.json     # Per-VM results (JSON array)
-├── fio_benchmark_results.csv      # Per-VM results (CSV)
-└── per-vm-results/                # Raw FIO output per VM
-    ├── fio-benchmark-1/
-    │   └── fio_raw.json
-    └── ...
+<p>The command then issues <code>virtctl start</code> to every target in parallel and
+waits for each VMI to reach <code>Running</code>.</p>
+<h2 id="basic-usage">Basic Usage</h2>
+<h3 id="using-virtbench-cli">Using virtbench CLI</h3>
+<pre><code class="language-bash"># Power off 50% of running VMs on a node
+virtbench vm-ops power-toggle-vms \
+  --action off --node worker-1 --percentage 50
+
+# Power them back on from the saved list
+virtbench vm-ops power-toggle-vms \
+  --action on --vm-list-file powered_off_vms_worker-1_20260508_120000.txt
+
+# Power on a namespace range (no list file required)
+virtbench vm-ops power-toggle-vms \
+  --action on \
+  --namespace-prefix migration --start 1 --end 50 \
+  --vm-name rhel-9-vm
+
+# Power on only those VMs whose nodeSelector pins them to worker-1
+virtbench vm-ops power-toggle-vms \
+  --action on \
+  --namespace-prefix migration --start 1 --end 50 \
+  --vm-name rhel-9-vm \
+  --node worker-1
 </code></pre>
-<p>Example: <code>results/portworx-3.6/2-disk/20260308-141522_fio_benchmark_10vms/</code>. <code>--storage-driver</code> and <code>--disks-per-vm</code> are folder components only - they have no functional effect on the test.</p>
-<h3 id="view-in-dashboard">View in Dashboard</h3>
-<p>Generate the dashboard from the saved results directory after the run.</p>
-<p>The dashboard displays:</p>
+<h2 id="full-example">Full Example</h2>
+<pre><code class="language-bash"># Aggressive power-off: 75% of node, higher concurrency
+virtbench vm-ops power-toggle-vms \
+  --action off \
+  --node worker-2 \
+  --percentage 75 \
+  --concurrency 100 \
+  --wait-timeout 600
+</code></pre>
+<pre><code class="language-bash"># Symmetric power-on from the same list, dry-run first
+virtbench vm-ops power-toggle-vms \
+  --action on \
+  --vm-list-file powered_off_vms_worker-2_20260508_120000.txt \
+  --concurrency 100 \
+  --wait-timeout 600 \
+  --dry-run
+</code></pre>
+<h2 id="options">Options</h2>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--action</code> <em>(required)</em></td>
+<td><code>on</code> or <code>off</code>.</td>
+</tr>
+<tr>
+<td><code>--node</code></td>
+<td>Required for <code>--action off</code> (unless <code>--vm-list-file</code>). Optional <code>nodeSelector</code> filter for <code>--action on</code>.</td>
+</tr>
+<tr>
+<td><code>--percentage</code></td>
+<td>Percentage of running VMs to power off (default: 50, <code>--action off</code> only).</td>
+</tr>
+<tr>
+<td><code>--namespace-prefix</code>, <code>--start</code>, <code>--end</code>, <code>--vm-name</code></td>
+<td>Range-based discovery for <code>--action on</code>.</td>
+</tr>
+<tr>
+<td><code>--vm-list-file</code></td>
+<td>File of <code>namespace/name</code> lines to act on (works with both actions).</td>
+</tr>
+<tr>
+<td><code>--concurrency</code></td>
+<td>Max concurrent operations (default: 50).</td>
+</tr>
+<tr>
+<td><code>--wait-timeout</code></td>
+<td>Timeout waiting for VMs to reach the target phase (default: 300s).</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Show what would be done without doing it.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="output">Output</h2>
+<p>The summary at the end of each run reports:</p>
 <ul>
-<li>KPI summary cards (Total IOPS, Bandwidth, Latency)</li>
-<li>IOPS + Latency dual-axis chart</li>
-<li>Per-VM breakdown with clickable namespaces</li>
+<li>VMs targeted</li>
+<li><code>start</code> / <code>stop</code> commands sent vs. failed</li>
+<li>VMs that reached the target phase (<code>Running</code> for <code>on</code>, <code>Succeeded</code>/
+  <code>Failed</code>/missing for <code>off</code>)</li>
+<li>Wall-clock breakdown (command-send time vs. wait time vs. total)</li>
+</ul>
+<p>For <code>--action off</code>, the snapshot file path is also logged so you can feed
+it back into <code>--action on</code> later.</p>
+<h2 id="notes">Notes</h2>
+<ul>
+<li><code>virtctl</code> (or the <code>kubectl virt</code> Krew plugin) must be on <code>$PATH</code>. The
+  script tries the Krew plugin first, then the standalone binary.</li>
+<li><code>--vm-list-file</code> lines look like <code>namespace/name</code>; blank lines and lines
+  without a <code>/</code> are ignored.</li>
+<li><code>--action off</code> always saves a snapshot file before issuing any stop
+  commands. If the run is interrupted, you can still resume with
+  <code>--action on --vm-list-file &lt;that file&gt;</code>.</li>
+</ul>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../drain-nodes/">Drain Nodes</a> — combine to evacuate workloads then drain.</li>
+<li><a href="../../../cleanup-guide/">Cleanup Guide</a></li>
 </ul>
 
 
@@ -2243,10 +2029,10 @@ virtbench fio --start 1 --end 10 --storage-class YOUR-SC \
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": [], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../../..", "features": [], "search": "../../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../../../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

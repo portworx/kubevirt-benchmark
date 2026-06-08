@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -80,6 +80,11 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
+      
+        
+        <a href="#release-notes" class="md-skip">
+          Skip to content
+        </a>
       
     </div>
     <div data-md-component="announce">
@@ -354,6 +359,26 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -371,6 +396,191 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v200" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.0.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v2.0.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Features
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="New Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unified-virtbench-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unified virtbench CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-chaos-benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New: Chaos Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-elbencho-storage-benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New: Elbencho Storage Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-vm-ops-day-2-operations-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New: vm-ops Day-2 Operations Group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-boot-storm-testing-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New: Boot Storm Testing Scenario
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#live-migration-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live Migration Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results-and-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results and Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rewritten-failure-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rewritten: Failure Recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation-site" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation Site
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#structural-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structural Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#breaking-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -623,7 +833,35 @@
   <span class="md-ellipsis">
     
   
-    Datasource Clone
+    VM Creation (DataSource Clone)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/user-guide/test-scenarios/boot-storm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm
   
 
     
@@ -651,7 +889,7 @@
   <span class="md-ellipsis">
     
   
-    Migration
+    Live Migration
   
 
     
@@ -777,9 +1015,104 @@
 
               
             
-          </ul>
-        </nav>
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/user-guide/test-scenarios/elbencho-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elbencho Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VM Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/user-guide/test-scenarios/vm-ops/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -792,14 +1125,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../reference/user-guide/boot-storm-guide/" class="md-nav__link">
+      <a href="../reference/user-guide/test-scenarios/vm-ops/drain-nodes/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Boot Storm Testing Guide
+    Drain Nodes
   
 
     
@@ -808,6 +1141,134 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/user-guide/test-scenarios/vm-ops/rebalance-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rebalance VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/user-guide/test-scenarios/vm-ops/vm-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/user-guide/test-scenarios/vm-ops/run-blkdiscard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run blkdiscard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/user-guide/test-scenarios/vm-ops/power-toggle-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Toggle VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1263,6 +1724,182 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v200" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.0.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v2.0.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Features
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="New Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unified-virtbench-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unified virtbench CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-chaos-benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New: Chaos Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-elbencho-storage-benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New: Elbencho Storage Benchmark
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-vm-ops-day-2-operations-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New: vm-ops Day-2 Operations Group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-boot-storm-testing-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New: Boot Storm Testing Scenario
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#live-migration-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live Migration Updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results-and-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results and Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rewritten-failure-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rewritten: Failure Recovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation-site" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentation Site
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#structural-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Structural Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#breaking-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breaking Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1282,9 +1919,127 @@
   
 
 
-  <h1>Release Notes</h1>
-
-
+<h1 id="release-notes">Release Notes</h1>
+<h2 id="v200">v2.0.0</h2>
+<p>This is a major release that introduces a unified <code>virtbench</code> CLI, three new
+test scenarios (Chaos, FIO, Elbencho), a <code>vm-ops</code> day-2 operations command
+group, a rewritten failure-recovery test, and a full documentation site.</p>
+<h3 id="new-features">New Features</h3>
+<h4 id="unified-virtbench-cli">Unified <code>virtbench</code> CLI</h4>
+<p>A single Click-based entry point that wraps every benchmark and operation
+in the suite. Subcommands:</p>
+<ul>
+<li><code>virtbench datasource-clone</code> — VM creation / boot storm</li>
+<li><code>virtbench migration</code> — live migration testing</li>
+<li><code>virtbench chaos-benchmark</code> — concurrent chaos workload</li>
+<li><code>virtbench failure-recovery</code> — node-failure recovery with FAR</li>
+<li><code>virtbench fio</code> — FIO storage I/O benchmark</li>
+<li><code>virtbench elbencho</code> — Elbencho storage benchmark</li>
+<li><code>virtbench validate-cluster</code> — pre-flight cluster validation</li>
+<li><code>virtbench vm-ops &lt;op&gt;</code> — day-2 VM operations group</li>
+<li><code>virtbench version</code> — version information</li>
+</ul>
+<p>Top-level options (<code>--log-level</code>, <code>--log-file</code>, <code>--kubeconfig</code>, <code>--timeout</code>,
+<code>--uuid</code>) apply across all subcommands.</p>
+<p>The <code>virtbench</code> CLI is the documented entry point for user workflows.
+Scenario examples now use <code>virtbench</code> commands instead of direct Python
+script execution.</p>
+<h4 id="new-chaos-benchmark">New: Chaos Benchmark</h4>
+<p><code>virtbench chaos-benchmark</code> runs concurrent chaos operations — VM creation, volume
+resize, volume clone, VM restart, and snapshots — to stress-test cluster
+resilience under mixed concurrent load.</p>
+<h4 id="new-elbencho-storage-benchmark">New: Elbencho Storage Benchmark</h4>
+<p><code>virtbench elbencho</code> runs the elbencho storage micro-benchmark across
+multiple VMs to measure file-system level throughput and latency, paired
+with the existing FIO scenario.</p>
+<h4 id="new-vm-ops-day-2-operations-group">New: <code>vm-ops</code> Day-2 Operations Group</h4>
+<p>A dedicated command group for VM lifecycle operations used during
+benchmarking and validation:</p>
+<ul>
+<li><code>vm-ops drain-nodes</code> — drain Kubernetes nodes and measure drain time</li>
+<li><code>vm-ops rebalance-vms</code> — rebalance VMs across worker nodes</li>
+<li><code>vm-ops vm-snapshot</code> — create <code>VirtualMachineSnapshots</code> in batches</li>
+<li><code>vm-ops run-blkdiscard</code> — run <code>blkdiscard</code> on data disks inside VMs</li>
+<li><code>vm-ops power-toggle-vms</code> — power VMs on or off</li>
+</ul>
+<p>Each operation is exposed through the <code>virtbench vm-ops</code> command group.</p>
+<p><code>vm-ops rebalance-vms</code> now targets worker nodes by default, computes an
+automatic target range that handles small VM counts, and only includes
+master/control-plane nodes when <code>--include-master-nodes</code> is provided.</p>
+<h4 id="new-boot-storm-testing-scenario">New: Boot Storm Testing Scenario</h4>
+<p>Boot storm functionality (<code>--boot-storm</code> on <code>datasource-clone</code>) is now
+documented as a first-class scenario with single-node, multi-node, and
+existing-VM variants. See the dedicated <a href="../reference/user-guide/test-scenarios/boot-storm/">Boot Storm</a> guide.</p>
+<p>Creation and boot-storm result paths now use the storage driver label and
+disk count instead of the storage class name:</p>
+<pre><code class="language-text">results/{storage-driver}/{num-disks}-disk/{timestamp}_{namespace-prefix}_{start}-{end}/
+</code></pre>
+<p>Run logs are saved in the same timestamped run folder as the JSON and CSV
+result files.</p>
+<h4 id="live-migration-updates">Live Migration Updates</h4>
+<p><code>virtbench migration</code> now exposes the migration modes needed for common
+operator workflows, including auto-select-busiest node evacuation,
+round-robin migration, interleaved scheduling, and multi-source-node
+migration.</p>
+<p>Multi-source-node migration accepts a comma-separated <code>--source-nodes</code>
+value, for example:</p>
+<pre><code class="language-bash">virtbench migration --source-nodes worker-1,worker-2,worker-3
+</code></pre>
+<p>It discovers matching VMIs directly from the cluster, removes VM/VMI
+<code>nodeSelector</code> settings before migration, and submits migrations in an
+interleaved order across source nodes.</p>
+<p>The migration guide now includes an end-to-end workflow covering cluster
+validation, VM creation, boot storm, rebalance, and multi-source-node live
+migration against the same VM set.</p>
+<h4 id="results-and-logging">Results and Logging</h4>
+<p>Saved benchmark runs now keep logs, detailed results, and summary results
+together inside the same run directory. Commands executed through
+<code>virtbench</code> are logged with sensitive values redacted where applicable.</p>
+<p>The public result grouping option is standardized as <code>--storage-driver</code>
+across documented workflows. The previous <code>--storage-version</code> spelling is
+removed from the user documentation.</p>
+<h4 id="rewritten-failure-recovery">Rewritten: Failure Recovery</h4>
+<p><code>failure-recovery/recovery-test.py</code> replaces the previous
+<code>measure-recovery-time.py</code> and the <code>run-far-test.sh</code> /
+<code>run-manual-failure-test.sh</code> / <code>patch-vms.sh</code> shell scripts. The wrapper
+exposes node-targeted recovery testing via <code>virtbench failure-recovery
+--node &lt;name&gt;</code>.</p>
+<h4 id="documentation-site">Documentation Site</h4>
+<p>Full MkDocs Material site under <code>docs/</code>, including:</p>
+<ul>
+<li>Repository Structure reference</li>
+<li>Test Scenarios index with per-scenario guides</li>
+<li>VM Operations sub-section</li>
+<li>Configuration Options reference</li>
+<li>Output and Results, Cleanup Guide, VM Template Guide</li>
+<li>Best Practices and Troubleshooting</li>
+</ul>
+<h3 id="structural-changes">Structural Changes</h3>
+<ul>
+<li>I/O benchmarks consolidated under <code>io-benchmark/{fio,elbencho}/</code>. The
+  legacy <code>fio-benchmark/measure-fio-performance.py</code> location is removed.</li>
+<li>Failure-recovery shell scripts removed in favour of a single Python
+  test driver.</li>
+<li>New top-level <code>vm-ops/</code> directory containing the day-2 operation
+  scripts.</li>
+<li>Hotplug disk support removed from <code>vm-ops/</code> and from documentation.</li>
+</ul>
+<h3 id="breaking-changes">Breaking Changes</h3>
+<ul>
+<li><code>fio-benchmark/measure-fio-performance.py</code> → <code>io-benchmark/fio/measure-fio-performance.py</code></li>
+<li><code>failure-recovery/measure-recovery-time.py</code>, <code>run-far-test.sh</code>,
+  <code>run-manual-failure-test.sh</code>, <code>patch-vms.sh</code> → replaced by
+  <code>failure-recovery/recovery-test.py</code></li>
+<li><code>--storage-version</code> documentation replaced with <code>--storage-driver</code>.</li>
+<li>Some default values changed for <code>datasource-clone</code> and <code>migration</code> —
+  see <a href="../reference/user-guide/configuration/">Configuration Options</a> for
+  the per-flag defaults of both the wrapper and the underlying scripts.</li>
+</ul>
+<h3 id="notes">Notes</h3>
+<ul>
+<li>The <code>virtbench</code> CLI is the recommended and documented entry point for
+  benchmark workflows. User-facing examples use <code>virtbench</code> commands.</li>
+</ul>
 
 
 

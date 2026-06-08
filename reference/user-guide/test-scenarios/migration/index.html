@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://portworx.github.io/kubevirt-benchmark/reference/user-guide/test-scenarios/migration/">
       
       
-        <link rel="prev" href="../datasource-clone/">
+        <link rel="prev" href="../boot-storm/">
       
       
         <link rel="next" href="../chaos-benchmark/">
@@ -25,11 +25,11 @@
       
       
       <link rel="icon" href="../../../../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Migration - virtbench</title>
+        <title>Live Migration - virtbench</title>
       
     
     
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Migration
+              Live Migration
             
           </span>
         </div>
@@ -624,7 +624,35 @@
   <span class="md-ellipsis">
     
   
-    Datasource Clone
+    VM Creation (DataSource Clone)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../boot-storm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm
   
 
     
@@ -661,7 +689,7 @@
   <span class="md-ellipsis">
     
   
-    Migration
+    Live Migration
   
 
     
@@ -679,7 +707,7 @@
   <span class="md-ellipsis">
     
   
-    Migration
+    Live Migration
   
 
     
@@ -739,17 +767,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-python-script" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -760,6 +777,78 @@
     <span class="md-ellipsis">
       
         Option 2: Use existing VMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-workflow-creation-boot-storm-rebalance-multi-source-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Workflow: Creation, Boot Storm, Rebalance, Multi-Source Migration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended Workflow: Creation, Boot Storm, Rebalance, Multi-Source Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-validate-the-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Validate the cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-10-vms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create 10 VMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-run-boot-storm-against-the-existing-vms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Run boot storm against the existing VMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-rebalance-the-vms-across-worker-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Rebalance the VMs across worker nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-run-multi-source-node-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run multi-source-node migration
       
     </span>
   </a>
@@ -806,17 +895,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-python-script_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -839,17 +917,6 @@
     <span class="md-ellipsis">
       
         Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
       
     </span>
   </a>
@@ -884,17 +951,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-python-script_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -917,17 +973,6 @@
     <span class="md-ellipsis">
       
         Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
       
     </span>
   </a>
@@ -962,17 +1007,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-python-script_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -1001,11 +1035,28 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+        
           <li class="md-nav__item">
-  <a href="#using-python-script_6" class="md-nav__link">
+  <a href="#multi-source-node-migration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using Python Script
+        Multi-Source-Node Migration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Multi-Source-Node Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-virtbench-cli_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using virtbench CLI
       
     </span>
   </a>
@@ -1058,21 +1109,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-virtbench-cli_7" class="md-nav__link">
+  <a href="#using-virtbench-cli_8" class="md-nav__link">
     <span class="md-ellipsis">
       
         Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_7" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
       
     </span>
   </a>
@@ -1097,21 +1137,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-virtbench-cli_8" class="md-nav__link">
+  <a href="#using-virtbench-cli_9" class="md-nav__link">
     <span class="md-ellipsis">
       
         Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_8" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
       
     </span>
   </a>
@@ -1260,9 +1289,104 @@
 
               
             
-          </ul>
-        </nav>
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../elbencho-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elbencho Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VM Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vm-ops/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1275,14 +1399,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../boot-storm-guide/" class="md-nav__link">
+      <a href="../vm-ops/drain-nodes/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Boot Storm Testing Guide
+    Drain Nodes
   
 
     
@@ -1291,6 +1415,134 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vm-ops/rebalance-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rebalance VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vm-ops/vm-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vm-ops/run-blkdiscard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run blkdiscard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vm-ops/power-toggle-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Toggle VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1790,17 +2042,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-python-script" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -1811,6 +2052,78 @@
     <span class="md-ellipsis">
       
         Option 2: Use existing VMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-workflow-creation-boot-storm-rebalance-multi-source-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Workflow: Creation, Boot Storm, Rebalance, Multi-Source Migration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended Workflow: Creation, Boot Storm, Rebalance, Multi-Source Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-validate-the-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Validate the cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-10-vms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create 10 VMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-run-boot-storm-against-the-existing-vms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Run boot storm against the existing VMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-rebalance-the-vms-across-worker-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Rebalance the VMs across worker nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-run-multi-source-node-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run multi-source-node migration
       
     </span>
   </a>
@@ -1857,17 +2170,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-python-script_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -1890,17 +2192,6 @@
     <span class="md-ellipsis">
       
         Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
       
     </span>
   </a>
@@ -1935,17 +2226,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-python-script_3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -1968,17 +2248,6 @@
     <span class="md-ellipsis">
       
         Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_4" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
       
     </span>
   </a>
@@ -2013,17 +2282,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-python-script_5" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2052,11 +2310,28 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+        
           <li class="md-nav__item">
-  <a href="#using-python-script_6" class="md-nav__link">
+  <a href="#multi-source-node-migration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using Python Script
+        Multi-Source-Node Migration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Multi-Source-Node Migration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-virtbench-cli_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using virtbench CLI
       
     </span>
   </a>
@@ -2109,21 +2384,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-virtbench-cli_7" class="md-nav__link">
+  <a href="#using-virtbench-cli_8" class="md-nav__link">
     <span class="md-ellipsis">
       
         Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_7" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
       
     </span>
   </a>
@@ -2148,21 +2412,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-virtbench-cli_8" class="md-nav__link">
+  <a href="#using-virtbench-cli_9" class="md-nav__link">
     <span class="md-ellipsis">
       
         Using virtbench CLI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-python-script_8" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using Python Script
       
     </span>
   </a>
@@ -2213,6 +2466,16 @@
 <h1 id="live-migration-testing">Live Migration Testing</h1>
 <p>Tests VM live migration with existing VMs or by creating new VMs across different scenarios.</p>
 <p><strong>Use Case</strong>: Validates migration performance for node maintenance, load balancing, and disaster recovery scenarios.</p>
+<p><strong>Supported scenarios</strong>:</p>
+<ul>
+<li><strong>Sequential</strong> — migrate VMs one at a time from a source to a target node.</li>
+<li><strong>Parallel</strong> — migrate many VMs concurrently between two nodes.</li>
+<li><strong>Node evacuation</strong> — drain every VM from a single source node (explicit or auto-selected busiest).</li>
+<li><strong>Round-robin</strong> — distribute VMs across all worker nodes for load balancing.</li>
+<li><strong>Multi-source-node</strong> — drain VMs from a comma-separated list of nodes (or every worker via <code>--source-nodes all</code>)
+  in parallel, with discovery driven by <code>kubectl</code> so no <code>--start</code>/<code>--end</code> range is required.
+  See <a href="#multi-source-node-migration">Multi-Source-Node Migration</a>.</li>
+</ul>
 <h2 id="prerequisites">Prerequisites</h2>
 <p>Live migration tests require VMs to already exist. You have two options:</p>
 <h3 id="option-1-create-vms-as-part-of-the-migration-test-recommended">Option 1: Create VMs as part of the migration test (Recommended)</h3>
@@ -2239,115 +2502,154 @@ virtbench migration \
   --cleanup \
   --save-results
 </code></pre>
-<h4 id="using-python-script">Using Python Script</h4>
-<pre><code class="language-bash">cd migration
-
-# Create 10 VMs on source node and migrate them to target node
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 10 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --vm-template ../examples/vm-templates/rhel9-vm-datasource.yaml \
-  --save-results
-</code></pre>
-<p>!!! warning "Important"
-    When using <code>--create-vms</code>, you must either:</p>
-<pre><code>- Provide `--storage-class YOUR-STORAGE-CLASS` to specify the storage class at runtime, OR
-- Pre-configure your VM template with the correct storage class before running the test
-</code></pre>
 <h3 id="option-2-use-existing-vms">Option 2: Use existing VMs</h3>
 <p>If VMs already exist (e.g., created by datasource-clone tests), you can migrate them directly:</p>
-<pre><code class="language-bash"># Migrate existing VMs (assumes VMs exist in migration-1 through migration-10 namespaces)
+<pre><code class="language-bash"># Migrate existing VMs created by datasource-clone
 virtbench migration \
+  --start 1 --end 3 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
+</code></pre>
+<h2 id="recommended-workflow-creation-boot-storm-rebalance-multi-source-migration">Recommended Workflow: Creation, Boot Storm, Rebalance, Multi-Source Migration</h2>
+<p>Use this workflow when you want to validate VM provisioning, boot storm, and
+live migration against the same VM set. The example below creates 10 VMs,
+runs a boot storm against those existing VMs, rebalances the VMIs across
+worker nodes, and then migrates all VMs using multi-source-node migration.</p>
+<p>Replace these placeholders before running the commands:</p>
+<ul>
+<li><code>KUBECONFIG</code> — path to the kubeconfig for the target cluster.</li>
+<li><code>VM_TEMPLATE</code> — path to the VM template YAML.</li>
+<li><code>SECRET_YAML</code> — path to cloud-init or secret YAML required by the VM.</li>
+<li><code>STORAGE_CLASS</code> — storage class to validate.</li>
+<li><code>STORAGE_DRIVER</code> — result grouping label, such as <code>portworx-3.6</code> or <code>ceph</code>.</li>
+<li><code>WORKER_1,WORKER_2,...</code> — comma-separated worker nodes currently hosting
+  the VMs before migration.</li>
+</ul>
+<p>Set the kubeconfig once before running the workflow:</p>
+<pre><code class="language-bash">export KUBECONFIG=/path/to/kubeconfig
+</code></pre>
+<h3 id="1-validate-the-cluster">1. Validate the cluster</h3>
+<pre><code class="language-bash">virtbench validate-cluster \
+  --storage-class STORAGE_CLASS \
+  --datasource rhel9 \
+  --datasource-namespace openshift-virtualization-os-images \
+  --min-worker-nodes 4
+</code></pre>
+<h3 id="2-create-10-vms">2. Create 10 VMs</h3>
+<pre><code class="language-bash">virtbench datasource-clone \
   --start 1 \
   --end 10 \
-  --namespace-prefix migration \
-  --source-node worker-1 \
-  --save-results
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --vm-template VM_TEMPLATE \
+  --secret-yaml SECRET_YAML \
+  --concurrency 10 \
+  --namespace-batch-size 10 \
+  --ping-timeout 300 \
+  --num-disks 4 \
+  --save-results \
+  --results-folder results \
+  --storage-driver STORAGE_DRIVER
+</code></pre>
+<h3 id="3-run-boot-storm-against-the-existing-vms">3. Run boot storm against the existing VMs</h3>
+<pre><code class="language-bash">virtbench datasource-clone \
+  --start 1 \
+  --end 10 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --vm-template VM_TEMPLATE \
+  --secret-yaml SECRET_YAML \
+  --concurrency 10 \
+  --ping-timeout 300 \
+  --num-disks 4 \
+  --boot-storm \
+  --skip-vm-creation \
+  --skip-namespace-creation \
+  --save-results \
+  --results-folder results \
+  --storage-driver STORAGE_DRIVER
+</code></pre>
+<h3 id="4-rebalance-the-vms-across-worker-nodes">4. Rebalance the VMs across worker nodes</h3>
+<pre><code class="language-bash">virtbench vm-ops rebalance-vms \
+  --vm-name rhel-elbencho-1
+</code></pre>
+<p>By default, rebalance uses worker nodes only. For example, 10 VMs across
+4 workers results in a target range of 2-3 VMs per worker. Rebalance moves
+VMs by setting <code>nodeSelector</code>, stopping the VM, and starting it again on the
+target worker.</p>
+<h3 id="5-run-multi-source-node-migration">5. Run multi-source-node migration</h3>
+<pre><code class="language-bash">virtbench migration \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --source-nodes WORKER_1,WORKER_2,WORKER_3,WORKER_4 \
+  --concurrency 10 \
+  --poll-interval 1 \
+  --migration-timeout 600 \
+  --ping-timeout 300 \
+  --save-results \
+  --results-folder results \
+  --storage-driver STORAGE_DRIVER
+</code></pre>
+<p>The <code>--source-nodes</code> value is a comma-separated list. Multi-source migration
+discovers the matching VMIs on those nodes, clears VM/VMI <code>nodeSelector</code>
+settings left by rebalance, and then submits migrations in an interleaved
+order across the source nodes. If you want to target every worker that has
+matching VMIs, you can use <code>--source-nodes all</code>.</p>
+<p>Each saved run writes its log, JSON, and CSV files into one run folder:</p>
+<pre><code class="language-text">results/{storage-driver}/{num-disks}-disk/{timestamp}_{test-name}/
 </code></pre>
 <h2 id="migration-scenarios">Migration Scenarios</h2>
 <h3 id="sequential-migration">Sequential Migration</h3>
 <p>Migrate VMs one by one from source to target node.</p>
 <h4 id="using-virtbench-cli_1">Using virtbench CLI</h4>
-<pre><code class="language-bash"># Migrate 10 VMs one by one from worker-1 to worker-2
+<pre><code class="language-bash"># Migrate existing VMs one by one
 virtbench migration \
-  --start 1 \
-  --end 10 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --storage-class YOUR-STORAGE-CLASS \
-  --save-results
-</code></pre>
-<h4 id="using-python-script_1">Using Python Script</h4>
-<pre><code class="language-bash">cd migration
-
-# Migrate 10 VMs one by one from worker-1 to worker-2
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 10 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --save-results
+  --start 1 --end 3 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --poll-interval 1 \
+  --migration-timeout 600 \
+  --ping-timeout 300 \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 </code></pre>
 <h3 id="parallel-migration">Parallel Migration</h3>
 <p>Migrate multiple VMs simultaneously with configurable concurrency.</p>
 <h4 id="using-virtbench-cli_2">Using virtbench CLI</h4>
-<pre><code class="language-bash"># Migrate 50 VMs in parallel with 10 concurrent migrations
+<pre><code class="language-bash"># Migrate existing VMs in parallel with three concurrent migrations
 virtbench migration \
-  --start 1 \
-  --end 50 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --storage-class YOUR-STORAGE-CLASS \
+  --start 1 --end 3 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --parallel \
-  --concurrency 10 \
-  --save-results
-</code></pre>
-<h4 id="using-python-script_2">Using Python Script</h4>
-<pre><code class="language-bash">cd migration
-
-# Migrate 50 VMs in parallel with 10 concurrent migrations
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 50 \
-  --source-node worker-1 \
-  --target-node worker-2 \
-  --create-vms \
-  --parallel \
-  --concurrency 10 \
-  --save-results
+  --concurrency 3 \
+  --poll-interval 1 \
+  --migration-timeout 600 \
+  --ping-timeout 300 \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 </code></pre>
 <h3 id="parallel-migration-with-advanced-options">Parallel Migration with Advanced Options</h3>
 <h4 id="using-virtbench-cli_3">Using virtbench CLI</h4>
-<pre><code class="language-bash"># High-scale parallel migration with interleaved scheduling and custom timeout
+<pre><code class="language-bash"># High-scale parallel migration with custom timeout and no ping validation
 virtbench migration \
   --start 1 \
   --end 200 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --parallel \
   --concurrency 50 \
+  --interleaved-scheduling \
+  --migration-timeout 1000 \
   --skip-ping \
   --save-results \
-  --migration-timeout 1000 \
-  --interleaved-scheduling
-</code></pre>
-<h4 id="using-python-script_3">Using Python Script</h4>
-<pre><code class="language-bash">cd migration
-
-# High-scale parallel migration with interleaved scheduling and custom timeout
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 200 \
-  --parallel \
-  --concurrency 50 \
-  --skip-ping \
-  --save-results \
-  --migration-timeout 1000 \
-  --interleaved-scheduling
+  --results-folder results \
+  --storage-driver portworx-3.6
 </code></pre>
 <h3 id="node-evacuation-specific-node">Node Evacuation (Specific Node)</h3>
 <p>Evacuate all VMs from a specific node before maintenance.</p>
@@ -2356,68 +2658,95 @@ python3 measure-vm-migration-time.py \
 virtbench migration \
   --start 1 \
   --end 100 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --source-node worker-3 \
   --evacuate \
   --concurrency 20 \
-  --save-results
-</code></pre>
-<h4 id="using-python-script_4">Using Python Script</h4>
-<pre><code class="language-bash">cd migration
-
-# Evacuate all VMs from worker-3 before maintenance
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 100 \
-  --source-node worker-3 \
-  --evacuate \
-  --concurrency 20 \
-  --save-results
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 </code></pre>
 <h3 id="node-evacuation-auto-select-busiest">Node Evacuation (Auto-Select Busiest)</h3>
-<p>Automatically find and evacuate the busiest node.</p>
+<p>Automatically find and evacuate the node currently hosting the most matching
+VMs in the namespace range.</p>
 <h4 id="using-virtbench-cli_5">Using virtbench CLI</h4>
-<pre><code class="language-bash"># Automatically find and evacuate the busiest node
-virtbench migration \
+<pre><code class="language-bash">virtbench migration \
   --start 1 \
   --end 100 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --evacuate \
   --auto-select-busiest \
   --concurrency 20 \
-  --save-results
-</code></pre>
-<h4 id="using-python-script_5">Using Python Script</h4>
-<pre><code class="language-bash">cd migration
-
-# Automatically find and evacuate the busiest node
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 100 \
-  --evacuate \
-  --auto-select-busiest \
-  --concurrency 20 \
-  --save-results
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 </code></pre>
 <h3 id="round-robin-migration">Round-Robin Migration</h3>
-<p>Distribute VMs across all nodes for load balancing.</p>
+<p>Distribute VMs across worker nodes for load balancing. The command chooses a
+different target worker for each VM and runs migrations concurrently up to
+<code>--concurrency</code>.</p>
 <h4 id="using-virtbench-cli_6">Using virtbench CLI</h4>
-<pre><code class="language-bash"># Distribute VMs across all nodes for load balancing
-virtbench migration \
-  --start 1 \
-  --end 100 \
+<pre><code class="language-bash">virtbench migration \
+  --start 1 --end 3 \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
   --round-robin \
-  --concurrency 20 \
-  --save-results
+  --concurrency 3 \
+  --poll-interval 1 \
+  --migration-timeout 600 \
+  --ping-timeout 300 \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 </code></pre>
-<h4 id="using-python-script_6">Using Python Script</h4>
-<pre><code class="language-bash">cd migration
-
-# Distribute VMs across all nodes for load balancing
-python3 measure-vm-migration-time.py \
-  --start 1 \
-  --end 100 \
-  --round-robin \
+<h3 id="multi-source-node-migration">Multi-Source-Node Migration</h3>
+<p>Discover and migrate <strong>all</strong> VMs running on a list of source nodes in parallel,
+without having to specify a <code>--start</code>/<code>--end</code> range. VMs are listed directly
+from the cluster (<code>kubectl get vmi -A</code>) and filtered by <code>.status.nodeName</code>,
+which makes this the right choice when:</p>
+<ul>
+<li>The original <code>migration-N</code> namespace numbering no longer matches what is
+  actually running on each node (e.g. after several rounds of migrations).</li>
+<li>You want to drain multiple nodes simultaneously (rolling node maintenance,
+  cordon-then-evacuate workflows, full cluster rebalancing).</li>
+</ul>
+<p>VMs are submitted to the worker pool in an <strong>interleaved</strong> order — <code>VM1</code> from
+node1, <code>VM1</code> from node2, <code>VM1</code> from node3, then <code>VM2</code> from node1, and so on —
+so concurrent migrations are spread evenly across source nodes from the very
+first batch instead of draining one node at a time.</p>
+<h4 id="using-virtbench-cli_7">Using virtbench CLI</h4>
+<pre><code class="language-bash"># Drain three specific nodes in parallel
+virtbench migration \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --source-nodes worker-1,worker-2,worker-3 \
   --concurrency 20 \
-  --save-results
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
+
+# Pin every migration to a single target node
+virtbench migration \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --source-nodes worker-1,worker-2 \
+  --target-node worker-5 \
+  --concurrency 15 \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
+
+# Evacuate every worker node in the cluster
+virtbench migration \
+  --vm-name rhel-elbencho-1 \
+  --namespace-prefix datasource-clone \
+  --source-nodes all \
+  --concurrency 20 \
+  --save-results \
+  --results-folder results \
+  --storage-driver portworx-3.6
 </code></pre>
 <h2 id="what-the-test-measures">What the Test Measures</h2>
 <ol>
@@ -2430,20 +2759,12 @@ python3 measure-vm-migration-time.py \
 </ol>
 <h2 id="cleanup">Cleanup</h2>
 <h3 id="clean-up-vmims-only-vms-remain">Clean up VMIMs only (VMs remain)</h3>
-<h4 id="using-virtbench-cli_7">Using virtbench CLI</h4>
+<h4 id="using-virtbench-cli_8">Using virtbench CLI</h4>
 <pre><code class="language-bash">virtbench migration --start 1 --end 100 --cleanup
 </code></pre>
-<h4 id="using-python-script_7">Using Python Script</h4>
-<pre><code class="language-bash">cd migration
-python3 measure-vm-migration-time.py --start 1 --end 100 --cleanup
-</code></pre>
 <h3 id="clean-up-everything-if-vms-were-created-by-the-test">Clean up everything if VMs were created by the test</h3>
-<h4 id="using-virtbench-cli_8">Using virtbench CLI</h4>
+<h4 id="using-virtbench-cli_9">Using virtbench CLI</h4>
 <pre><code class="language-bash">virtbench migration --start 1 --end 100 --create-vms --cleanup
-</code></pre>
-<h4 id="using-python-script_8">Using Python Script</h4>
-<pre><code class="language-bash">cd migration
-python3 measure-vm-migration-time.py --start 1 --end 100 --create-vms --cleanup
 </code></pre>
 <h2 id="see-also">See Also</h2>
 <ul>

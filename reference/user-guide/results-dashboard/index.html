@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -622,7 +622,35 @@
   <span class="md-ellipsis">
     
   
-    Datasource Clone
+    VM Creation (DataSource Clone)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/boot-storm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boot Storm
   
 
     
@@ -650,7 +678,7 @@
   <span class="md-ellipsis">
     
   
-    Migration
+    Live Migration
   
 
     
@@ -776,9 +804,104 @@
 
               
             
-          </ul>
-        </nav>
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/elbencho-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Elbencho Benchmark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    VM Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -791,14 +914,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../boot-storm-guide/" class="md-nav__link">
+      <a href="../test-scenarios/vm-ops/drain-nodes/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Boot Storm Testing Guide
+    Drain Nodes
   
 
     
@@ -807,6 +930,134 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/rebalance-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rebalance VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/vm-snapshot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VM Snapshot
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/run-blkdiscard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run blkdiscard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-scenarios/vm-ops/power-toggle-vms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Toggle VMs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -2041,7 +2292,7 @@
 <h2 id="overview">Overview</h2>
 <p>After running tests with <code>--save-results</code>, you can generate a rich, interactive dashboard that provides:</p>
 <ul>
-<li><strong>Multi-level Organization</strong>: Results organized by Storage Version → Disk Count → VM Size</li>
+<li><strong>Multi-level Organization</strong>: Results organized by Storage Driver → Disk Count → VM Size</li>
 <li><strong>Interactive Charts</strong>: Plotly-based bar charts showing duration metrics</li>
 <li><strong>Detailed Tables</strong>: Sortable and searchable DataTables for all test results</li>
 <li><strong>Cluster Information</strong>: Display cluster metadata and configuration</li>
@@ -2050,22 +2301,14 @@
 </ul>
 <h2 id="generating-the-dashboard">Generating the Dashboard</h2>
 <h3 id="basic-usage">Basic Usage</h3>
-<pre><code class="language-bash"># Generate dashboard for last 15 days of results
-python3 dashboard/generate_dashboard.py
-</code></pre>
-<p>This will:
+<p>Generate the dashboard from the saved <code>results/</code> directory after benchmark
+runs complete. This will:
 1. Scan the <code>results/</code> directory for test results
 2. Process all results from the last 15 days
 3. Generate <code>results_dashboard.html</code> in the current directory</p>
 <h3 id="custom-configuration">Custom Configuration</h3>
-<pre><code class="language-bash"># Custom time range and configuration
-python3 dashboard/generate_dashboard.py \
-  --days 50 \
-  --base-dir results \
-  --cluster-info dashboard/cluster_info.yaml \
-  --manual-results dashboard/manual_results.yaml \
-  --output-html results_dashboard.html
-</code></pre>
+<p>Use the dashboard options below to select the results directory, time range,
+cluster information file, manual results file, and output HTML path.</p>
 <h2 id="dashboard-options">Dashboard Options</h2>
 <table>
 <thead>
@@ -2134,7 +2377,7 @@ python3 dashboard/generate_dashboard.py \
 ocp_version: &quot;4.14.8&quot;
 kubevirt_version: &quot;4.14.2&quot;
 storage_backend: &quot;Portworx Enterprise&quot;
-storage_version: &quot;3.2.0&quot;
+storage_driver: &quot;portworx-3.6&quot;
 node_count: 6
 worker_nodes:
   - name: &quot;worker-1&quot;
@@ -2153,7 +2396,7 @@ notes: &quot;Production cluster with HA configuration&quot;
 <pre><code class="language-yaml">manual_tests:
   - test_type: &quot;vm_creation&quot;
     date: &quot;2024-01-15&quot;
-    storage_version: &quot;3.1.0&quot;
+    storage_driver: &quot;portworx-3.6&quot;
     disk_count: 10
     vm_count: 100
     avg_time_to_running: 12.5
@@ -2162,7 +2405,7 @@ notes: &quot;Production cluster with HA configuration&quot;
 
   - test_type: &quot;migration&quot;
     date: &quot;2024-01-16&quot;
-    storage_version: &quot;3.1.0&quot;
+    storage_driver: &quot;portworx-3.6&quot;
     vm_count: 50
     avg_migration_duration: 25.4
     success_rate: 100
@@ -2178,7 +2421,7 @@ notes: &quot;Production cluster with HA configuration&quot;
 - Success rates
 - Performance trends</p>
 <h3 id="3-vm-creation-results">3. VM Creation Results</h3>
-<p>Organized by storage version and disk count:
+<p>Organized by storage driver and disk count:
 - Interactive charts for time to Running and time to Ping
 - Detailed tables with all test runs
 - Filtering and sorting capabilities</p>
@@ -2206,7 +2449,7 @@ notes: &quot;Production cluster with HA configuration&quot;
 </ul>
 <h3 id="filtering-results">Filtering Results</h3>
 <ul>
-<li>Filter by storage version</li>
+<li>Filter by storage driver</li>
 <li>Filter by disk count</li>
 <li>Filter by date range</li>
 <li>Filter by test type</li>
@@ -2220,7 +2463,7 @@ notes: &quot;Production cluster with HA configuration&quot;
 <h2 id="best-practices">Best Practices</h2>
 <ol>
 <li><strong>Regular Generation</strong>: Generate dashboard after each test run to track trends</li>
-<li><strong>Version Tracking</strong>: Use <code>--storage-version</code> to organize results by storage backend version</li>
+<li><strong>Driver Tracking</strong>: Use <code>--storage-driver</code> to organize DataSource clone and boot-storm results by backend driver, such as <code>portworx-3.6</code> or <code>ceph</code></li>
 <li><strong>Cluster Info</strong>: Keep <code>cluster_info.yaml</code> updated with current configuration</li>
 <li><strong>Manual Results</strong>: Document baseline tests and special scenarios</li>
 <li><strong>Archive Dashboards</strong>: Save dashboard HTML files for historical reference</li>
