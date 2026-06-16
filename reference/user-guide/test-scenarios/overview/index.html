@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../../../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
@@ -759,6 +759,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#10-disk-operations-hotplugcoldplug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Disk Operations (Hotplug/Coldplug)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1014,6 +1025,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../disk-ops-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disk Operations (Hotplug/Coldplug)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
     
@@ -1023,10 +1062,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_11" >
         
           
-          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2_1_11" id="__nav_2_2_1_11_label" tabindex="0">
             
   
   
@@ -1044,8 +1083,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2_1_10">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1809,6 +1848,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#10-disk-operations-hotplugcoldplug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Disk Operations (Hotplug/Coldplug)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1889,6 +1939,12 @@ rebalance VMs, snapshot in batches, run <code>blkdiscard</code>, and power VMs o
 <p><strong>Use Case</strong>: Exercise VM lifecycle paths individually or as building blocks
 for larger test plans.</p>
 <p><a href="../vm-ops/overview/">Learn more →</a></p>
+<h3 id="10-disk-operations-hotplugcoldplug">10. Disk Operations (Hotplug/Coldplug)</h3>
+<p>Tests disk hotplug (attach to running VM) and coldplug (attach to stopped VM,
+then boot) performance, with optional in-VM validation that the disk appears.</p>
+<p><strong>Use Case</strong>: Measure disk attach/detach times and verify disks become usable
+inside running and stopped VMs.</p>
+<p><a href="../disk-ops-benchmark/">Learn more →</a></p>
 <h2 id="next-steps">Next Steps</h2>
 <ol>
 <li><a href="../../configuration/">Configure your environment</a> - Set up storage classes and templates</li>

@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../../../favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
     
     
       
@@ -1075,6 +1075,34 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../disk-ops-benchmark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disk Operations (Hotplug/Coldplug)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
     
@@ -1084,10 +1112,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_1_11" >
         
           
-          <label class="md-nav__link" for="__nav_2_2_1_10" id="__nav_2_2_1_10_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2_2_1_11" id="__nav_2_2_1_11_label" tabindex="0">
             
   
   
@@ -1105,8 +1133,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_2_1_10">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_2_1_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_1_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1979,7 +2007,7 @@
 <li>virt-handler daemonset on all nodes</li>
 <li>Storage class availability</li>
 <li>Worker node readiness</li>
-<li>DataSource availability</li>
+<li>DataSource availability (optional — only needed for datasource-clone and chaos tests)</li>
 <li>User permissions</li>
 <li>Node resource utilization</li>
 </ul>
@@ -2085,13 +2113,16 @@ Cluster validation passed! Ready to run benchmarks.
 <pre><code>✓ kubectl access and cluster connectivity
 ✗ OpenShift Virtualization not found or not healthy
   - KubeVirt resource not in Deployed phase
-✓ Storage class available
+✗ Storage class 'YOUR-STORAGE-CLASS' not found
 ✓ Worker nodes ready (3 nodes)
-✗ DataSource 'rhel9' not found
-  - Check namespace: openshift-virtualization-os-images
+⚠ DataSource 'rhel9' exists but is not ready - WARNING (only needed for datasource-clone/chaos tests)
 
 Cluster validation failed. Please fix the issues above.
 </code></pre>
+<p>A missing or not-ready DataSource is reported as a <strong>warning</strong>, not a failure — it
+only blocks the datasource-clone and chaos tests. Validation fails only on the
+hard checks above (connectivity, virtualization, storage class, worker nodes,
+permissions).</p>
 <h2 id="troubleshooting-validation-failures">Troubleshooting Validation Failures</h2>
 <h3 id="openshift-virtualization-not-found">OpenShift Virtualization Not Found</h3>
 <p><strong>Check if KubeVirt resource exists:</strong></p>
@@ -2148,7 +2179,7 @@ kubectl auth can-i create pods/exec -n default
 <li>[ ] Storage class is compatible with KubeVirt DataVolumes</li>
 <li>[ ] SSH test pod is running (for network tests)</li>
 <li>[ ] Sufficient cluster resources available</li>
-<li>[ ] DataSource exists and is ready</li>
+<li>[ ] DataSource exists and is ready (only for datasource-clone / chaos tests)</li>
 </ul>
 <h2 id="see-also">See Also</h2>
 <ul>
