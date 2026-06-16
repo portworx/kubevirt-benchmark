@@ -1297,6 +1297,337 @@ def build_elbencho_content(folder: Path, uid: str) -> str:
     """
 
 
+# ---------------- Disk Ops Benchmark Builder ----------------
+def build_disk_ops_content(folder: Path, uid: str) -> str:
+    """Disk Operations Benchmark section - hotplug, coldplug, and unplug timing metrics."""
+    import json as _json
+
+    data = load_json(folder / "disk_ops_results.json")
+
+    if not data:
+        return "<p>No disk operations benchmark data found.</p>"
+
+    config = data.get("config", {})
+    summary = data.get("summary", {})
+    hotplug = data.get("hotplug") or {}
+    coldplug = data.get("coldplug") or {}
+    unplug = data.get("unplug") or {}
+    per_vm = data.get("per_vm_results", []) or []
+
+    timestamp = data.get("timestamp", "N/A")
+    total_vms = summary.get("total_vms", 0)
+    total_ops = summary.get("total_operations", 0)
+
+    # Header
+    header_html = f"""
+    <h6><strong>Timestamp:</strong> {timestamp}</h6>
+    <h6><strong>Total VMs:</strong> {total_vms} &nbsp;|&nbsp; <strong>Total Operations:</strong> {total_ops}</h6>
+    """
+
+    # Config table
+    op_label = config.get("operation", "N/A").upper()
+    config_rows = "".join([
+        f"<tr><th>Operation</th><td>{op_label}</td></tr>",
+        f"<tr><th>Disks per VM</th><td>{config.get('disks_per_vm', 'N/A')}</td></tr>",
+        f"<tr><th>Disk Size</th><td>{config.get('disk_size', 'N/A')}</td></tr>",
+        f"<tr><th>Storage Class</th><td>{config.get('storage_class', 'N/A')}</td></tr>",
+        f"<tr><th>Test Unplug</th><td>{'Yes' if config.get('test_unplug') else 'No'}</td></tr>",
+        f"<tr><th>Skip Validation</th><td>{'Yes' if config.get('skip_validation') else 'No'}</td></tr>",
+    ])
+    config_table = f'<table class="table table-bordered w-auto"><tbody>{config_rows}</tbody></table>'
+
+    # KPI cards — success rates for all three operations
+    def success_pct(d):
+        c = d.get("count", 0)
+        s = d.get("success_count", 0)
+        return f"{s}/{c} ({100*s/c:.0f}%)" if c else "N/A"
+
+    hp_rate = success_pct(hotplug) if hotplug else "N/A"
+    cp_rate = success_pct(coldplug) if coldplug else "N/A"
+    up_rate = success_pct(unplug) if unplug else "N/A"
+
+    kpi_html = f"""
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color:rgba(255,255,255,0.7);font-size:0.8rem;">Total VMs</div>
+            <div class="text-white fw-bold fs-4">{total_vms}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color:rgba(255,255,255,0.7);font-size:0.8rem;">Hotplug Success</div>
+            <div class="text-white fw-bold fs-4">{hp_rate}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color:rgba(255,255,255,0.7);font-size:0.8rem;">Coldplug Success</div>
+            <div class="text-white fw-bold fs-4">{cp_rate}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center border-0 shadow-sm" style="background: #1e3a5f;">
+          <div class="card-body py-3">
+            <div style="color:rgba(255,255,255,0.7);font-size:0.8rem;">Unplug Success</div>
+            <div class="text-white fw-bold fs-4">{up_rate}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+
+    # Operation summary tables
+    def op_table(title, d, extra_rows=""):
+        if not d:
+            return ""
+        count = d.get("count", 0)
+        success = d.get("success_count", 0)
+        badge = "bg-success" if success == count else ("bg-warning text-dark" if success > 0 else "bg-danger")
+        rows = f"""
+        <tr><th>VMs</th><td>{count}</td></tr>
+        <tr><th>Successful</th><td><span class="badge {badge}">{success}/{count}</span></td></tr>
+        {extra_rows}
+        <tr><th>Avg Total Time</th><td>{d.get('avg_total_time', 0):.3f} s</td></tr>
+        """
+        return f"""
+        <div class="col-md-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white"><strong>{title}</strong></div>
+            <div class="card-body p-2">
+              <table class="table table-sm table-bordered mb-0"><tbody>{rows}</tbody></table>
+            </div>
+          </div>
+        </div>
+        """
+
+    hp_extra = f"""
+    <tr><th>Disks Attached</th><td>{hotplug.get('total_disks_attached', 0)}</td></tr>
+    <tr><th>Disks Validated</th><td>{hotplug.get('total_disks_validated', 0)}</td></tr>
+    <tr><th>Avg API Attach</th><td>{hotplug.get('avg_api_attach_time', 0):.3f} s</td></tr>
+    <tr><th>Avg Volume Ready</th><td>{hotplug.get('avg_volume_ready_time', 0):.3f} s</td></tr>
+    <tr><th>Avg Validation</th><td>{hotplug.get('avg_validation_time', 0):.3f} s</td></tr>
+    """ if hotplug else ""
+
+    cp_extra = f"""
+    <tr><th>Disks Attached</th><td>{coldplug.get('total_disks_attached', 0)}</td></tr>
+    <tr><th>Disks Validated</th><td>{coldplug.get('total_disks_validated', 0)}</td></tr>
+    <tr><th>Avg API Attach</th><td>{coldplug.get('avg_api_attach_time', 0):.3f} s</td></tr>
+    <tr><th>Avg VM Boot</th><td>{coldplug.get('avg_vm_boot_time', 0):.3f} s</td></tr>
+    <tr><th>Avg Validation</th><td>{coldplug.get('avg_validation_time', 0):.3f} s</td></tr>
+    """ if coldplug else ""
+
+    up_extra = f"""
+    <tr><th>Disks Removed</th><td>{unplug.get('total_disks_removed', 0)}</td></tr>
+    """ if unplug else ""
+
+    ops_html = f"""
+    <div class="row mb-4">
+      {op_table("Hotplug", hotplug, hp_extra)}
+      {op_table("Coldplug", coldplug, cp_extra)}
+      {op_table("Unplug", unplug, up_extra)}
+    </div>
+    """
+
+    # Chart — only total time per operation (no validation/phase breakdown)
+    chart_labels, chart_data, chart_colors = [], [], []
+    if hotplug:
+        chart_labels.append("Hotplug Total")
+        chart_data.append(hotplug.get("avg_total_time", 0))
+        chart_colors.append("rgba(52,152,219,0.85)")
+    if coldplug:
+        chart_labels.append("Coldplug Total")
+        chart_data.append(coldplug.get("avg_total_time", 0))
+        chart_colors.append("rgba(46,204,113,0.85)")
+    if unplug:
+        chart_labels.append("Unplug Total")
+        chart_data.append(unplug.get("avg_total_time", 0))
+        chart_colors.append("rgba(231,76,60,0.85)")
+
+    chart_html = ""
+    if chart_data:
+        chart_html = f"""
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-dark text-white">
+            <strong>Average Total Time per Operation (seconds)</strong>
+          </div>
+          <div class="card-body">
+            <canvas id="diskOpsTimingChart_{uid}" height="80"></canvas>
+          </div>
+        </div>
+        <script>
+          new Chart(document.getElementById('diskOpsTimingChart_{uid}'), {{
+            type: 'bar',
+            data: {{
+              labels: {_json.dumps(chart_labels)},
+              datasets: [{{
+                data: {_json.dumps(chart_data)},
+                backgroundColor: {_json.dumps(chart_colors)},
+                borderRadius: 6,
+                borderSkipped: false
+              }}]
+            }},
+            options: {{
+              responsive: true,
+              plugins: {{
+                legend: {{ display: false }},
+                tooltip: {{ callbacks: {{ label: function(ctx) {{ return ctx.parsed.y.toFixed(3) + ' s'; }} }} }}
+              }},
+              scales: {{
+                y: {{ beginAtZero: true, title: {{ display: true, text: 'Seconds' }} }}
+              }}
+            }}
+          }});
+        </script>
+        """
+
+    # Per-VM table with click-to-chart popup
+    per_vm_js = []
+    per_vm_rows = ""
+    for idx, r in enumerate(per_vm):
+        ns = r.get("namespace", "N/A")
+        op = r.get("operation", "N/A")
+        d_req = r.get("disks_requested", r.get("disks_removed", 0))
+        d_att = r.get("disks_attached", r.get("disks_removed", "-"))
+        d_val = r.get("disks_validated", "-")
+        t_sec = r.get("total_time", 0)
+        ok = r.get("success", False)
+        errors = "; ".join(r.get("errors", [])) if r.get("errors") else ""
+        badge = '<span class="badge bg-success">✓</span>' if ok else f'<span class="badge bg-danger" title="{errors}">✗</span>'
+
+        # Build per-operation chart data depending on type
+        if op == "hotplug":
+            chart_labels_vm = ["API Attach", "Vol Ready", "Total"]
+            chart_vals_vm   = [r.get("api_attach_time", 0), r.get("volume_ready_time", 0), r.get("total_time", 0)]
+            bar_colors_vm   = ["#3498db", "#9b59b6", "#2980b9"]
+        elif op == "coldplug":
+            chart_labels_vm = ["API Attach", "VM Boot", "Total"]
+            chart_vals_vm   = [r.get("api_attach_time", 0), r.get("vm_boot_time", 0), r.get("total_time", 0)]
+            bar_colors_vm   = ["#2ecc71", "#f39c12", "#27ae60"]
+        else:  # unplug
+            chart_labels_vm = ["Total"]
+            chart_vals_vm   = [r.get("total_time", 0)]
+            bar_colors_vm   = ["#e74c3c"]
+
+        per_vm_js.append({
+            "ns": ns, "op": op,
+            "labels": chart_labels_vm,
+            "vals": chart_vals_vm,
+            "colors": bar_colors_vm
+        })
+
+        per_vm_rows += f"""
+        <tr style="cursor:pointer;" onclick="showDiskOpsVmChart_{uid}({idx})">
+          <td>{badge} <a href="#" onclick="event.preventDefault();showDiskOpsVmChart_{uid}({idx});">{ns}</a></td>
+          <td>{op}</td>
+          <td>{d_req}</td>
+          <td>{d_att}</td>
+          <td>{d_val}</td>
+          <td>{t_sec:.3f}</td>
+        </tr>
+        """
+
+    per_vm_js_json = _json.dumps(per_vm_js)
+    no_data_row = "<tr><td colspan='6' class='text-center text-muted'>No per-VM results recorded.</td></tr>"
+
+    per_vm_table = f"""
+    <table class="table table-sm table-hover table-striped">
+      <thead class="table-light">
+        <tr>
+          <th>Namespace</th><th>Operation</th><th>Disks Requested</th>
+          <th>Disks Attached</th><th>Disks Validated</th><th>Total Time (s)</th>
+        </tr>
+      </thead>
+      <tbody>{per_vm_rows if per_vm_rows else no_data_row}</tbody>
+    </table>
+
+    <!-- Per-VM chart modal -->
+    <div id="diskOpsVmModal_{uid}" class="modal fade" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="diskOpsVmModalTitle_{uid}">Operation Timing</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <canvas id="diskOpsVmChart_{uid}" height="180"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      var diskOpsVmData_{uid} = {per_vm_js_json};
+      var diskOpsVmChartInst_{uid} = null;
+      var diskOpsModalInst_{uid} = null;
+
+      (function() {{
+        var modalEl = document.getElementById('diskOpsVmModal_{uid}');
+        diskOpsModalInst_{uid} = new bootstrap.Modal(modalEl, {{ backdrop: true }});
+        modalEl.addEventListener('hidden.bs.modal', function() {{
+          document.body.classList.remove('modal-open');
+          document.body.style.removeProperty('overflow');
+          document.body.style.removeProperty('padding-right');
+          document.querySelectorAll('.modal-backdrop').forEach(function(el) {{ el.remove(); }});
+        }});
+      }})();
+
+      function showDiskOpsVmChart_{uid}(idx) {{
+        var d = diskOpsVmData_{uid}[idx];
+        document.getElementById('diskOpsVmModalTitle_{uid}').innerText =
+          d.ns + ' — ' + d.op.charAt(0).toUpperCase() + d.op.slice(1) + ' Timing';
+
+        if (diskOpsVmChartInst_{uid}) {{ diskOpsVmChartInst_{uid}.destroy(); diskOpsVmChartInst_{uid} = null; }}
+
+        diskOpsVmChartInst_{uid} = new Chart(document.getElementById('diskOpsVmChart_{uid}'), {{
+          type: 'bar',
+          data: {{
+            labels: d.labels,
+            datasets: [{{
+              data: d.vals,
+              backgroundColor: d.colors,
+              borderRadius: 6,
+              borderSkipped: false
+            }}]
+          }},
+          options: {{
+            responsive: true,
+            plugins: {{
+              legend: {{ display: false }},
+              tooltip: {{ callbacks: {{ label: function(ctx) {{ return ctx.parsed.y.toFixed(3) + ' s'; }} }} }}
+            }},
+            scales: {{
+              y: {{ beginAtZero: true, title: {{ display: true, text: 'Seconds' }} }}
+            }}
+          }}
+        }});
+
+        diskOpsModalInst_{uid}.show();
+      }}
+    </script>
+    """
+
+    return f"""
+    <div class="mb-4">
+      {header_html}
+      {kpi_html}
+      <h4 class="mt-4">Test Configuration</h4>
+      {config_table}
+      <h4 class="mt-4">Operation Results</h4>
+      {ops_html}
+      {chart_html}
+      <h4 class="mt-4">Per-VM Details <small class="text-muted fs-6">(click a row to view timing chart)</small></h4>
+      {per_vm_table}
+    </div>
+    """
+
+
 # ---------------- Disk and PX Builders ----------------
 def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
     """Disk-level tab with charts and nested VM-size tabs."""
@@ -1378,10 +1709,36 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
             for f in by_vms[vm_count] if (f / "aggregated_results.json").exists()
         ) or "<p>No Elbencho Benchmark data for this VM size.</p>"
 
+        disk_ops_folders = [f for f in by_vms[vm_count] if (f / "disk_ops_results.json").exists()]
+        if disk_ops_folders:
+            accordion_items = []
+            for aidx, f in enumerate(disk_ops_folders):
+                fold_uid = f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_")
+                content = build_disk_ops_content(f, uid=fold_uid)
+                expanded = "show" if aidx == 0 else ""
+                collapsed = "" if aidx == 0 else "collapsed"
+                accordion_items.append(f"""
+                <div class="accordion-item">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button {collapsed}" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#diskops_acc_{fold_uid}">
+                      {f.name}
+                    </button>
+                  </h2>
+                  <div id="diskops_acc_{fold_uid}" class="accordion-collapse collapse {expanded}">
+                    <div class="accordion-body">{content}</div>
+                  </div>
+                </div>
+                """)
+            disk_ops_sections = f'<div class="accordion" id="diskOpsAccordion_{vm_id}">{"".join(accordion_items)}</div>'
+        else:
+            disk_ops_sections = "<p>No Disk Operations benchmark data for this VM size.</p>"
+
         # Check if we have capacity/fio/elbencho data to show the tabs
         has_capacity_data = any((f / "summary_capacity_benchmark.json").exists() for f in by_vms[vm_count])
         has_fio_data = any((f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists() for f in by_vms[vm_count])
         has_elbencho_data = any((f / "aggregated_results.json").exists() for f in by_vms[vm_count])
+        has_disk_ops_data = any((f / "disk_ops_results.json").exists() for f in by_vms[vm_count])
         # Check if we have chaos data to show the tab
         has_capacity_data = any((f / "summary_chaos_benchmark.json").exists() for f in by_vms[vm_count])
 
@@ -1417,6 +1774,14 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
             )
             tab_content_items.append(
                 f'<div class="tab-pane fade" id="tab_{vm_id}_elbencho" role="tabpanel">{elbencho_sections}</div>'
+            )
+
+        if has_disk_ops_data:
+            tab_nav_items.append(
+                f'<li class="nav-item"><button class="nav-link" id="tab-{vm_id}_diskops-tab" data-bs-toggle="tab" data-bs-target="#tab_{vm_id}_diskops" type="button" role="tab">Disk Ops</button></li>'
+            )
+            tab_content_items.append(
+                f'<div class="tab-pane fade" id="tab_{vm_id}_diskops" role="tabpanel">{disk_ops_sections}</div>'
             )
 
         vm_tabs_body.append(
