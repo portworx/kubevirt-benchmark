@@ -2174,9 +2174,7 @@
 <li>FenceAgentsRemediation (FAR) custom resources</li>
 <li>FAR annotations from VMs</li>
 <li>Uncordon nodes that were marked as failed</li>
-<li>Optionally: VMs, DataVolumes, PVCs, and namespaces — only via the Python
-  script with <code>--cleanup-vms</code> (the <code>virtbench failure-recovery</code> wrapper
-  cleans up FAR resources only)</li>
+<li>Optionally: VMs, DataVolumes, PVCs, and namespaces with <code>--cleanup-vms</code></li>
 </ul>
 <h3 id="chaos-benchmark-tests">Chaos Benchmark Tests</h3>
 <ul>
@@ -2209,6 +2207,9 @@ virtbench migration --start 1 --end 10 --source-node worker-1 --create-vms --cle
 <p><strong>virtbench CLI:</strong></p>
 <pre><code class="language-bash"># Clean up FAR resources after a recovery test
 virtbench failure-recovery --node worker-1 --cleanup --yes
+
+# Also delete discovered VM namespaces and VM resources
+virtbench failure-recovery --node worker-1 --cleanup --cleanup-vms --yes
 </code></pre>
 <h3 id="clean-up-after-chaos-benchmark">Clean up after Chaos Benchmark</h3>
 <p><strong>virtbench CLI:</strong></p>

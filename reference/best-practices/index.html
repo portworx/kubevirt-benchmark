@@ -2739,7 +2739,9 @@ kubectl exec -it ssh-test-pod -- ping &lt;vm-ip&gt;
 <p>Set timeouts based on your RTO requirements:</p>
 <pre><code class="language-bash">virtbench failure-recovery \
   --node worker-1 \
-  --recovery-timeout 600  # 10 minutes
+  --storage-driver portworx-3.6 \
+  --recovery-timeout 600 \
+  --save-results
 </code></pre>
 <h3 id="3-clean-up-far-resources">3. Clean Up FAR Resources</h3>
 <p>Always clean up FAR resources after testing:</p>

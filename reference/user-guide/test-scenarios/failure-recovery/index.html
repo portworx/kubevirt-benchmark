@@ -789,27 +789,16 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#automated-far-testing" class="md-nav__link">
+  <a href="#far-prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Automated FAR Testing
+        FAR Prerequisites
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Automated FAR Testing">
+    <nav class="md-nav" aria-label="FAR Prerequisites">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#prerequisites-for-far-testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prerequisites for FAR Testing
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#required-operators" class="md-nav__link">
@@ -878,22 +867,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-far-tests" class="md-nav__link">
+  <a href="#running-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running FAR Tests
+        Running Tests
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Running FAR Tests">
+    <nav class="md-nav" aria-label="Running Tests">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-virtbench-cli" class="md-nav__link">
+  <a href="#monitor-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using virtbench CLI
+        Monitor Mode
       
     </span>
   </a>
@@ -901,10 +890,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#monitor-only-mode" class="md-nav__link">
+  <a href="#manual-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Monitor-Only Mode
+        Manual Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#far-operator-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FAR-Operator Mode
       
     </span>
   </a>
@@ -979,7 +979,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-virtbench-cli_1" class="md-nav__link">
+  <a href="#using-virtbench-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
         Using virtbench CLI
@@ -1934,27 +1934,16 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#automated-far-testing" class="md-nav__link">
+  <a href="#far-prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Automated FAR Testing
+        FAR Prerequisites
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Automated FAR Testing">
+    <nav class="md-nav" aria-label="FAR Prerequisites">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#prerequisites-for-far-testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prerequisites for FAR Testing
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#required-operators" class="md-nav__link">
@@ -2023,22 +2012,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-far-tests" class="md-nav__link">
+  <a href="#running-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running FAR Tests
+        Running Tests
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Running FAR Tests">
+    <nav class="md-nav" aria-label="Running Tests">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-virtbench-cli" class="md-nav__link">
+  <a href="#monitor-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using virtbench CLI
+        Monitor Mode
       
     </span>
   </a>
@@ -2046,10 +2035,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#monitor-only-mode" class="md-nav__link">
+  <a href="#manual-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Monitor-Only Mode
+        Manual Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#far-operator-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FAR-Operator Mode
       
     </span>
   </a>
@@ -2124,7 +2124,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#using-virtbench-cli_1" class="md-nav__link">
+  <a href="#using-virtbench-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
         Using virtbench CLI
@@ -2290,14 +2290,20 @@
 <h1 id="failure-and-recovery-testing">Failure and Recovery Testing</h1>
 <p>Tests VM recovery time after node failures to validate high availability and disaster recovery capabilities.</p>
 <p><strong>Use Case</strong>: Validates that VMs can recover and restart on healthy nodes after a node failure.</p>
-<p>This guide covers the supported <code>virtbench failure-recovery</code> workflow for
-monitoring VM recovery after a node failure. Fence Agents Remediation (FAR)
-can be used to automate node fencing.</p>
+<p><code>virtbench failure-recovery</code> supports three workflows:</p>
+<ul>
+<li><code>monitor</code>: Monitor recovery after the node failure was triggered externally.</li>
+<li><code>manual</code>: Wait for you to manually power off or fence the node, then monitor recovery.</li>
+<li><code>far-operator</code>: Apply a FAR manifest to trigger fencing, then monitor recovery.</li>
+</ul>
 <hr />
-<h2 id="automated-far-testing">Automated FAR Testing</h2>
-<h3 id="prerequisites-for-far-testing">Prerequisites for FAR Testing</h3>
+<h2 id="far-prerequisites">FAR Prerequisites</h2>
+<p><code>--mode far-operator</code> requires Fence Agents Remediation (FAR) to be installed
+and configured before the test starts. <code>--mode monitor</code> and <code>--mode manual</code> do
+not apply FAR manifests directly, but they can still be used in clusters where
+NHC/FAR handles remediation.</p>
 <p>!!! warning "Important"
-    Before running failure and recovery tests, you must have the following operators installed and configured on your cluster.</p>
+    Before running FAR-based failure and recovery tests, install and configure the required remediation operators for your environment.</p>
 <h3 id="required-operators">Required Operators</h3>
 <h4 id="1-node-health-check-operator-nhc">1. Node Health Check Operator (NHC)</h4>
 <p>The Node Health Check Operator monitors node health and automatically creates remediation CRs when nodes become unhealthy. NHC is responsible for:</p>
@@ -2327,37 +2333,47 @@ can be used to automate node fencing.</p>
 - [Fence Agents Remediation](https://www.medik8s.io/remediation/fence-agents-remediation/fence-agents-remediation/)
 </code></pre>
 <h3 id="verify-installation">Verify Installation</h3>
-<pre><code class="language-bash"># Verify CRDs are available
-kubectl get crd nodehealthchecks.remediation.medik8s.io
-kubectl get crd fenceagentsremediations.fence-agents-remediation.medik8s.io
-
-# Verify your FenceAgentsRemediationTemplate exists
-kubectl get fenceagentsremediationtemplates -A
-
-# Verify your NodeHealthCheck is configured
-kubectl get nodehealthchecks -A
-</code></pre>
-<h2 id="running-far-tests">Running FAR Tests</h2>
-<h3 id="using-virtbench-cli">Using virtbench CLI</h3>
-<pre><code class="language-bash"># Run failure recovery test (auto-detects VMs on the node)
-virtbench failure-recovery \
-  --node worker-node-1 \
-  --vm-name rhel-9-vm \
-  --save-results
-
-# With a different VM name
-virtbench failure-recovery \
-  --node worker-node-1 \
-  --vm-name debian-vm \
-  --save-results
-</code></pre>
-<h3 id="monitor-only-mode">Monitor-Only Mode</h3>
-<p>If you trigger node failure separately (for example via your own automation or
-manual BMC action), run the wrapper to auto-detect VMIs on the affected node
-and monitor recovery:</p>
+<p>Before running <code>--mode far-operator</code>, verify that the NodeHealthCheck and FAR
+CRDs exist, the FAR template exists, and the NodeHealthCheck configuration
+references the expected remediation template.</p>
+<h2 id="running-tests">Running Tests</h2>
+<h3 id="monitor-mode">Monitor Mode</h3>
+<p>Use <code>monitor</code> mode when the node failure is triggered outside virtbench, such as
+by your own automation, FAR/NHC, a cloud action, or a manual BMC action. This is
+the default mode.</p>
 <pre><code class="language-bash">virtbench failure-recovery \
+  --mode monitor \
   --node worker-node-1 \
   --vm-name rhel-9-vm \
+  --storage-driver portworx-3.6 \
+  --save-results
+</code></pre>
+<h3 id="manual-mode">Manual Mode</h3>
+<p>Use <code>manual</code> mode when you want virtbench to wait until the node becomes
+<code>NotReady</code> after you power off or fence the node yourself.</p>
+<p>If your storage driver supports recovering VMs automatically without the FAR
+operator, use this mode to measure that recovery path.</p>
+<pre><code class="language-bash">virtbench failure-recovery \
+  --mode manual \
+  --node worker-node-1 \
+  --vm-name rhel-9-vm \
+  --node-timeout 900 \
+  --remove-node-selector \
+  --skip-ping \
+  --storage-driver portworx-3.6 \
+  --save-results
+</code></pre>
+<h3 id="far-operator-mode">FAR-Operator Mode</h3>
+<p>Use <code>far-operator</code> mode when virtbench should apply a FAR manifest to trigger
+fencing. The command removes the FAR config after the run finishes.</p>
+<pre><code class="language-bash">virtbench failure-recovery \
+  --mode far-operator \
+  --node worker-node-1 \
+  --vm-name rhel-9-vm \
+  --far-config failure-recovery/far-template.yaml \
+  --node-timeout 900 \
+  --skip-ping \
+  --storage-driver portworx-3.6 \
   --save-results
 </code></pre>
 <h2 id="what-the-test-measures">What the Test Measures</h2>
@@ -2411,12 +2427,20 @@ and monitor recovery:</p>
 </tbody>
 </table>
 <h2 id="cleanup">Cleanup</h2>
-<h3 id="using-virtbench-cli_1">Using virtbench CLI</h3>
+<h3 id="using-virtbench-cli">Using virtbench CLI</h3>
 <pre><code class="language-bash"># Clean up FAR resources after a recovery test
 virtbench failure-recovery \
   --node worker-node-1 \
   --vm-name rhel-9-vm \
   --cleanup \
+  --yes
+
+# Clean up FAR resources and discovered VM namespaces
+virtbench failure-recovery \
+  --node worker-node-1 \
+  --vm-name rhel-9-vm \
+  --cleanup \
+  --cleanup-vms \
   --yes
 </code></pre>
 <h2 id="troubleshooting">Troubleshooting</h2>

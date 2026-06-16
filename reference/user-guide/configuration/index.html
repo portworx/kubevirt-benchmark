@@ -2497,6 +2497,11 @@ does <strong>not</strong> take <code>--start</code>/<code>--end</code>.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>--mode</code></td>
+<td>Failure workflow: <code>monitor</code>, <code>manual</code>, or <code>far-operator</code></td>
+<td>monitor</td>
+</tr>
+<tr>
 <td><code>--node</code> <em>(required)</em></td>
 <td>Node name to auto-detect VMs from</td>
 <td>—</td>
@@ -2509,7 +2514,7 @@ does <strong>not</strong> take <code>--start</code>/<code>--end</code>.</p>
 <tr>
 <td><code>--vm-template</code></td>
 <td>VM template YAML file</td>
-<td>../examples/vm-templates/vm-template.yaml</td>
+<td>examples/vm-templates/rhel9-vm-datasource.yaml</td>
 </tr>
 <tr>
 <td><code>--storage-class</code></td>
@@ -2522,6 +2527,16 @@ does <strong>not</strong> take <code>--start</code>/<code>--end</code>.</p>
 <td>failure-recovery</td>
 </tr>
 <tr>
+<td><code>--far-config</code></td>
+<td>FAR YAML manifest for <code>--mode far-operator</code></td>
+<td>failure-recovery/far-template.yaml</td>
+</tr>
+<tr>
+<td><code>--remove-node-selector</code></td>
+<td>Remove nodeSelector from VMs before recovery monitoring</td>
+<td>false</td>
+</tr>
+<tr>
 <td><code>--concurrency</code>, <code>-c</code></td>
 <td>Max parallel threads</td>
 <td>10</td>
@@ -2532,14 +2547,59 @@ does <strong>not</strong> take <code>--start</code>/<code>--end</code>.</p>
 <td>5</td>
 </tr>
 <tr>
+<td><code>--node-timeout</code></td>
+<td>Timeout for node to become NotReady</td>
+<td>600</td>
+</tr>
+<tr>
 <td><code>--recovery-timeout</code></td>
 <td>Timeout for recovery in seconds</td>
 <td>600</td>
 </tr>
 <tr>
+<td><code>--skip-ping</code></td>
+<td>Skip ping recovery checks</td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>--ssh-pod</code></td>
+<td>SSH pod name for ping checks</td>
+<td>ssh-test-pod</td>
+</tr>
+<tr>
+<td><code>--ssh-pod-namespace</code></td>
+<td>SSH pod namespace for ping checks</td>
+<td>default</td>
+</tr>
+<tr>
 <td><code>--cleanup / --no-cleanup</code></td>
 <td>Delete test resources after completion</td>
 <td>false</td>
+</tr>
+<tr>
+<td><code>--cleanup-vms</code></td>
+<td>Also delete VMs and namespaces during cleanup</td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>--dry-run-cleanup</code></td>
+<td>Show cleanup actions without applying them</td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>--far-name</code></td>
+<td>FAR resource name to delete during cleanup</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>--far-namespace</code></td>
+<td>FAR resource namespace</td>
+<td>default</td>
+</tr>
+<tr>
+<td><code>--failed-node</code></td>
+<td>Node to uncordon during cleanup (defaults to <code>--node</code>)</td>
+<td>None</td>
 </tr>
 <tr>
 <td><code>--yes</code>, <code>-y</code></td>
@@ -2563,7 +2623,7 @@ does <strong>not</strong> take <code>--start</code>/<code>--end</code>.</p>
 </tr>
 <tr>
 <td><code>--log-file</code></td>
-<td>Log file path</td>
+<td>Log file path; with <code>--save-results</code>, defaults to <code>failure-recovery.log</code> in the run result folder</td>
 <td>auto-generated</td>
 </tr>
 </tbody>
