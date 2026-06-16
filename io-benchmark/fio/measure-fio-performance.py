@@ -620,42 +620,24 @@ def action_gather_results(args, namespaces, fio_config, ssh_config, logger):
 
     all_results = []
 
-    # Use SSH via existing pod (password-based)
-    for ns in namespaces:
-        vm_ip = get_vmi_ip(args.vm_name, ns, logger)
-        if not vm_ip:
-            print(f"  ✗ {ns}: Could not get VM IP")
-            all_results.append({"namespace": ns, "success": False})
-            continue
-
-        # Try to get FIO results
-        output = run_ssh_command(
-            vm_ip, 'cat /tmp/fio_results.json',
-            ssh_config['pod'], ssh_config['pod_ns'],
-            ssh_config['user'], ssh_config['password'],
-            timeout=120
-        )
-
-        if output:
-            json_content = extract_json_object(output)
-            if json_content:
-                try:
-                    raw_data = json.loads(json_content)
-                    # Save raw data
-                    vm_results_dir = os.path.join(output_dir, "per-vm-results", ns)
-                    os.makedirs(vm_results_dir, exist_ok=True)
-                    with open(os.path.join(vm_results_dir, "fio_raw.json"), 'w') as f:
-                        f.write(json_content)
-
-                    parsed = parse_fio_results(ns, raw_data)
-                    all_results.append(parsed)
-                    print(f"  ✓ {ns}")
-                    continue
-                except json.JSONDecodeError:
-                    pass
-
-        print(f"  ✗ {ns}: No valid results")
-        all_results.append({"namespace": ns, "success": False})
+    # Collect from all VMs concurrently (honors --collect-concurrency), reusing the
+    # same retrying collector as the run-all workflow.
+    with ThreadPoolExecutor(max_workers=max(1, args.collect_concurrency)) as executor:
+        futures = {
+            executor.submit(
+                collect_fio_results, ns, args.vm_name, ssh_config, output_dir, logger,
+                args.collect_retries, args.collect_retry_delay
+            ): ns for ns in namespaces
+        }
+        for future in as_completed(futures):
+            ns = futures[future]
+            raw_data = future.result()
+            if raw_data:
+                all_results.append(parse_fio_results(ns, raw_data))
+                print(f"  ✓ {ns}")
+            else:
+                all_results.append({"namespace": ns, "success": False})
+                print(f"  ✗ {ns}")
 
     # Aggregate and save
     test_duration = time.time() - test_start

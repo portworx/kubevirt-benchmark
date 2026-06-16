@@ -72,6 +72,15 @@ for larger test plans.
 
 [Learn more →](vm-ops/overview.md)
 
+### 10. Disk Operations (Hotplug/Coldplug)
+Tests disk hotplug (attach to running VM) and coldplug (attach to stopped VM,
+then boot) performance, with optional in-VM validation that the disk appears.
+
+**Use Case**: Measure disk attach/detach times and verify disks become usable
+inside running and stopped VMs.
+
+[Learn more →](disk-ops-benchmark.md)
+
 ## Next Steps
 
 1. [Configure your environment](../configuration.md) - Set up storage classes and templates

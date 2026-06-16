@@ -18,6 +18,7 @@ from virtbench.commands import (
     failure_recovery,
     fio,
     elbencho,
+    disk_ops,
     validate,
     version,
     vm_ops,
@@ -77,6 +78,7 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
       failure-recovery     Run failure recovery benchmark
       fio                  Run FIO benchmark across VMs
       elbencho             Manage elbencho workloads on VMs
+      disk-ops             Run disk hotplug/coldplug benchmark
       vm-ops               VM operations (drain, rebalance, snapshot, blkdiscard, power)
       validate-cluster     Validate cluster prerequisites
       version              Print version information
@@ -127,6 +129,7 @@ cli.add_command(chaos.chaos_benchmark)
 cli.add_command(failure_recovery.failure_recovery)
 cli.add_command(fio.fio)
 cli.add_command(elbencho.elbencho)
+cli.add_command(disk_ops.disk_ops)
 cli.add_command(vm_ops.vm_ops)
 cli.add_command(validate.validate_cluster)
 cli.add_command(version.version)

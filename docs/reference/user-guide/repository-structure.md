@@ -12,6 +12,7 @@ kubevirt-benchmark/
 │   ├── commands/                 # Individual command implementations
 │   │   ├── chaos.py              # Chaos benchmark
 │   │   ├── datasource_clone.py   # DataSource clone benchmark
+│   │   ├── disk_ops.py           # Disk hotplug/coldplug benchmark
 │   │   ├── elbencho.py           # elbencho IO benchmark
 │   │   ├── failure_recovery.py   # Failure recovery benchmark
 │   │   ├── fio.py                # FIO IO benchmark
@@ -25,6 +26,8 @@ kubevirt-benchmark/
 │   └── measure-chaos.py
 ├── datasource-clone/             # DataSource-clone benchmark Python script
 │   └── measure-vm-creation-time.py
+├── disk-ops-benchmark/           # Disk hotplug/coldplug benchmark
+│   ├── measure-disk-ops.py
 ├── migration/                    # Migration benchmark Python script
 │   └── measure-vm-migration-time.py
 ├── failure-recovery/             # Failure-recovery Python script and FAR template

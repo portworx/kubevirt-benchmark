@@ -13,7 +13,7 @@ The script validates:
   - virt-handler daemonset on all nodes
 - Storage class availability
 - Worker node readiness
-- DataSource availability
+- DataSource availability (optional — only needed for datasource-clone and chaos tests)
 - User permissions
 - Node resource utilization
 
@@ -85,13 +85,17 @@ Cluster validation passed! Ready to run benchmarks.
 ✓ kubectl access and cluster connectivity
 ✗ OpenShift Virtualization not found or not healthy
   - KubeVirt resource not in Deployed phase
-✓ Storage class available
+✗ Storage class 'YOUR-STORAGE-CLASS' not found
 ✓ Worker nodes ready (3 nodes)
-✗ DataSource 'rhel9' not found
-  - Check namespace: openshift-virtualization-os-images
+⚠ DataSource 'rhel9' exists but is not ready - WARNING (only needed for datasource-clone/chaos tests)
 
 Cluster validation failed. Please fix the issues above.
 ```
+
+A missing or not-ready DataSource is reported as a **warning**, not a failure — it
+only blocks the datasource-clone and chaos tests. Validation fails only on the
+hard checks above (connectivity, virtualization, storage class, worker nodes,
+permissions).
 
 ## Troubleshooting Validation Failures
 
@@ -181,7 +185,7 @@ Before running benchmarks, ensure:
 - [ ] Storage class is compatible with KubeVirt DataVolumes
 - [ ] SSH test pod is running (for network tests)
 - [ ] Sufficient cluster resources available
-- [ ] DataSource exists and is ready
+- [ ] DataSource exists and is ready (only for datasource-clone / chaos tests)
 
 ## See Also
 

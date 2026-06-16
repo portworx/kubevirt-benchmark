@@ -224,22 +224,31 @@ class ClusterValidator:
         return True, f"Node resources look healthy ({len(lines)} nodes checked)"
     
     def check_datasource(self, datasource_name: str, namespace: str) -> Tuple[bool, str]:
-        """Verify DataSource exists"""
+        """Verify a DataSource exists and is ready.
+
+        Non-fatal: a DataSource is only required by tests that clone from it
+        (datasource-clone, chaos). Other workloads (fio, disk-ops, elbencho) boot
+        from container-disk images, so a missing or not-ready DataSource is a
+        warning rather than a cluster-validation failure.
+        """
+        suffix = "WARNING (only needed for datasource-clone/chaos tests)"
         returncode, stdout, stderr = run_kubectl_command(
             ['get', 'datasource', datasource_name, '-n', namespace, '-o', 'json'],
             check=False,
             logger=self.logger
         )
         if returncode != 0:
-            return False, f"DataSource '{datasource_name}' not found in namespace '{namespace}'"
-        
+            self.warnings += 1
+            return True, f"DataSource '{datasource_name}' not found in namespace '{namespace}' - {suffix}"
+
         data = json.loads(stdout)
         conditions = data.get('status', {}).get('conditions', [])
         ready = any(c.get('type') == 'Ready' and c.get('status') == 'True' for c in conditions)
-        
+
         if ready:
             return True, f"DataSource '{datasource_name}' is ready in namespace '{namespace}'"
-        return False, f"DataSource '{datasource_name}' exists but is not ready"
+        self.warnings += 1
+        return True, f"DataSource '{datasource_name}' exists but is not ready - {suffix}"
     
     def check_ssh_pod(self, pod_name: str, namespace: str) -> Tuple[bool, str]:
         """Verify SSH test pod exists and is running"""

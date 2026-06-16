@@ -42,6 +42,7 @@ nav:
           - Cluster Validation: reference/user-guide/test-scenarios/cluster-validation.md
           - FIO Benchmark: reference/user-guide/test-scenarios/fio-benchmark.md
           - Elbencho Benchmark: reference/user-guide/test-scenarios/elbencho-benchmark.md
+          - Disk Operations (Hotplug/Coldplug): reference/user-guide/test-scenarios/disk-ops-benchmark.md
           - VM Operations:
               - Overview: reference/user-guide/test-scenarios/vm-ops/overview.md
               - Drain Nodes: reference/user-guide/test-scenarios/vm-ops/drain-nodes.md
