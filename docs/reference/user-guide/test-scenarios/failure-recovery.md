@@ -51,7 +51,7 @@ Both operators are part of the [MedIK8s](https://www.medik8s.io/) project for Ku
 
 !!! info "Documentation"
     Configuration is environment-specific and depends on your fencing method (IPMI, AWS, etc.). Please refer to the official MedIK8s documentation for detailed setup instructions:
-    
+
     - [Node Health Check Operator](https://www.medik8s.io/remediation/node-healthcheck-operator/node-healthcheck-operator/)
     - [Fence Agents Remediation](https://www.medik8s.io/remediation/fence-agents-remediation/fence-agents-remediation/)
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Sequential Migration Example
-# 
+#
 # This script demonstrates sequential VM migration from one node to another.
 # VMs are migrated one by one to measure individual migration performance.
 #
@@ -46,4 +46,3 @@ echo "=========================================="
 echo "Test Complete!"
 echo "Log file: $LOG_FILE"
 echo "=========================================="
-

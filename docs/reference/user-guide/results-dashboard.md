@@ -102,7 +102,7 @@ manual_tests:
     avg_time_to_running: 12.5
     avg_time_to_ping: 18.3
     notes: "Baseline test before upgrade"
-  
+
   - test_type: "migration"
     date: "2024-01-16"
     storage_driver: "portworx-3.6"

@@ -22,17 +22,19 @@ import argparse
 import subprocess
 import sys
 
-VM_NAME    = "rhel-elbencho-1"
+
+VM_NAME = "rhel-elbencho-1"
 
 
 # --------------------------------------------------------------------------- #
 # Live cluster queries                                                         #
 # --------------------------------------------------------------------------- #
 
+
 def _oc(args):
     """Run an oc command, return stdout. Exits on error."""
     cmd = ["oc"] + args
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    res = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if res.returncode != 0:
         print(f"ERROR running: {' '.join(cmd)}\n{res.stderr.strip()}", file=sys.stderr)
         sys.exit(1)
@@ -44,11 +46,13 @@ def fetch_nodes(include_master_nodes=False):
     args = ["get", "nodes"]
     if not include_master_nodes:
         args.extend(["-l", "node-role.kubernetes.io/worker"])
-    args.extend([
-        "--no-headers",
-        "-o",
-        "custom-columns=NAME:.metadata.name,READY:.status.conditions[?(@.type==\"Ready\")].status",
-    ])
+    args.extend(
+        [
+            "--no-headers",
+            "-o",
+            'custom-columns=NAME:.metadata.name,READY:.status.conditions[?(@.type=="Ready")].status',
+        ]
+    )
     out = _oc(args)
     nodes = []
     for line in out.splitlines():
@@ -60,10 +64,15 @@ def fetch_nodes(include_master_nodes=False):
 
 def fetch_all_nodes():
     """Return all Ready node names so source VMIs are visible even if misplaced."""
-    out = _oc([
-        "get", "nodes", "--no-headers", "-o",
-        "custom-columns=NAME:.metadata.name,READY:.status.conditions[?(@.type==\"Ready\")].status",
-    ])
+    out = _oc(
+        [
+            "get",
+            "nodes",
+            "--no-headers",
+            "-o",
+            'custom-columns=NAME:.metadata.name,READY:.status.conditions[?(@.type=="Ready")].status',
+        ]
+    )
     nodes = []
     for line in out.splitlines():
         cols = line.split()
@@ -74,12 +83,17 @@ def fetch_all_nodes():
 
 def fetch_vmi(all_nodes, vm_name):
     """Return {node: [namespace, ...]} from live 'oc get vmi -A'."""
-    out = _oc(["get", "vmi", "-A", "--no-headers", "-o",
-               "custom-columns="
-               "NS:.metadata.namespace,"
-               "NAME:.metadata.name,"
-               "NODE:.status.nodeName"])
-    node_vms = {nd: [] for nd in all_nodes}   # seed every known node (incl. empty)
+    out = _oc(
+        [
+            "get",
+            "vmi",
+            "-A",
+            "--no-headers",
+            "-o",
+            "custom-columns=" "NS:.metadata.namespace," "NAME:.metadata.name," "NODE:.status.nodeName",
+        ]
+    )
+    node_vms = {nd: [] for nd in all_nodes}  # seed every known node (incl. empty)
     for line in out.splitlines():
         cols = line.split()
         if len(cols) < 3:
@@ -99,6 +113,7 @@ def fetch_vmi(all_nodes, vm_name):
 # Balancing logic                                                              #
 # --------------------------------------------------------------------------- #
 
+
 def calculate_target_range(total_vms, node_count, target_min=None, target_max=None):
     """Return a sane target range for the current VM/node count."""
     if node_count == 0:
@@ -117,9 +132,7 @@ def calculate_target_range(total_vms, node_count, target_min=None, target_max=No
     if target_min > target_max:
         raise ValueError("--target-min cannot be greater than --target-max")
     if target_min * node_count > total_vms:
-        raise ValueError(
-            f"Impossible target: {node_count} nodes x target-min {target_min} exceeds {total_vms} VMIs"
-        )
+        raise ValueError(f"Impossible target: {node_count} nodes x target-min {target_min} exceeds {total_vms} VMIs")
     if target_max * node_count < total_vms:
         raise ValueError(
             f"Impossible target: {node_count} nodes x target-max {target_max} cannot hold {total_vms} VMIs"
@@ -135,9 +148,9 @@ def assign_targets(node_vms, target_nodes, target_min, target_max):
       - nodes already holding the most VMs are preferred for the higher quota
         (minimises stop/start movement)
     """
-    total  = sum(len(v) for v in node_vms.values())
-    n      = len(target_nodes)
-    n_high = total - n * target_min          # how many nodes get target_max
+    total = sum(len(v) for v in node_vms.values())
+    n = len(target_nodes)
+    n_high = total - n * target_min  # how many nodes get target_max
 
     ranked = sorted(target_nodes, key=lambda nd: -len(node_vms.get(nd, [])))
     targets = {nd: 0 for nd in node_vms}
@@ -159,7 +172,7 @@ def compute_moves(node_vms, target_nodes, targets):
     """
     donors = []
     for nd in sorted(node_vms, key=lambda x: -len(node_vms[x])):
-        excess = node_vms[nd][targets[nd]:]      # namespaces beyond quota
+        excess = node_vms[nd][targets[nd] :]  # namespaces beyond quota
         donors.extend((nd, ns) for ns in excess)
 
     receivers = []
@@ -174,10 +187,11 @@ def compute_moves(node_vms, target_nodes, targets):
 # Execution                                                                    #
 # --------------------------------------------------------------------------- #
 
+
 def run(cmd, dry_run):
     print("  $", " ".join(cmd))
     if not dry_run:
-        res = subprocess.run(cmd, capture_output=True, text=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if res.returncode != 0:
             print(f"  ERROR: {res.stderr.strip()}", file=sys.stderr)
         return res
@@ -186,13 +200,10 @@ def run(cmd, dry_run):
 
 def wait_for_stop(ns, vm_name, dry_run, timeout=120):
     """Block until the VMI is fully gone (VM is Stopped)."""
-    cmd = ["oc", "wait", "vmi", vm_name,
-           "-n", ns,
-           "--for=delete",
-           f"--timeout={timeout}s"]
+    cmd = ["oc", "wait", "vmi", vm_name, "-n", ns, "--for=delete", f"--timeout={timeout}s"]
     print("  $", " ".join(cmd))
     if not dry_run:
-        res = subprocess.run(cmd, capture_output=True, text=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if res.returncode != 0:
             # vmi may already be gone — that's fine
             msg = res.stderr.strip()
@@ -201,29 +212,27 @@ def wait_for_stop(ns, vm_name, dry_run, timeout=120):
 
 
 def main():
-    ap = argparse.ArgumentParser(
-        description="Rebalance KubeVirt VMs evenly across nodes")
-    ap.add_argument("--dry-run", action="store_true",
-                    help="Print commands without executing them")
-    ap.add_argument("--vm-name", default=VM_NAME,
-                    help=f"VM name to rebalance (default: {VM_NAME})")
-    ap.add_argument("--target-min", type=int, default=None,
-                    help="Minimum VMs per target node (default: auto)")
-    ap.add_argument("--target-max", type=int, default=None,
-                    help="Maximum VMs per target node (default: auto)")
-    ap.add_argument("--include-master-nodes", action="store_true",
-                    help="Include master/control-plane nodes as rebalance targets")
+    ap = argparse.ArgumentParser(description="Rebalance KubeVirt VMs evenly across nodes")
+    ap.add_argument("--dry-run", action="store_true", help="Print commands without executing them")
+    ap.add_argument("--vm-name", default=VM_NAME, help=f"VM name to rebalance (default: {VM_NAME})")
+    ap.add_argument("--target-min", type=int, default=None, help="Minimum VMs per target node (default: auto)")
+    ap.add_argument("--target-max", type=int, default=None, help="Maximum VMs per target node (default: auto)")
+    ap.add_argument(
+        "--include-master-nodes", action="store_true", help="Include master/control-plane nodes as rebalance targets"
+    )
     args = ap.parse_args()
 
     print("Fetching target node list from cluster...")
     target_nodes = fetch_nodes(args.include_master_nodes)
-    print(f"  {len(target_nodes)} target nodes found "
-          f"({'workers + masters' if args.include_master_nodes else 'workers only'})")
+    print(
+        f"  {len(target_nodes)} target nodes found "
+        f"({'workers + masters' if args.include_master_nodes else 'workers only'})"
+    )
 
     all_nodes = fetch_all_nodes()
 
     print(f"Fetching VMI list for '{args.vm_name}'...")
-    node_vms  = fetch_vmi(all_nodes, args.vm_name)
+    node_vms = fetch_vmi(all_nodes, args.vm_name)
     total_vms = sum(len(v) for v in node_vms.values())
     print(f"  {total_vms} VMIs found\n")
 
@@ -240,7 +249,7 @@ def main():
     print(f"Target range: {target_min}-{target_max} VMIs per target node\n")
 
     targets = assign_targets(node_vms, target_nodes, target_min, target_max)
-    moves   = compute_moves(node_vms, target_nodes, targets)
+    moves = compute_moves(node_vms, target_nodes, targets)
 
     # ---- Summary table ---------------------------------------------------- #
     print(f"\n{'NODE':<22} {'NOW':>4}  {'TARGET':>6}  {'DELTA':>5}")
@@ -264,8 +273,7 @@ def main():
         print(f"  {ns:<16}  {src:<22}  {dst}")
 
     # ---- Execute ----------------------------------------------------------- #
-    patch_tpl = ('{{"spec":{{"template":{{"spec":{{"nodeSelector":'
-                 '{{"kubernetes.io/hostname":"{node}"}}}}}}}}}}')
+    patch_tpl = '{{"spec":{{"template":{{"spec":{{"nodeSelector":' '{{"kubernetes.io/hostname":"{node}"}}}}}}}}}}'
 
     tag = " (DRY RUN)" if args.dry_run else ""
     print(f"\n=== Executing {len(moves)} moves{tag} ===\n")
@@ -274,9 +282,7 @@ def main():
     for src, dst, ns in moves:
         print(f"--- {ns} : {src}  →  {dst} ---")
         # 1. Patch nodeSelector first (safe while VM is still running)
-        run(["oc", "patch", "vm", vm, "-n", ns,
-             "--type", "merge",
-             "-p", patch_tpl.format(node=dst)], args.dry_run)
+        run(["oc", "patch", "vm", vm, "-n", ns, "--type", "merge", "-p", patch_tpl.format(node=dst)], args.dry_run)
         # 2. Stop the VM
         run(["virtctl", "stop", vm, "-n", ns], args.dry_run)
         # 3. Wait until VMI is fully gone before starting

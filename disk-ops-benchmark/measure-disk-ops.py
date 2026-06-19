@@ -21,29 +21,31 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
+
 # Reuse the shared SSH helper that runs `kubectl exec` into a persistent
 # sshpass-equipped pod (same approach as the FIO benchmark).
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from utils.common import ssh_exec_command
 
+
 # Constants
-DEFAULT_NAMESPACE_PREFIX = 'disk-ops'
-DEFAULT_VM_NAME = 'disk-ops-vm'
-DEFAULT_VM_TEMPLATE = 'vm-template.yaml'
-DEFAULT_DISK_SIZE = '10Gi'
+DEFAULT_NAMESPACE_PREFIX = "disk-ops"
+DEFAULT_VM_NAME = "disk-ops-vm"
+DEFAULT_VM_TEMPLATE = "vm-template.yaml"
+DEFAULT_DISK_SIZE = "10Gi"
 DEFAULT_CONCURRENCY = 10
 DEFAULT_SSH_TIMEOUT = 120
 DEFAULT_ATTACH_TIMEOUT = 300
 DEFAULT_VM_TIMEOUT = 600
-DEFAULT_VM_USER = 'cloud-user'
-DEFAULT_VM_PASSWORD = 'changeme'
-DEFAULT_SSH_POD = 'ssh-test-pod'
-DEFAULT_SSH_POD_NS = 'default'
+DEFAULT_VM_USER = "cloud-user"
+DEFAULT_VM_PASSWORD = "changeme"
+DEFAULT_SSH_POD = "ssh-test-pod"
+DEFAULT_SSH_POD_NS = "default"
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Disk Operations Benchmark - Test hotplug/coldplug performance',
+        description="Disk Operations Benchmark - Test hotplug/coldplug performance",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -55,57 +57,74 @@ Examples:
 
   # Both operations with unplug test
   python3 measure-disk-ops.py --start 1 --end 10 --operation all --disks 2 --test-unplug
-        """
+        """,
     )
 
     # Required arguments
-    parser.add_argument('--start', '-s', type=int, required=True, help='Start namespace index')
-    parser.add_argument('--end', '-e', type=int, required=True, help='End namespace index')
-    parser.add_argument('--storage-class', type=str, required=True, help='Storage class for PVCs')
+    parser.add_argument("--start", "-s", type=int, required=True, help="Start namespace index")
+    parser.add_argument("--end", "-e", type=int, required=True, help="End namespace index")
+    parser.add_argument("--storage-class", type=str, required=True, help="Storage class for PVCs")
 
     # Operation settings
-    parser.add_argument('--operation', type=str, default='all',
-                        choices=['hotplug', 'coldplug', 'all'],
-                        help='Operation type (default: all)')
-    parser.add_argument('--disks', type=int, default=1, help='Number of disks per VM (default: 1)')
-    parser.add_argument('--disk-size', type=str, default=DEFAULT_DISK_SIZE, help='Disk size (default: 10Gi)')
-    parser.add_argument('--parallel-attach', action='store_true',
-                        help='Attach all disks in parallel (default: sequential)')
-    parser.add_argument('--test-unplug', action='store_true', help='Also test disk removal')
+    parser.add_argument(
+        "--operation",
+        type=str,
+        default="all",
+        choices=["hotplug", "coldplug", "all"],
+        help="Operation type (default: all)",
+    )
+    parser.add_argument("--disks", type=int, default=1, help="Number of disks per VM (default: 1)")
+    parser.add_argument("--disk-size", type=str, default=DEFAULT_DISK_SIZE, help="Disk size (default: 10Gi)")
+    parser.add_argument(
+        "--parallel-attach", action="store_true", help="Attach all disks in parallel (default: sequential)"
+    )
+    parser.add_argument("--test-unplug", action="store_true", help="Also test disk removal")
 
     # VM settings
-    parser.add_argument('--namespace-prefix', type=str, default=DEFAULT_NAMESPACE_PREFIX)
-    parser.add_argument('--vm-name', type=str, default=DEFAULT_VM_NAME)
-    parser.add_argument('--vm-template', type=str, default=DEFAULT_VM_TEMPLATE, help='VM template YAML')
-    parser.add_argument('--vm-user', type=str, default=DEFAULT_VM_USER, help='VM SSH user (default: cloud-user)')
-    parser.add_argument('--vm-password', type=str, default=DEFAULT_VM_PASSWORD,
-                        help='VM SSH password for in-VM validation (default: changeme)')
-    parser.add_argument('--ssh-pod', type=str, default=DEFAULT_SSH_POD,
-                        help='Persistent SSH helper pod with sshpass (auto-created if missing)')
-    parser.add_argument('--ssh-pod-ns', type=str, default=DEFAULT_SSH_POD_NS, help='SSH helper pod namespace')
-    parser.add_argument('--create-vms', action='store_true', help='Create VMs before testing')
+    parser.add_argument("--namespace-prefix", type=str, default=DEFAULT_NAMESPACE_PREFIX)
+    parser.add_argument("--vm-name", type=str, default=DEFAULT_VM_NAME)
+    parser.add_argument("--vm-template", type=str, default=DEFAULT_VM_TEMPLATE, help="VM template YAML")
+    parser.add_argument("--vm-user", type=str, default=DEFAULT_VM_USER, help="VM SSH user (default: cloud-user)")
+    parser.add_argument(
+        "--vm-password",
+        type=str,
+        default=DEFAULT_VM_PASSWORD,
+        help="VM SSH password for in-VM validation (default: changeme)",
+    )
+    parser.add_argument(
+        "--ssh-pod",
+        type=str,
+        default=DEFAULT_SSH_POD,
+        help="Persistent SSH helper pod with sshpass (auto-created if missing)",
+    )
+    parser.add_argument("--ssh-pod-ns", type=str, default=DEFAULT_SSH_POD_NS, help="SSH helper pod namespace")
+    parser.add_argument("--create-vms", action="store_true", help="Create VMs before testing")
 
     # Execution settings
-    parser.add_argument('--concurrency', '-c', type=int, default=DEFAULT_CONCURRENCY)
-    parser.add_argument('--attach-timeout', type=int, default=DEFAULT_ATTACH_TIMEOUT,
-                        help='Timeout for disk attach (default: 300s)')
-    parser.add_argument('--vm-timeout', type=int, default=DEFAULT_VM_TIMEOUT,
-                        help='Timeout for created VMs to reach Running, incl. image import (default: 600s)')
-    parser.add_argument('--skip-validation', action='store_true', help='Skip in-VM validation')
+    parser.add_argument("--concurrency", "-c", type=int, default=DEFAULT_CONCURRENCY)
+    parser.add_argument(
+        "--attach-timeout", type=int, default=DEFAULT_ATTACH_TIMEOUT, help="Timeout for disk attach (default: 300s)"
+    )
+    parser.add_argument(
+        "--vm-timeout",
+        type=int,
+        default=DEFAULT_VM_TIMEOUT,
+        help="Timeout for created VMs to reach Running, incl. image import (default: 600s)",
+    )
+    parser.add_argument("--skip-validation", action="store_true", help="Skip in-VM validation")
 
     # Output settings
-    parser.add_argument('--results-dir', type=str, default='results')
-    parser.add_argument('--save-results', action='store_true')
-    parser.add_argument('--px-version', type=str, default='px-unknown', help='Portworx version for results grouping')
-    parser.add_argument('--disk-type', type=str, default=None,
-                        help='Disk type label for results grouping (default: <disks>-disk)')
-    parser.add_argument('--cleanup', action='store_true', help='Remove hotplugged disks after test')
+    parser.add_argument("--results-dir", type=str, default="results")
+    parser.add_argument("--save-results", action="store_true")
+    parser.add_argument("--px-version", type=str, default="px-unknown", help="Portworx version for results grouping")
+    parser.add_argument(
+        "--disk-type", type=str, default=None, help="Disk type label for results grouping (default: <disks>-disk)"
+    )
+    parser.add_argument("--cleanup", action="store_true", help="Remove hotplugged disks after test")
 
     # Logging
-    parser.add_argument('--log-level', type=str, default='INFO',
-                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
-    parser.add_argument('--log-file', type=str, default=None,
-                        help='Log file path (logs also go to the console)')
+    parser.add_argument("--log-level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument("--log-file", type=str, default=None, help="Log file path (logs also go to the console)")
 
     return parser.parse_args()
 
@@ -116,14 +135,11 @@ def setup_logging(level: str, log_file: Optional[str] = None) -> logging.Logger:
         handlers.append(logging.FileHandler(log_file))
     logging.basicConfig(
         level=getattr(logging, level),
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=handlers
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=handlers,
     )
     return logging.getLogger(__name__)
-
-
-
 
 
 def ensure_ssh_pod(ssh_pod: str, ssh_pod_ns: str, logger, timeout: int = 180) -> Tuple[bool, bool]:
@@ -133,6 +149,7 @@ def ensure_ssh_pod(ssh_pod: str, ssh_pod_ns: str, logger, timeout: int = 180) ->
     Reuses the pod if it already exists; otherwise creates it and waits until
     sshpass is installed. Returns (ready, created_by_us).
     """
+
     def sshpass_ready() -> bool:
         rc, _, _ = run_cmd(f"kubectl exec -n {ssh_pod_ns} {ssh_pod} -- which sshpass", timeout=15)
         return rc == 0
@@ -167,7 +184,9 @@ spec:
         cpu: "200m"
   restartPolicy: Always
 """
-        result = subprocess.run(['kubectl', 'apply', '-f', '-'], input=manifest.encode(), capture_output=True)
+        result = subprocess.run(
+            ["kubectl", "apply", "-f", "-"], input=manifest.encode(), capture_output=True, check=False
+        )
         if result.returncode != 0:
             logger.error(f"Failed to create SSH helper pod: {result.stderr.decode().strip()}")
             return False, False
@@ -191,10 +210,10 @@ def prepare_vm_yaml(template_path: str, vm_name: str, storage_class: str, vm_pas
         content = f.read()
 
     replacements = {
-        '{{VM_NAME}}': vm_name,
-        '{{STORAGE_CLASS}}': storage_class,
-        '{{STORAGE_CLASS_NAME}}': storage_class,  # alias used by other repo templates
-        '{{VM_PASSWORD}}': vm_password,
+        "{{VM_NAME}}": vm_name,
+        "{{STORAGE_CLASS}}": storage_class,
+        "{{STORAGE_CLASS_NAME}}": storage_class,  # alias used by other repo templates
+        "{{VM_PASSWORD}}": vm_password,
     }
 
     for placeholder, value in replacements.items():
@@ -213,8 +232,7 @@ def create_namespace(namespace: str) -> bool:
 def deploy_vm(namespace: str, vm_yaml: str, logger) -> bool:
     """Deploy a VM to a namespace."""
     result = subprocess.run(
-        f"kubectl apply -n {namespace} -f -",
-        shell=True, input=vm_yaml.encode(), capture_output=True
+        f"kubectl apply -n {namespace} -f -", shell=True, input=vm_yaml.encode(), capture_output=True, check=False
     )
     if result.returncode == 0:
         logger.info(f"[{namespace}] VM deployed")
@@ -225,11 +243,12 @@ def deploy_vm(namespace: str, vm_yaml: str, logger) -> bool:
 
 
 # VM states that indicate a stuck/failed VM unlikely to recover on its own.
-_VM_PROBLEM_HINTS = ('err', 'fail', 'crashloop', 'unschedulable', 'backoff', 'pull')
+_VM_PROBLEM_HINTS = ("err", "fail", "crashloop", "unschedulable", "backoff", "pull")
 
 
-def wait_for_vms_running(namespaces: List[str], vm_name: str, timeout: int, logger,
-                         poll_interval: int = 10) -> List[str]:
+def wait_for_vms_running(
+    namespaces: List[str], vm_name: str, timeout: int, logger, poll_interval: int = 10
+) -> List[str]:
     """
     Wait for VMs to reach Running state, reporting live progress.
 
@@ -259,15 +278,18 @@ def wait_for_vms_running(namespaces: List[str], vm_name: str, timeout: int, logg
             state_counts[state] = state_counts.get(state, 0) + 1
             # Surface a likely-stuck VM once, so the user isn't blocked blindly.
             if ns not in warned and any(h in state.lower() for h in _VM_PROBLEM_HINTS):
-                logger.warning(f"[{ns}] VM in problem state '{state}' — "
-                               f"inspect with: kubectl describe vm {vm_name} -n {ns}")
+                logger.warning(
+                    f"[{ns}] VM in problem state '{state}' — " f"inspect with: kubectl describe vm {vm_name} -n {ns}"
+                )
                 warned.add(ns)
 
         if len(running) < len(namespaces):
             elapsed = int(time.time() - start)
             breakdown = ", ".join(f"{s}={n}" for s, n in sorted(state_counts.items())) or "pending"
-            logger.info(f"  ... {len(running)}/{len(namespaces)} Running after {elapsed}s "
-                        f"(timeout {timeout}s) | remaining: {breakdown}")
+            logger.info(
+                f"  ... {len(running)}/{len(namespaces)} Running after {elapsed}s "
+                f"(timeout {timeout}s) | remaining: {breakdown}"
+            )
             time.sleep(poll_interval)
 
     not_running = [ns for ns in namespaces if ns not in running]
@@ -280,12 +302,12 @@ def wait_for_vms_running(namespaces: List[str], vm_name: str, timeout: int, logg
 def run_cmd(cmd: str, timeout: int = 60) -> Tuple[int, str, str]:
     """Run shell command and return (returncode, stdout, stderr)."""
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout, check=False)
         return result.returncode, result.stdout.strip(), result.stderr.strip()
     except subprocess.TimeoutExpired:
-        return -1, '', 'Command timed out'
+        return -1, "", "Command timed out"
     except Exception as e:
-        return -1, '', str(e)
+        return -1, "", str(e)
 
 
 def get_vm_status(namespace: str, vm_name: str) -> Tuple[str, str]:
@@ -326,17 +348,18 @@ def run_ssh_command(vm_ip: str, command: str, ssh_config: Dict, timeout: int = 6
     Returns stripped stdout, or None if the command produced no usable output.
     """
     rc, stdout, stderr = ssh_exec_command(
-        vm_ip, command,
-        ssh_config['pod'], ssh_config['pod_ns'],
-        ssh_config['user'], ssh_config['password'],
+        vm_ip,
+        command,
+        ssh_config["pod"],
+        ssh_config["pod_ns"],
+        ssh_config["user"],
+        ssh_config["password"],
         logger=logging.getLogger(__name__),
         timeout=timeout,
     )
-    output = (stdout or '').strip()
+    output = (stdout or "").strip()
     if rc != 0 and not output:
-        logging.getLogger(__name__).debug(
-            f"SSH to {vm_ip} rc={rc}, stderr={(stderr or '').strip()!r}"
-        )
+        logging.getLogger(__name__).debug(f"SSH to {vm_ip} rc={rc}, stderr={(stderr or '').strip()!r}")
         return None
     return output if output else None
 
@@ -344,19 +367,18 @@ def run_ssh_command(vm_ip: str, command: str, ssh_config: Dict, timeout: int = 6
 def create_pvc(namespace: str, pvc_name: str, size: str, storage_class: str) -> bool:
     """Create a PVC for hotplug/coldplug."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    template_path = os.path.join(script_dir, 'pvc-template.yaml')
+    template_path = os.path.join(script_dir, "pvc-template.yaml")
 
     with open(template_path) as f:
         yaml_content = f.read()
 
-    yaml_content = yaml_content.replace('DISK_NAME', pvc_name)
-    yaml_content = yaml_content.replace('NAMESPACE', namespace)
-    yaml_content = yaml_content.replace('DISK_SIZE', size)
-    yaml_content = yaml_content.replace('STORAGE_CLASS', storage_class)
+    yaml_content = yaml_content.replace("DISK_NAME", pvc_name)
+    yaml_content = yaml_content.replace("NAMESPACE", namespace)
+    yaml_content = yaml_content.replace("DISK_SIZE", size)
+    yaml_content = yaml_content.replace("STORAGE_CLASS", storage_class)
 
     result = subprocess.run(
-        ['kubectl', 'apply', '-f', '-'],
-        input=yaml_content.encode(), capture_output=True
+        ["kubectl", "apply", "-f", "-"], input=yaml_content.encode(), capture_output=True, check=False
     )
     return result.returncode == 0
 
@@ -402,7 +424,7 @@ def wait_for_volume_attached(namespace: str, vm_name: str, pvc_name: str, timeou
 
 # Block devices that report TYPE=disk but are not attachable storage
 # (e.g. Fedora's zram swap, loopback mounts, optical drives).
-_PSEUDO_DISK_PREFIXES = ('zram', 'loop', 'sr', 'fd')
+_PSEUDO_DISK_PREFIXES = ("zram", "loop", "sr", "fd")
 
 
 def get_disk_devices(vm_ip: str, ssh_config: Dict) -> Optional[set]:
@@ -418,7 +440,7 @@ def get_disk_devices(vm_ip: str, ssh_config: Dict) -> Optional[set]:
     disks = set()
     for line in output.splitlines():
         parts = line.split()
-        if len(parts) >= 2 and parts[1] == 'disk' and not parts[0].startswith(_PSEUDO_DISK_PREFIXES):
+        if len(parts) >= 2 and parts[1] == "disk" and not parts[0].startswith(_PSEUDO_DISK_PREFIXES):
             disks.add(parts[0])
     return disks
 
@@ -441,9 +463,14 @@ def get_baseline_disks(vm_ip: str, ssh_config: Dict, logger=None, settle_timeout
     return previous or set()
 
 
-def validate_disk_in_vm(vm_ip: str, expected_disks: int, ssh_config: Dict,
-                        baseline_disks: Optional[set] = None, timeout: int = 120,
-                        logger=None) -> Tuple[bool, int, float]:
+def validate_disk_in_vm(
+    vm_ip: str,
+    expected_disks: int,
+    ssh_config: Dict,
+    baseline_disks: Optional[set] = None,
+    timeout: int = 120,
+    logger=None,
+) -> Tuple[bool, int, float]:
     """
     Validate that the expected number of newly attached disks are visible in the VM.
 
@@ -462,8 +489,10 @@ def validate_disk_in_vm(vm_ip: str, expected_disks: int, ssh_config: Dict,
 
     new_disks = current - baseline
     if logger:
-        logger.debug(f"Found disks {sorted(current)}, baseline {sorted(baseline)}, "
-                     f"{len(new_disks)} new {sorted(new_disks)} (expected {expected_disks})")
+        logger.debug(
+            f"Found disks {sorted(current)}, baseline {sorted(baseline)}, "
+            f"{len(new_disks)} new {sorted(new_disks)} (expected {expected_disks})"
+        )
     success = len(new_disks) >= expected_disks
     return success, len(new_disks), time.time() - start
 
@@ -474,7 +503,7 @@ def stop_vm(namespace: str, vm_name: str, timeout: int = 300) -> bool:
     start = time.time()
     while time.time() - start < timeout:
         _, vmi_phase = get_vm_status(namespace, vm_name)
-        if vmi_phase == "Unknown" or vmi_phase == "":
+        if vmi_phase in ("Unknown", ""):
             return True
         time.sleep(5)
     return False
@@ -493,10 +522,19 @@ def start_vm(namespace: str, vm_name: str, timeout: int = 300) -> Tuple[bool, fl
     return False, time.time() - start
 
 
-def hotplug_disks(namespace: str, vm_name: str, num_disks: int, disk_size: str,
-                  storage_class: str, vm_ip: str, ssh_config: Optional[Dict],
-                  skip_validation: bool, attach_timeout: int,
-                  logger, parallel: bool = False) -> Dict:
+def hotplug_disks(
+    namespace: str,
+    vm_name: str,
+    num_disks: int,
+    disk_size: str,
+    storage_class: str,
+    vm_ip: str,
+    ssh_config: Optional[Dict],
+    skip_validation: bool,
+    attach_timeout: int,
+    logger,
+    parallel: bool = False,
+) -> Dict:
     """Perform hotplug operation on a single VM. If parallel=True, attach all disks concurrently."""
     result = {
         "namespace": namespace,
@@ -509,7 +547,7 @@ def hotplug_disks(namespace: str, vm_name: str, num_disks: int, disk_size: str,
         "validation_time": 0,
         "total_time": 0,
         "success": False,
-        "errors": []
+        "errors": [],
     }
 
     start_total = time.time()
@@ -528,10 +566,7 @@ def hotplug_disks(namespace: str, vm_name: str, num_disks: int, disk_size: str,
         disk_info = []
         for i in range(num_disks):
             disk_id = f"{uuid.uuid4().hex[:6]}"
-            disk_info.append({
-                "pvc_name": f"hotplug-disk-{disk_id}",
-                "volume_name": f"hotplug-vol-{disk_id}"
-            })
+            disk_info.append({"pvc_name": f"hotplug-disk-{disk_id}", "volume_name": f"hotplug-vol-{disk_id}"})
 
         # Step 1: Create all PVCs in parallel
         def create_pvc_task(info):
@@ -613,17 +648,20 @@ def hotplug_disks(namespace: str, vm_name: str, num_disks: int, disk_size: str,
         max_retries = 3
         wait_between = 10
         for attempt in range(1, max_retries + 1):
-            logger.info(f"[{namespace}] Validating {result['disks_attached']} disk(s) inside VM (attempt {attempt}/{max_retries})...")
+            logger.info(
+                f"[{namespace}] Validating {result['disks_attached']} disk(s) inside VM (attempt {attempt}/{max_retries})..."
+            )
             success, disk_count, val_time = validate_disk_in_vm(
-                vm_ip, result["disks_attached"], ssh_config,
-                baseline_disks=baseline_disks, logger=logger
+                vm_ip, result["disks_attached"], ssh_config, baseline_disks=baseline_disks, logger=logger
             )
             result["validation_time"] += val_time
             if success:
                 result["disks_validated"] = disk_count
                 break
             if attempt < max_retries:
-                logger.info(f"[{namespace}] Found {disk_count}/{result['disks_attached']} disks, retrying in {wait_between}s...")
+                logger.info(
+                    f"[{namespace}] Found {disk_count}/{result['disks_attached']} disks, retrying in {wait_between}s..."
+                )
                 time.sleep(wait_between)
 
         if not success:
@@ -631,18 +669,27 @@ def hotplug_disks(namespace: str, vm_name: str, num_disks: int, disk_size: str,
             result["errors"].append(f"Validation failed: expected {result['disks_attached']}, found {disk_count}")
 
     result["total_time"] = time.time() - start_total
-    result["success"] = (result["disks_attached"] == num_disks and
-                         (skip_validation or result["disks_validated"] >= num_disks))
+    result["success"] = result["disks_attached"] == num_disks and (
+        skip_validation or result["disks_validated"] >= num_disks
+    )
     result["attached_volumes"] = attached_volumes
 
     return result
 
 
-
-def coldplug_disks(namespace: str, vm_name: str, num_disks: int, disk_size: str,
-                   storage_class: str, ssh_config: Optional[Dict], skip_validation: bool,
-                   attach_timeout: int, logger, baseline_disks: Optional[set] = None,
-                   parallel: bool = False) -> Dict:
+def coldplug_disks(
+    namespace: str,
+    vm_name: str,
+    num_disks: int,
+    disk_size: str,
+    storage_class: str,
+    ssh_config: Optional[Dict],
+    skip_validation: bool,
+    attach_timeout: int,
+    logger,
+    baseline_disks: Optional[set] = None,
+    parallel: bool = False,
+) -> Dict:
     """Perform coldplug operation on a single VM. If parallel=True, attach all disks concurrently."""
     result = {
         "namespace": namespace,
@@ -655,7 +702,7 @@ def coldplug_disks(namespace: str, vm_name: str, num_disks: int, disk_size: str,
         "validation_time": 0,
         "total_time": 0,
         "success": False,
-        "errors": []
+        "errors": [],
     }
 
     start_total = time.time()
@@ -682,10 +729,7 @@ def coldplug_disks(namespace: str, vm_name: str, num_disks: int, disk_size: str,
         disk_info = []
         for i in range(num_disks):
             disk_id = f"{uuid.uuid4().hex[:6]}"
-            disk_info.append({
-                "pvc_name": f"coldplug-disk-{disk_id}",
-                "volume_name": f"coldplug-vol-{disk_id}"
-            })
+            disk_info.append({"pvc_name": f"coldplug-disk-{disk_id}", "volume_name": f"coldplug-vol-{disk_id}"})
 
         # Create all PVCs in parallel
         def create_pvc_task(info):
@@ -755,32 +799,35 @@ def coldplug_disks(namespace: str, vm_name: str, num_disks: int, disk_size: str,
             max_retries = 3
             wait_between = 10
             for attempt in range(1, max_retries + 1):
-                logger.info(f"[{namespace}] Validating {result['disks_attached']} disk(s) inside VM (attempt {attempt}/{max_retries})...")
+                logger.info(
+                    f"[{namespace}] Validating {result['disks_attached']} disk(s) inside VM (attempt {attempt}/{max_retries})..."
+                )
                 success, disk_count, val_time = validate_disk_in_vm(
-                    vm_ip, result["disks_attached"], ssh_config,
-                    baseline_disks=baseline_disks, logger=logger
+                    vm_ip, result["disks_attached"], ssh_config, baseline_disks=baseline_disks, logger=logger
                 )
                 result["validation_time"] += val_time
                 if success:
                     result["disks_validated"] = disk_count
                     break
                 if attempt < max_retries:
-                    logger.info(f"[{namespace}] Found {disk_count}/{result['disks_attached']} disks, retrying in {wait_between}s...")
+                    logger.info(
+                        f"[{namespace}] Found {disk_count}/{result['disks_attached']} disks, retrying in {wait_between}s..."
+                    )
                     time.sleep(wait_between)
 
             if not success:
                 result["disks_validated"] = 0
 
     result["total_time"] = time.time() - start_total
-    result["success"] = (result["disks_attached"] == num_disks and
-                         (skip_validation or result["disks_validated"] >= num_disks))
+    result["success"] = result["disks_attached"] == num_disks and (
+        skip_validation or result["disks_validated"] >= num_disks
+    )
     result["attached_volumes"] = attached_volumes
 
     return result
 
 
-def unplug_disks(namespace: str, vm_name: str, volumes: List[Tuple[str, str]],
-                 logger) -> Dict:
+def unplug_disks(namespace: str, vm_name: str, volumes: List[Tuple[str, str]], logger) -> Dict:
     """Remove hotplugged disks. volumes is list of (pvc_name, volume_name)."""
     result = {
         "namespace": namespace,
@@ -788,7 +835,7 @@ def unplug_disks(namespace: str, vm_name: str, volumes: List[Tuple[str, str]],
         "disks_removed": 0,
         "total_time": 0,
         "success": False,
-        "errors": []
+        "errors": [],
     }
 
     start = time.time()
@@ -833,27 +880,38 @@ def process_vm(namespace: str, vm_name: str, args, logger) -> List[Dict]:
         if not vm_ip:
             logger.warning(f"[{namespace}] Could not get VM IP after 120s")
 
-    ssh_config = getattr(args, 'ssh_config', None)
-    logger.info(f"[{namespace}] VM status: {vm_status}, VMI phase: {vmi_phase}, IP: {vm_ip}, validation: {ssh_config is not None}")
+    ssh_config = getattr(args, "ssh_config", None)
+    logger.info(
+        f"[{namespace}] VM status: {vm_status}, VMI phase: {vmi_phase}, IP: {vm_ip}, validation: {ssh_config is not None}"
+    )
 
     # Hotplug
-    if args.operation in ['hotplug', 'all']:
+    if args.operation in ["hotplug", "all"]:
         if vmi_phase != "Running":
             logger.warning(f"[{namespace}] VM not running, skipping hotplug")
         else:
             mode = "parallel" if args.parallel_attach else "sequential"
             logger.info(f"[{namespace}] Starting hotplug of {args.disks} disk(s) ({mode})...")
             result = hotplug_disks(
-                namespace, vm_name, args.disks, args.disk_size,
-                args.storage_class, vm_ip, ssh_config,
-                args.skip_validation, args.attach_timeout, logger,
-                parallel=args.parallel_attach
+                namespace,
+                vm_name,
+                args.disks,
+                args.disk_size,
+                args.storage_class,
+                vm_ip,
+                ssh_config,
+                args.skip_validation,
+                args.attach_timeout,
+                logger,
+                parallel=args.parallel_attach,
             )
             results.append(result)
 
             status = "✓" if result["success"] else "✗"
-            logger.info(f"[{namespace}] Hotplug {status}: {result['disks_attached']}/{args.disks} attached, "
-                       f"time={result['total_time']:.2f}s")
+            logger.info(
+                f"[{namespace}] Hotplug {status}: {result['disks_attached']}/{args.disks} attached, "
+                f"time={result['total_time']:.2f}s"
+            )
 
             # Unplug if requested
             if args.test_unplug and result.get("attached_volumes"):
@@ -862,20 +920,28 @@ def process_vm(namespace: str, vm_name: str, args, logger) -> List[Dict]:
                 results.append(unplug_result)
 
     # Coldplug
-    if args.operation in ['coldplug', 'all']:
+    if args.operation in ["coldplug", "all"]:
         mode = "parallel" if args.parallel_attach else "sequential"
         logger.info(f"[{namespace}] Starting coldplug of {args.disks} disk(s) ({mode})...")
         result = coldplug_disks(
-            namespace, vm_name, args.disks, args.disk_size,
-            args.storage_class, ssh_config,
-            args.skip_validation, args.attach_timeout, logger,
-            parallel=args.parallel_attach
+            namespace,
+            vm_name,
+            args.disks,
+            args.disk_size,
+            args.storage_class,
+            ssh_config,
+            args.skip_validation,
+            args.attach_timeout,
+            logger,
+            parallel=args.parallel_attach,
         )
         results.append(result)
 
         status = "✓" if result["success"] else "✗"
-        logger.info(f"[{namespace}] Coldplug {status}: {result['disks_attached']}/{args.disks} attached, "
-                   f"boot={result['vm_boot_time']:.2f}s, total={result['total_time']:.2f}s")
+        logger.info(
+            f"[{namespace}] Coldplug {status}: {result['disks_attached']}/{args.disks} attached, "
+            f"boot={result['vm_boot_time']:.2f}s, total={result['total_time']:.2f}s"
+        )
 
         # Unplug if requested
         if args.test_unplug and result.get("attached_volumes"):
@@ -884,7 +950,6 @@ def process_vm(namespace: str, vm_name: str, args, logger) -> List[Dict]:
             results.append(unplug_result)
 
     return results
-
 
 
 def aggregate_results(all_results: List[Dict], config: Dict) -> Dict:
@@ -902,7 +967,7 @@ def aggregate_results(all_results: List[Dict], config: Dict) -> Dict:
         "timestamp": datetime.now().isoformat(),
         "config": config,
         "summary": {
-            "total_vms": len(set(r["namespace"] for r in all_results)),
+            "total_vms": len({r["namespace"] for r in all_results}),
             "total_operations": len(all_results),
         },
         "hotplug": {
@@ -914,7 +979,9 @@ def aggregate_results(all_results: List[Dict], config: Dict) -> Dict:
             "avg_volume_ready_time": avg(hotplug_results, "volume_ready_time"),
             "avg_validation_time": avg(hotplug_results, "validation_time"),
             "avg_total_time": avg(hotplug_results, "total_time"),
-        } if hotplug_results else None,
+        }
+        if hotplug_results
+        else None,
         "coldplug": {
             "count": len(coldplug_results),
             "success_count": sum(1 for r in coldplug_results if r["success"]),
@@ -924,21 +991,24 @@ def aggregate_results(all_results: List[Dict], config: Dict) -> Dict:
             "avg_vm_boot_time": avg(coldplug_results, "vm_boot_time"),
             "avg_validation_time": avg(coldplug_results, "validation_time"),
             "avg_total_time": avg(coldplug_results, "total_time"),
-        } if coldplug_results else None,
+        }
+        if coldplug_results
+        else None,
         "unplug": {
             "count": len(unplug_results),
             "success_count": sum(1 for r in unplug_results if r["success"]),
             "total_disks_removed": sum(r.get("disks_removed", 0) for r in unplug_results),
             "avg_total_time": avg(unplug_results, "total_time"),
-        } if unplug_results else None,
-        "per_vm_results": all_results
+        }
+        if unplug_results
+        else None,
+        "per_vm_results": all_results,
     }
 
     return summary
 
 
-def save_results(results: Dict, results_dir: str, px_version: str, disk_type: str,
-                 vm_start: int, vm_end: int, logger):
+def save_results(results: Dict, results_dir: str, px_version: str, disk_type: str, vm_start: int, vm_end: int, logger):
     """Save results to JSON and CSV in the dashboard-compatible folder structure."""
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     run_name = f"{timestamp}_disk_ops_benchmark_{vm_start}-{vm_end}"
@@ -947,18 +1017,20 @@ def save_results(results: Dict, results_dir: str, px_version: str, disk_type: st
 
     # Save JSON
     json_path = os.path.join(folder, "disk_ops_results.json")
-    with open(json_path, 'w') as f:
+    with open(json_path, "w") as f:
         json.dump(results, f, indent=2, default=str)
     logger.info(f"Results saved to: {json_path}")
 
     # Save CSV summary
     csv_path = os.path.join(folder, "disk_ops_summary.csv")
-    with open(csv_path, 'w') as f:
+    with open(csv_path, "w") as f:
         f.write("namespace,operation,disks_requested,disks_attached,disks_validated,total_time,success\n")
         for r in results.get("per_vm_results", []):
-            f.write(f"{r.get('namespace')},{r.get('operation')},{r.get('disks_requested', 0)},"
-                   f"{r.get('disks_attached', 0)},{r.get('disks_validated', 0)},"
-                   f"{r.get('total_time', 0):.2f},{r.get('success')}\n")
+            f.write(
+                f"{r.get('namespace')},{r.get('operation')},{r.get('disks_requested', 0)},"
+                f"{r.get('disks_attached', 0)},{r.get('disks_validated', 0)},"
+                f"{r.get('total_time', 0):.2f},{r.get('success')}\n"
+            )
     logger.info(f"CSV saved to: {csv_path}")
 
     return folder
@@ -972,7 +1044,7 @@ def print_summary(results: Dict, logger):
 
     if results.get("hotplug"):
         hp = results["hotplug"]
-        print(f"\nHOTPLUG:")
+        print("\nHOTPLUG:")
         print(f"  Success Rate:      {hp['success_count']}/{hp['count']} ({100*hp['success_count']/hp['count']:.1f}%)")
         print(f"  Disks Attached:    {hp['total_disks_attached']}")
         print(f"  Disks Validated:   {hp['total_disks_validated']}")
@@ -982,7 +1054,7 @@ def print_summary(results: Dict, logger):
 
     if results.get("coldplug"):
         cp = results["coldplug"]
-        print(f"\nCOLDPLUG:")
+        print("\nCOLDPLUG:")
         print(f"  Success Rate:      {cp['success_count']}/{cp['count']} ({100*cp['success_count']/cp['count']:.1f}%)")
         print(f"  Disks Attached:    {cp['total_disks_attached']}")
         print(f"  Disks Validated:   {cp['total_disks_validated']}")
@@ -992,7 +1064,7 @@ def print_summary(results: Dict, logger):
 
     if results.get("unplug"):
         up = results["unplug"]
-        print(f"\nUNPLUG:")
+        print("\nUNPLUG:")
         print(f"  Success Rate:      {up['success_count']}/{up['count']} ({100*up['success_count']/up['count']:.1f}%)")
         print(f"  Disks Removed:     {up['total_disks_removed']}")
         print(f"  Avg Total Time:    {up['avg_total_time']:.2f}s")
@@ -1007,12 +1079,16 @@ def main():
     created_ssh_pod = False
     validate = not args.skip_validation
     # SSH config for the persistent helper pod (only used when validating).
-    ssh_config = {
-        'pod': args.ssh_pod,
-        'pod_ns': args.ssh_pod_ns,
-        'user': args.vm_user,
-        'password': args.vm_password,
-    } if validate else None
+    ssh_config = (
+        {
+            "pod": args.ssh_pod,
+            "pod_ns": args.ssh_pod_ns,
+            "user": args.vm_user,
+            "password": args.vm_password,
+        }
+        if validate
+        else None
+    )
     args.ssh_config = ssh_config
 
     print("\n" + "=" * 70)
@@ -1026,7 +1102,9 @@ def main():
     print(f"  Create VMs:     {args.create_vms}")
     print(f"  Concurrency:    {args.concurrency}")
     print(f"  VM User:        {args.vm_user}")
-    print(f"  Validation:     {'Enabled (SSH via ' + args.ssh_pod_ns + '/' + args.ssh_pod + ')' if validate else 'Skip'}")
+    print(
+        f"  Validation:     {'Enabled (SSH via ' + args.ssh_pod_ns + '/' + args.ssh_pod + ')' if validate else 'Skip'}"
+    )
     print(f"  Test Unplug:    {'Yes' if args.test_unplug else 'No'}")
     print("=" * 70 + "\n")
 
@@ -1038,8 +1116,9 @@ def main():
         if validate:
             ready, created_ssh_pod = ensure_ssh_pod(args.ssh_pod, args.ssh_pod_ns, logger)
             if not ready:
-                logger.error("SSH helper pod unavailable; re-run with --skip-validation "
-                             "to proceed without in-VM checks")
+                logger.error(
+                    "SSH helper pod unavailable; re-run with --skip-validation " "to proceed without in-VM checks"
+                )
                 sys.exit(1)
 
         if args.create_vms:
@@ -1061,11 +1140,13 @@ def main():
 
             # Fail fast on placeholders we couldn't fill, instead of shipping broken
             # YAML to every namespace and then waiting for VMs that never deploy.
-            leftover = sorted(set(re.findall(r'\{\{[^}]+\}\}', vm_yaml)))
+            leftover = sorted(set(re.findall(r"\{\{[^}]+\}\}", vm_yaml)))
             if leftover:
                 logger.error(f"VM template '{template_path}' has unsubstituted placeholders: {', '.join(leftover)}")
-                logger.error("Supported: {{VM_NAME}}, {{STORAGE_CLASS}} (or {{STORAGE_CLASS_NAME}}), {{VM_PASSWORD}}. "
-                             "Use a disk-ops-compatible template (see disk-ops-benchmark/vm-template.yaml).")
+                logger.error(
+                    "Supported: {{VM_NAME}}, {{STORAGE_CLASS}} (or {{STORAGE_CLASS_NAME}}), {{VM_PASSWORD}}. "
+                    "Use a disk-ops-compatible template (see disk-ops-benchmark/vm-template.yaml)."
+                )
                 sys.exit(1)
 
             deployed = []
@@ -1078,12 +1159,16 @@ def main():
 
             # Don't proceed to the wait/operations if deploys failed.
             if not deployed:
-                logger.error(f"All {len(namespaces)} VM deploy(s) failed; aborting. "
-                             "Check the template, storage class, and cluster state above.")
+                logger.error(
+                    f"All {len(namespaces)} VM deploy(s) failed; aborting. "
+                    "Check the template, storage class, and cluster state above."
+                )
                 sys.exit(1)
             if len(deployed) < len(namespaces):
-                logger.warning(f"{len(namespaces) - len(deployed)}/{len(namespaces)} VM deploy(s) failed; "
-                               f"continuing with the {len(deployed)} that deployed.")
+                logger.warning(
+                    f"{len(namespaces) - len(deployed)}/{len(namespaces)} VM deploy(s) failed; "
+                    f"continuing with the {len(deployed)} that deployed."
+                )
             namespaces = deployed
 
             # A template may hardcode a VM name instead of honoring {{VM_NAME}}
@@ -1094,9 +1179,11 @@ def main():
                 logger.error(f"No VirtualMachine found in '{deployed[0]}' after deploy; aborting.")
                 sys.exit(1)
             if actual_vm != args.vm_name:
-                logger.warning(f"Template created VM named '{actual_vm}', not --vm-name '{args.vm_name}'. "
-                               f"Using '{actual_vm}' (tip: give the template a {{{{VM_NAME}}}} "
-                               f"placeholder to honor --vm-name).")
+                logger.warning(
+                    f"Template created VM named '{actual_vm}', not --vm-name '{args.vm_name}'. "
+                    f"Using '{actual_vm}' (tip: give the template a {{{{VM_NAME}}}} "
+                    f"placeholder to honor --vm-name)."
+                )
                 args.vm_name = actual_vm
 
             # Step 3: Wait for VMs to be Running
@@ -1113,10 +1200,7 @@ def main():
         all_results = []
 
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
-            futures = {
-                executor.submit(process_vm, ns, args.vm_name, args, logger): ns
-                for ns in namespaces
-            }
+            futures = {executor.submit(process_vm, ns, args.vm_name, args, logger): ns for ns in namespaces}
 
             for future in as_completed(futures):
                 ns = futures[future]
@@ -1134,7 +1218,7 @@ def main():
             "storage_class": args.storage_class,
             "test_unplug": args.test_unplug,
             "skip_validation": args.skip_validation,
-            "create_vms": args.create_vms
+            "create_vms": args.create_vms,
         }
 
         aggregated = aggregate_results(all_results, config)
@@ -1145,8 +1229,7 @@ def main():
         # Save results
         if args.save_results:
             disk_type = args.disk_type or f"{args.disks}-disk"
-            save_results(aggregated, args.results_dir, args.px_version, disk_type,
-                        args.start, args.end, logger)
+            save_results(aggregated, args.results_dir, args.px_version, disk_type, args.start, args.end, logger)
 
         # Cleanup if requested
         if args.cleanup:

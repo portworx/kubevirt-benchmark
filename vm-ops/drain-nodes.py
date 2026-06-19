@@ -34,7 +34,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import List, Tuple, Dict
+from typing import Dict, List
 
 
 def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
@@ -44,10 +44,7 @@ def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
 
     logger.handlers = []
 
-    formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
@@ -55,11 +52,12 @@ def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
 
     if log_file:
         import os
+
         log_dir = os.path.dirname(log_file)
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
 
-        file_handler = logging.FileHandler(log_file, mode='a')
+        file_handler = logging.FileHandler(log_file, mode="a")
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
         logger.info(f"Logging to file: {log_file}")
@@ -71,13 +69,24 @@ def get_node_pod_count(node_name: str) -> int:
     """Get the number of pods running on a node."""
     try:
         result = subprocess.run(
-            ["kubectl", "get", "pods", "--all-namespaces", "-o", "wide",
-             "--field-selector", f"spec.nodeName={node_name}"],
-            capture_output=True, text=True, timeout=30
+            [
+                "kubectl",
+                "get",
+                "pods",
+                "--all-namespaces",
+                "-o",
+                "wide",
+                "--field-selector",
+                f"spec.nodeName={node_name}",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
         )
         if result.returncode == 0:
             # Count lines minus header
-            lines = result.stdout.strip().split('\n')
+            lines = result.stdout.strip().split("\n")
             return max(0, len(lines) - 1)
     except Exception:
         pass
@@ -88,9 +97,11 @@ def get_node_status(node_name: str) -> str:
     """Get node scheduling status."""
     try:
         result = subprocess.run(
-            ["kubectl", "get", "node", node_name, "-o",
-             "jsonpath={.spec.unschedulable}"],
-            capture_output=True, text=True, timeout=30
+            ["kubectl", "get", "node", node_name, "-o", "jsonpath={.spec.unschedulable}"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
         )
         if result.returncode == 0:
             return "SchedulingDisabled" if result.stdout.strip() == "true" else "Ready"
@@ -104,10 +115,20 @@ def get_pods_on_node(node_name: str) -> List[Dict]:
     pods = []
     try:
         result = subprocess.run(
-            ["kubectl", "get", "pods", "--all-namespaces",
-             "--field-selector", f"spec.nodeName={node_name}",
-             "-o", "json"],
-            capture_output=True, text=True, timeout=60
+            [
+                "kubectl",
+                "get",
+                "pods",
+                "--all-namespaces",
+                "--field-selector",
+                f"spec.nodeName={node_name}",
+                "-o",
+                "json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
         )
         if result.returncode == 0:
             data = json.loads(result.stdout)
@@ -117,11 +138,7 @@ def get_pods_on_node(node_name: str) -> List[Dict]:
                 status = item.get("status", {}).get("phase", "Unknown")
                 owner_refs = item.get("metadata", {}).get("ownerReferences", [])
                 owner_kind = owner_refs[0].get("kind", "Unknown") if owner_refs else "Unknown"
-                pods.append({
-                    "name": f"{namespace}/{name}",
-                    "owner": owner_kind,
-                    "status": status
-                })
+                pods.append({"name": f"{namespace}/{name}", "owner": owner_kind, "status": status})
     except Exception:
         pass
     return pods
@@ -143,8 +160,7 @@ def get_vmi_count_per_node() -> Dict[str, int]:
     vmi_counts = {}
     try:
         result = subprocess.run(
-            ["kubectl", "get", "vmi", "-A", "-o", "json"],
-            capture_output=True, text=True, timeout=60
+            ["kubectl", "get", "vmi", "-A", "-o", "json"], capture_output=True, text=True, timeout=60, check=False
         )
         if result.returncode == 0:
             data = json.loads(result.stdout)
@@ -175,10 +191,16 @@ def print_vmi_distribution(logger: logging.Logger, title: str = "VMI Distributio
     return vmi_counts
 
 
-def drain_node(node_name: str, timeout: int, grace_period: int,
-               ignore_daemonsets: bool, delete_emptydir: bool,
-               force: bool, logger: logging.Logger,
-               dry_run: bool = False) -> Dict:
+def drain_node(
+    node_name: str,
+    timeout: int,
+    grace_period: int,
+    ignore_daemonsets: bool,
+    delete_emptydir: bool,
+    force: bool,
+    logger: logging.Logger,
+    dry_run: bool = False,
+) -> Dict:
     """Drain a single node and measure time."""
     result = {
         "node": node_name,
@@ -190,13 +212,15 @@ def drain_node(node_name: str, timeout: int, grace_period: int,
         "pods_after": 0,
         "daemonset_pods": [],
         "remaining_pods": [],
-        "error": None
+        "error": None,
     }
 
     # Get initial pod count and DaemonSet pods
     result["pods_before"] = get_node_pod_count(node_name)
     result["daemonset_pods"] = get_daemonset_pods(node_name)
-    logger.info(f"[{node_name}] Starting drain (pods: {result['pods_before']}, daemonsets: {len(result['daemonset_pods'])})")
+    logger.info(
+        f"[{node_name}] Starting drain (pods: {result['pods_before']}, daemonsets: {len(result['daemonset_pods'])})"
+    )
 
     # Build drain command
     cmd = ["kubectl", "drain", node_name, f"--timeout={timeout}s"]
@@ -221,7 +245,8 @@ def drain_node(node_name: str, timeout: int, grace_period: int,
             cmd,
             capture_output=True,
             text=True,
-            timeout=timeout + 60  # Add buffer to kubectl timeout
+            timeout=timeout + 60,
+            check=False,  # Add buffer to kubectl timeout
         )
 
         result["end_time"] = datetime.now()
@@ -231,8 +256,10 @@ def drain_node(node_name: str, timeout: int, grace_period: int,
             result["success"] = True
             result["pods_after"] = get_node_pod_count(node_name)
             result["remaining_pods"] = get_remaining_pods(node_name)
-            logger.info(f"[{node_name}] Drain completed in {result['duration_seconds']:.2f}s "
-                       f"(pods: {result['pods_before']} -> {result['pods_after']})")
+            logger.info(
+                f"[{node_name}] Drain completed in {result['duration_seconds']:.2f}s "
+                f"(pods: {result['pods_before']} -> {result['pods_after']})"
+            )
         else:
             result["error"] = proc.stderr.strip()
             result["remaining_pods"] = get_remaining_pods(node_name)
@@ -256,8 +283,7 @@ def uncordon_node(node_name: str, logger: logging.Logger) -> bool:
     """Uncordon a node to allow scheduling again."""
     try:
         result = subprocess.run(
-            ["kubectl", "uncordon", node_name],
-            capture_output=True, text=True, timeout=30
+            ["kubectl", "uncordon", node_name], capture_output=True, text=True, timeout=30, check=False
         )
         if result.returncode == 0:
             logger.info(f"[{node_name}] Uncordoned successfully")
@@ -271,38 +297,33 @@ def uncordon_node(node_name: str, logger: logging.Logger) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Drain Kubernetes nodes and measure drain time"
+    parser = argparse.ArgumentParser(description="Drain Kubernetes nodes and measure drain time")
+    parser.add_argument("--nodes", nargs="+", required=True, help="Node names to drain")
+    parser.add_argument("--parallel", action="store_true", help="Drain nodes in parallel (default: sequential)")
+    parser.add_argument("--timeout", type=int, default=300, help="Drain timeout in seconds (default: 300)")
+    parser.add_argument("--grace-period", type=int, default=30, help="Pod termination grace period (default: 30)")
+    parser.add_argument(
+        "--ignore-daemonsets", action="store_true", default=False, help="Ignore DaemonSet pods (default: False)"
     )
-    parser.add_argument("--nodes", nargs="+", required=True,
-                        help="Node names to drain")
-    parser.add_argument("--parallel", action="store_true",
-                        help="Drain nodes in parallel (default: sequential)")
-    parser.add_argument("--timeout", type=int, default=300,
-                        help="Drain timeout in seconds (default: 300)")
-    parser.add_argument("--grace-period", type=int, default=30,
-                        help="Pod termination grace period (default: 30)")
-    parser.add_argument("--ignore-daemonsets", action="store_true", default=False,
-                        help="Ignore DaemonSet pods (default: False)")
-    parser.add_argument("--delete-emptydir", action="store_true", default=True,
-                        help="Delete pods with emptyDir (default: True)")
-    parser.add_argument("--force", action="store_true",
-                        help="Force drain even if pods don't have controllers")
-    parser.add_argument("--uncordon-after", action="store_true", default=True,
-                        help="Uncordon node after drain completes")
-    parser.add_argument("--wait-between", type=int, default=0,
-                        help="Seconds to wait between nodes (simulates reboot time, default: 0)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be done without draining")
-    parser.add_argument("--log-level", default="INFO",
-                        choices=["DEBUG", "INFO", "WARNING", "ERROR"])
-    parser.add_argument("--log-file", default=None,
-                        help="Path to log file (auto-generated if not specified)")
+    parser.add_argument(
+        "--delete-emptydir", action="store_true", default=True, help="Delete pods with emptyDir (default: True)"
+    )
+    parser.add_argument("--force", action="store_true", help="Force drain even if pods don't have controllers")
+    parser.add_argument(
+        "--uncordon-after", action="store_true", default=True, help="Uncordon node after drain completes"
+    )
+    parser.add_argument(
+        "--wait-between", type=int, default=0, help="Seconds to wait between nodes (simulates reboot time, default: 0)"
+    )
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without draining")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument("--log-file", default=None, help="Path to log file (auto-generated if not specified)")
 
     args = parser.parse_args()
 
     # Always log to a file
     import os
+
     log_file = args.log_file
     if not log_file:
         os.makedirs("logs", exist_ok=True)
@@ -333,7 +354,7 @@ def main():
     # Print VMI distribution BEFORE drain
     logger.info("")
     logger.info("=" * 80)
-    vmi_before = print_vmi_distribution(logger, "VMI DISTRIBUTION BEFORE DRAIN")
+    print_vmi_distribution(logger, "VMI DISTRIBUTION BEFORE DRAIN")
     logger.info("=" * 80)
 
     overall_start = datetime.now()
@@ -344,9 +365,15 @@ def main():
         with ThreadPoolExecutor(max_workers=len(args.nodes)) as executor:
             futures = {
                 executor.submit(
-                    drain_node, node, args.timeout, args.grace_period,
-                    args.ignore_daemonsets, args.delete_emptydir,
-                    args.force, logger, args.dry_run
+                    drain_node,
+                    node,
+                    args.timeout,
+                    args.grace_period,
+                    args.ignore_daemonsets,
+                    args.delete_emptydir,
+                    args.force,
+                    logger,
+                    args.dry_run,
                 ): node
                 for node in args.nodes
             }
@@ -358,19 +385,19 @@ def main():
                     all_results.append(result)
                 except Exception as e:
                     logger.error(f"[{node}] Exception: {e}")
-                    all_results.append({
-                        "node": node,
-                        "success": False,
-                        "duration_seconds": 0,
-                        "error": str(e)
-                    })
+                    all_results.append({"node": node, "success": False, "duration_seconds": 0, "error": str(e)})
     else:
         # Drain nodes sequentially (simulates OCP upgrade behavior)
         for i, node in enumerate(args.nodes):
             result = drain_node(
-                node, args.timeout, args.grace_period,
-                args.ignore_daemonsets, args.delete_emptydir,
-                args.force, logger, args.dry_run
+                node,
+                args.timeout,
+                args.grace_period,
+                args.ignore_daemonsets,
+                args.delete_emptydir,
+                args.force,
+                logger,
+                args.dry_run,
             )
             all_results.append(result)
 
@@ -399,7 +426,7 @@ def main():
     # Print VMI distribution AFTER drain
     logger.info("")
     logger.info("=" * 80)
-    vmi_after = print_vmi_distribution(logger, "VMI DISTRIBUTION AFTER DRAIN")
+    print_vmi_distribution(logger, "VMI DISTRIBUTION AFTER DRAIN")
     logger.info("=" * 80)
 
     # Print summary

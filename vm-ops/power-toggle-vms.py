@@ -41,7 +41,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 
 def setup_logging(level: str = "INFO") -> logging.Logger:
@@ -49,10 +49,7 @@ def setup_logging(level: str = "INFO") -> logging.Logger:
     logger = logging.getLogger("power-toggle-vms")
     logger.setLevel(getattr(logging, level.upper()))
     handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    ))
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
     logger.addHandler(handler)
     return logger
 
@@ -60,12 +57,7 @@ def setup_logging(level: str = "INFO") -> logging.Logger:
 def run_kubectl(args: List[str], timeout: int = 60) -> Tuple[int, str, str]:
     """Run kubectl command and return (returncode, stdout, stderr)."""
     try:
-        result = subprocess.run(
-            ["kubectl"] + args,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
+        result = subprocess.run(["kubectl"] + args, capture_output=True, text=True, timeout=timeout, check=False)
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return -1, "", "Command timed out"
@@ -89,30 +81,39 @@ def get_running_vms_on_node(node_name: str, logger: logging.Logger) -> List[Dict
     for item in data.get("items", []):
         status = item.get("status", {})
         if status.get("nodeName") == node_name and status.get("phase") == "Running":
-            vms.append({
-                "namespace": item["metadata"]["namespace"],
-                "name": item["metadata"]["name"],
-                "node": node_name,
-            })
+            vms.append(
+                {
+                    "namespace": item["metadata"]["namespace"],
+                    "name": item["metadata"]["name"],
+                    "node": node_name,
+                }
+            )
     return vms
 
 
-def get_vm_node_selector(namespace: str, vm_name: str,
-                         logger: logging.Logger) -> Optional[str]:
+def get_vm_node_selector(namespace: str, vm_name: str, logger: logging.Logger) -> Optional[str]:
     """Return the kubernetes.io/hostname nodeSelector for a VM, or None."""
-    rc, stdout, stderr = run_kubectl([
-        "get", "vm", vm_name, "-n", namespace,
-        "-o", "jsonpath={.spec.template.spec.nodeSelector.kubernetes\\.io/hostname}",
-    ], timeout=15)
+    rc, stdout, stderr = run_kubectl(
+        [
+            "get",
+            "vm",
+            vm_name,
+            "-n",
+            namespace,
+            "-o",
+            "jsonpath={.spec.template.spec.nodeSelector.kubernetes\\.io/hostname}",
+        ],
+        timeout=15,
+    )
     if rc != 0:
         return None
     val = stdout.strip()
     return val or None
 
 
-def discover_vms_in_range(namespace_prefix: str, start: int, end: int,
-                          vm_name: str, node_filter: Optional[str],
-                          logger: logging.Logger) -> List[Dict]:
+def discover_vms_in_range(
+    namespace_prefix: str, start: int, end: int, vm_name: str, node_filter: Optional[str], logger: logging.Logger
+) -> List[Dict]:
     """
     Enumerate ``{namespace_prefix}-{i}`` for i in [start, end] and return the
     VMs that exist (regardless of running state). When *node_filter* is set,
@@ -124,9 +125,7 @@ def discover_vms_in_range(namespace_prefix: str, start: int, end: int,
 
     for i in range(start, end + 1):
         ns = f"{namespace_prefix}-{i}"
-        rc, _, stderr = run_kubectl(
-            ["get", "vm", vm_name, "-n", ns, "-o", "name"], timeout=10
-        )
+        rc, _, stderr = run_kubectl(["get", "vm", vm_name, "-n", ns, "-o", "name"], timeout=10)
         if rc != 0:
             skipped_missing += 1
             continue
@@ -147,9 +146,9 @@ def discover_vms_in_range(namespace_prefix: str, start: int, end: int,
     return vms
 
 
-def _virtctl_action(action: str, namespace: str, vm_name: str,
-                    logger: logging.Logger,
-                    dry_run: bool = False) -> Tuple[str, str, bool, float]:
+def _virtctl_action(
+    action: str, namespace: str, vm_name: str, logger: logging.Logger, dry_run: bool = False
+) -> Tuple[str, str, bool, float]:
     """Send `virtctl {start|stop} <vm>`. Returns (ns, name, success, duration)."""
     log_prefix = f"[{namespace}/{vm_name}]"
     started = time.time()
@@ -164,8 +163,7 @@ def _virtctl_action(action: str, namespace: str, vm_name: str,
     if rc != 0:
         try:
             result = subprocess.run(
-                ["virtctl", verb, vm_name, "-n", namespace],
-                capture_output=True, text=True, timeout=30
+                ["virtctl", verb, vm_name, "-n", namespace], capture_output=True, text=True, timeout=30, check=False
             )
             rc, stderr = result.returncode, result.stderr
         except Exception as e:
@@ -180,8 +178,7 @@ def _virtctl_action(action: str, namespace: str, vm_name: str,
     return namespace, vm_name, True, time.time() - started
 
 
-def wait_for_vm_phase(namespace: str, vm_name: str, target: str,
-                      logger: logging.Logger, timeout: int = 300) -> bool:
+def wait_for_vm_phase(namespace: str, vm_name: str, target: str, logger: logging.Logger, timeout: int = 300) -> bool:
     """
     Wait for a VM to reach a target state.
 
@@ -191,10 +188,9 @@ def wait_for_vm_phase(namespace: str, vm_name: str, target: str,
     log_prefix = f"[{namespace}/{vm_name}]"
     started = time.time()
     while time.time() - started < timeout:
-        rc, stdout, stderr = run_kubectl([
-            "get", "vmi", vm_name, "-n", namespace,
-            "-o", "jsonpath={.status.phase}"
-        ], timeout=10)
+        rc, stdout, stderr = run_kubectl(
+            ["get", "vmi", vm_name, "-n", namespace, "-o", "jsonpath={.status.phase}"], timeout=10
+        )
 
         if target == "stopped":
             if rc != 0 or "not found" in stderr.lower():
@@ -216,9 +212,9 @@ def load_vm_list_file(path: str, logger: logging.Logger) -> List[Dict]:
     """Read 'namespace/name' lines from *path* into VM dicts."""
     vms: List[Dict] = []
     try:
-        with open(path, "r") as f:
-            for line in f:
-                line = line.strip()
+        with open(path) as f:
+            for raw_line in f:
+                line = raw_line.strip()
                 if line and "/" in line:
                     ns, name = line.split("/", 1)
                     vms.append({"namespace": ns, "name": name})
@@ -241,9 +237,9 @@ def save_vm_list_file(vms: List[Dict], node: str, logger: logging.Logger) -> str
     return fname
 
 
-def _run_action_in_parallel(action: str, vms: List[Dict], concurrency: int,
-                            wait_timeout: int, dry_run: bool,
-                            logger: logging.Logger) -> None:
+def _run_action_in_parallel(
+    action: str, vms: List[Dict], concurrency: int, wait_timeout: int, dry_run: bool, logger: logging.Logger
+) -> None:
     """Send the start/stop command to every VM and wait for the target phase."""
     verb = "stop" if action == "off" else "start"
     target_phase = "stopped" if action == "off" else "running"
@@ -257,9 +253,7 @@ def _run_action_in_parallel(action: str, vms: List[Dict], concurrency: int,
 
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
         futures = {
-            executor.submit(_virtctl_action, action, vm["namespace"],
-                            vm["name"], logger, dry_run): vm
-            for vm in vms
+            executor.submit(_virtctl_action, action, vm["namespace"], vm["name"], logger, dry_run): vm for vm in vms
         }
         for future in as_completed(futures):
             ns, name, success, duration = future.result()
@@ -279,9 +273,9 @@ def _run_action_in_parallel(action: str, vms: List[Dict], concurrency: int,
     reached = 0
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
         futures = {
-            executor.submit(wait_for_vm_phase, ns, name, target_phase,
-                            logger, wait_timeout): (ns, name)
-            for ns, name, ok in results if ok
+            executor.submit(wait_for_vm_phase, ns, name, target_phase, logger, wait_timeout): (ns, name)
+            for ns, name, ok in results
+            if ok
         }
         for future in as_completed(futures):
             if future.result():
@@ -316,8 +310,7 @@ def _do_power_off(args: argparse.Namespace, logger: logging.Logger) -> None:
             for vm in vms:
                 logger.info(f"  Would stop: {vm['namespace']}/{vm['name']}")
             return
-        _run_action_in_parallel("off", vms, args.concurrency,
-                                args.wait_timeout, args.dry_run, logger)
+        _run_action_in_parallel("off", vms, args.concurrency, args.wait_timeout, args.dry_run, logger)
         return
 
     if not args.node:
@@ -342,8 +335,7 @@ def _do_power_off(args: argparse.Namespace, logger: logging.Logger) -> None:
             logger.info(f"  Would stop: {vm['namespace']}/{vm['name']}")
         return
 
-    _run_action_in_parallel("off", vms_to_stop, args.concurrency,
-                            args.wait_timeout, args.dry_run, logger)
+    _run_action_in_parallel("off", vms_to_stop, args.concurrency, args.wait_timeout, args.dry_run, logger)
 
 
 def _do_power_on(args: argparse.Namespace, logger: logging.Logger) -> None:
@@ -355,17 +347,19 @@ def _do_power_on(args: argparse.Namespace, logger: logging.Logger) -> None:
         vms = load_vm_list_file(args.vm_list_file, logger)
         logger.info(f"Powering ON {len(vms)} VM(s) from {args.vm_list_file}")
     else:
-        missing = [k for k in ("namespace_prefix", "start", "end", "vm_name")
-                   if getattr(args, k) is None]
+        missing = [k for k in ("namespace_prefix", "start", "end", "vm_name") if getattr(args, k) is None]
         if missing:
-            logger.error("--action on requires --namespace-prefix, --start, --end, "
-                         "and --vm-name (or --vm-list-file). Missing: "
-                         f"{', '.join('--' + m.replace('_', '-') for m in missing)}")
+            logger.error(
+                "--action on requires --namespace-prefix, --start, --end, "
+                "and --vm-name (or --vm-list-file). Missing: "
+                f"{', '.join('--' + m.replace('_', '-') for m in missing)}"
+            )
             sys.exit(1)
-        logger.info(f"Discovering VMs in {args.namespace_prefix}-{args.start}..{args.end}"
-                    + (f" filtered to node '{args.node}'" if args.node else ""))
-        vms = discover_vms_in_range(args.namespace_prefix, args.start, args.end,
-                                    args.vm_name, args.node, logger)
+        logger.info(
+            f"Discovering VMs in {args.namespace_prefix}-{args.start}..{args.end}"
+            + (f" filtered to node '{args.node}'" if args.node else "")
+        )
+        vms = discover_vms_in_range(args.namespace_prefix, args.start, args.end, args.vm_name, args.node, logger)
         if not vms:
             logger.error("No VMs matched the discovery criteria")
             sys.exit(1)
@@ -377,9 +371,7 @@ def _do_power_on(args: argparse.Namespace, logger: logging.Logger) -> None:
             logger.info(f"  Would start: {vm['namespace']}/{vm['name']}")
         return
 
-    _run_action_in_parallel("on", vms, args.concurrency,
-                            args.wait_timeout, args.dry_run, logger)
-
+    _run_action_in_parallel("on", vms, args.concurrency, args.wait_timeout, args.dry_run, logger)
 
 
 def main():
@@ -387,39 +379,40 @@ def main():
         description="Power VMs on or off (--action {on,off})",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--action", required=True, choices=["on", "off"],
-                        help="Whether to power VMs on or off")
+    parser.add_argument("--action", required=True, choices=["on", "off"], help="Whether to power VMs on or off")
 
     # Selection: --action off uses --node + --percentage. --action on uses
     # --namespace-prefix/--start/--end (default), with optional --node filter,
     # OR --vm-list-file.
-    parser.add_argument("--node", default=None,
-                        help="Node name. Required for --action off. Optional "
-                             "filter for --action on (matches VM nodeSelector).")
-    parser.add_argument("--percentage", type=int, default=50,
-                        help="Percentage of VMs to power off (default: 50, --action off only)")
+    parser.add_argument(
+        "--node",
+        default=None,
+        help="Node name. Required for --action off. Optional " "filter for --action on (matches VM nodeSelector).",
+    )
+    parser.add_argument(
+        "--percentage", type=int, default=50, help="Percentage of VMs to power off (default: 50, --action off only)"
+    )
 
-    parser.add_argument("--namespace-prefix", default=None,
-                        help="Namespace prefix for range-based discovery (--action on)")
-    parser.add_argument("--start", type=int, default=None,
-                        help="Start index for namespace range (--action on)")
-    parser.add_argument("--end", type=int, default=None,
-                        help="End index for namespace range (--action on)")
-    parser.add_argument("--vm-name", default=None,
-                        help="VM resource name to look for in each namespace (--action on)")
+    parser.add_argument(
+        "--namespace-prefix", default=None, help="Namespace prefix for range-based discovery (--action on)"
+    )
+    parser.add_argument("--start", type=int, default=None, help="Start index for namespace range (--action on)")
+    parser.add_argument("--end", type=int, default=None, help="End index for namespace range (--action on)")
+    parser.add_argument("--vm-name", default=None, help="VM resource name to look for in each namespace (--action on)")
 
-    parser.add_argument("--vm-list-file", default=None,
-                        help="File of 'namespace/name' lines to act on. Bypasses "
-                             "node/range discovery for both --action on and --action off.")
+    parser.add_argument(
+        "--vm-list-file",
+        default=None,
+        help="File of 'namespace/name' lines to act on. Bypasses "
+        "node/range discovery for both --action on and --action off.",
+    )
 
-    parser.add_argument("--concurrency", type=int, default=50,
-                        help="Max concurrent operations (default: 50)")
-    parser.add_argument("--wait-timeout", type=int, default=300,
-                        help="Timeout waiting for VMs to reach target phase (default: 300s)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be done without doing it")
-    parser.add_argument("--log-level", default="INFO",
-                        choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument("--concurrency", type=int, default=50, help="Max concurrent operations (default: 50)")
+    parser.add_argument(
+        "--wait-timeout", type=int, default=300, help="Timeout waiting for VMs to reach target phase (default: 300s)"
+    )
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without doing it")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
     args = parser.parse_args()
     logger = setup_logging(args.log_level)

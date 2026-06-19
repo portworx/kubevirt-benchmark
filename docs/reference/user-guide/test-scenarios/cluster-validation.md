@@ -142,7 +142,7 @@ kubectl get storageclass
 kubectl get datasource -n openshift-virtualization-os-images
 ```
 
-**Solution**: 
+**Solution**:
 - Verify the DataSource name and namespace
 - Create DataSource if missing
 - Use `--datasource` flag to specify a different DataSource

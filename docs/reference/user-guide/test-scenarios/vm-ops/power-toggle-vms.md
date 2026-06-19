@@ -128,4 +128,3 @@ it back into `--action on` later.
 
 * [Drain Nodes](drain-nodes.md) — combine to evacuate workloads then drain.
 * [Cleanup Guide](../../cleanup-guide.md)
-

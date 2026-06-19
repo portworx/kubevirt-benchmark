@@ -170,4 +170,3 @@ else
     echo -e "${RED}✗ Failed to create output file${NC}"
     exit 1
 fi
-

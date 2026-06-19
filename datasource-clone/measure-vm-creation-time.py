@@ -13,41 +13,58 @@ License: Apache 2.0
 """
 
 import argparse
-import yaml
+import json
 import os
-import sys
 import signal
-from datetime import datetime, timedelta
-import subprocess, json, time
+import subprocess
+import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Tuple, List, Optional
+from datetime import datetime, timedelta
+from typing import List, Optional, Tuple
+
+import yaml
+
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from utils.common import (
-    setup_logging, run_kubectl_command, create_namespace, create_namespaces_parallel,
-    delete_namespace, get_vm_status, get_vmi_ip, ping_vm, print_summary_table,
-    validate_prerequisites, stop_vm, start_vm, wait_for_vm_stopped,
-    get_worker_nodes, select_random_node, add_node_selector_to_vm_yaml,
-    cleanup_test_namespaces, confirm_cleanup, print_cleanup_summary, save_results
+    add_node_selector_to_vm_yaml,
+    cleanup_test_namespaces,
+    confirm_cleanup,
+    create_namespaces_parallel,
+    get_vm_status,
+    get_vmi_ip,
+    ping_vm,
+    print_cleanup_summary,
+    print_summary_table,
+    run_kubectl_command,
+    save_results,
+    select_random_node,
+    setup_logging,
+    start_vm,
+    stop_vm,
+    validate_prerequisites,
+    wait_for_vm_stopped,
 )
 
+
 # Default configuration
-DEFAULT_VM_YAML = '../examples/vm-templates/rhel9-vm-datasource.yaml'
-DEFAULT_VM_NAME = 'rhel-9-vm'
-DEFAULT_SSH_POD = 'ssh-test-pod'
-DEFAULT_SSH_POD_NS = 'default'
+DEFAULT_VM_YAML = "../examples/vm-templates/rhel9-vm-datasource.yaml"
+DEFAULT_VM_NAME = "rhel-9-vm"
+DEFAULT_SSH_POD = "ssh-test-pod"
+DEFAULT_SSH_POD_NS = "default"
 DEFAULT_POLL_INTERVAL = 1
 DEFAULT_CONCURRENCY = 50
 DEFAULT_PING_TIMEOUT = 600  # 10 minutes
-DEFAULT_NAMESPACE_PREFIX = 'kubevirt-perf-test'
+DEFAULT_NAMESPACE_PREFIX = "kubevirt-perf-test"
 
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description='Measure KubeVirt VM creation and boot performance using DataSource clone method.',
+        description="Measure KubeVirt VM creation and boot performance using DataSource clone method.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -62,185 +79,140 @@ Examples:
 
   # Test with cleanup after completion
   %(prog)s --start 1 --end 20 --cleanup
-        """
+        """,
     )
 
     # Test range
+    parser.add_argument("-s", "--start", type=int, default=1, help="Start index for test namespaces (default: 1)")
     parser.add_argument(
-        '-s', '--start',
-        type=int,
-        default=1,
-        help=f'Start index for test namespaces (default: 1)'
-    )
-    parser.add_argument(
-        '-e', '--end',
-        type=int,
-        default=10,
-        help=f'End index for test namespaces, inclusive (default: 10)'
+        "-e", "--end", type=int, default=10, help="End index for test namespaces, inclusive (default: 10)"
     )
 
     # VM configuration
     parser.add_argument(
-        '-n', '--vm-name',
-        type=str,
-        default=DEFAULT_VM_NAME,
-        help=f'VM resource name (default: {DEFAULT_VM_NAME})'
+        "-n", "--vm-name", type=str, default=DEFAULT_VM_NAME, help=f"VM resource name (default: {DEFAULT_VM_NAME})"
     )
     parser.add_argument(
-        '--vm-template',
+        "--vm-template",
         type=str,
         default=DEFAULT_VM_YAML,
-        help=f'Path to VM template YAML (default: {DEFAULT_VM_YAML})'
+        help=f"Path to VM template YAML (default: {DEFAULT_VM_YAML})",
     )
+    parser.add_argument("--secret-yaml", type=str, default=None, help="Path to cloudinit secret YAML file (optional)")
     parser.add_argument(
-        '--secret-yaml',
-        type=str,
-        default=None,
-        help='Path to cloudinit secret YAML file (optional)'
-    )
-    parser.add_argument(
-        '--namespace-prefix',
+        "--namespace-prefix",
         type=str,
         default=DEFAULT_NAMESPACE_PREFIX,
-        help=f'Prefix for test namespaces (default: {DEFAULT_NAMESPACE_PREFIX})'
+        help=f"Prefix for test namespaces (default: {DEFAULT_NAMESPACE_PREFIX})",
     )
-    
+
     # Performance tuning
     parser.add_argument(
-        '-c', '--concurrency',
+        "-c",
+        "--concurrency",
         type=int,
         default=DEFAULT_CONCURRENCY,
-        help=f'Max parallel threads for monitoring (default: {DEFAULT_CONCURRENCY})'
+        help=f"Max parallel threads for monitoring (default: {DEFAULT_CONCURRENCY})",
     )
     parser.add_argument(
-        '--poll-interval',
+        "--poll-interval",
         type=int,
         default=DEFAULT_POLL_INTERVAL,
-        help=f'Seconds between status checks (default: {DEFAULT_POLL_INTERVAL})'
+        help=f"Seconds between status checks (default: {DEFAULT_POLL_INTERVAL})",
     )
     parser.add_argument(
-        '--ping-timeout',
+        "--ping-timeout",
         type=int,
         default=DEFAULT_PING_TIMEOUT,
-        help=f'Ping timeout in seconds (default: {DEFAULT_PING_TIMEOUT})'
+        help=f"Ping timeout in seconds (default: {DEFAULT_PING_TIMEOUT})",
     )
-    
+
     # SSH pod for ping tests
     parser.add_argument(
-        '--ssh-pod',
-        type=str,
-        default=DEFAULT_SSH_POD,
-        help=f'Pod name for ping tests (default: {DEFAULT_SSH_POD})'
+        "--ssh-pod", type=str, default=DEFAULT_SSH_POD, help=f"Pod name for ping tests (default: {DEFAULT_SSH_POD})"
     )
     parser.add_argument(
-        '--ssh-pod-ns',
+        "--ssh-pod-ns",
         type=str,
         default=DEFAULT_SSH_POD_NS,
-        help=f'Namespace of SSH pod (default: {DEFAULT_SSH_POD_NS})'
+        help=f"Namespace of SSH pod (default: {DEFAULT_SSH_POD_NS})",
     )
-    
+
     # Logging
+    parser.add_argument("--log-file", type=str, help="Path to log file (default: stdout only)")
     parser.add_argument(
-        '--log-file',
+        "--log-level",
         type=str,
-        help='Path to log file (default: stdout only)'
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        default="INFO",
+        help="Logging level (default: INFO)",
     )
-    parser.add_argument(
-        '--log-level',
-        type=str,
-        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
-        default='INFO',
-        help='Logging level (default: INFO)'
-    )
-    
+
     # Cleanup
+    parser.add_argument("--cleanup", action="store_true", help="Delete test resources and namespaces after completion")
+    parser.add_argument("--cleanup-on-failure", action="store_true", help="Clean up resources even if tests fail")
     parser.add_argument(
-        '--cleanup',
-        action='store_true',
-        help='Delete test resources and namespaces after completion'
+        "--dry-run-cleanup", action="store_true", help="Show what would be deleted without actually deleting"
     )
+    parser.add_argument("--yes", action="store_true", help="Skip confirmation prompt for cleanup (use with caution)")
     parser.add_argument(
-        '--cleanup-on-failure',
-        action='store_true',
-        help='Clean up resources even if tests fail'
-    )
-    parser.add_argument(
-        '--dry-run-cleanup',
-        action='store_true',
-        help='Show what would be deleted without actually deleting'
-    )
-    parser.add_argument(
-        '--yes',
-        action='store_true',
-        help='Skip confirmation prompt for cleanup (use with caution)'
-    )
-    parser.add_argument(
-        '--skip-namespace-creation',
-        action='store_true',
-        help='Skip namespace creation (use existing namespaces)'
+        "--skip-namespace-creation", action="store_true", help="Skip namespace creation (use existing namespaces)"
     )
 
     # Boot storm testing
     parser.add_argument(
-        '--boot-storm',
-        action='store_true',
-        help='After initial test, shutdown all VMs and test boot storm (power on all together)'
+        "--boot-storm",
+        action="store_true",
+        help="After initial test, shutdown all VMs and test boot storm (power on all together)",
     )
     parser.add_argument(
-        '--skip-vm-creation',
-        action='store_true',
-        help='Skip VM creation phase (use with --boot-storm to test existing VMs)'
+        "--skip-vm-creation",
+        action="store_true",
+        help="Skip VM creation phase (use with --boot-storm to test existing VMs)",
     )
     parser.add_argument(
-        '--num-disks',
+        "--num-disks",
         type=int,
         default=None,
-        help='Number of disks per VM (auto-detected from template or existing VM if not specified)'
+        help="Number of disks per VM (auto-detected from template or existing VM if not specified)",
     )
     parser.add_argument(
-        '--namespace-batch-size',
-        type=int,
-        default=20,
-        help='Number of namespaces to create in parallel (default: 20)'
+        "--namespace-batch-size", type=int, default=20, help="Number of namespaces to create in parallel (default: 20)"
     )
 
     # Single node testing
     parser.add_argument(
-        '--single-node',
-        action='store_true',
-        help='Run all VMs on a single node (useful for node-level boot storm testing)'
+        "--single-node",
+        action="store_true",
+        help="Run all VMs on a single node (useful for node-level boot storm testing)",
     )
     parser.add_argument(
-        '--node-name',
+        "--node-name",
         type=str,
         default=None,
-        help='Specific node name to use (if not provided, a random worker node will be selected)'
+        help="Specific node name to use (if not provided, a random worker node will be selected)",
     )
 
     # Save results
     parser.add_argument(
-        '--save-results',
-        action='store_true',
-        help='Save detailed results (JSON and CSV) inside a timestamped folder under results/.'
+        "--save-results",
+        action="store_true",
+        help="Save detailed results (JSON and CSV) inside a timestamped folder under results/.",
     )
 
     # Base folder for results
     parser.add_argument(
-        '--results-folder',
-        type=str,
-        default='results',
-        help='Base directory to store test results (default: results)'
+        "--results-folder", type=str, default="results", help="Base directory to store test results (default: results)"
     )
 
     parser.add_argument(
-        '--storage-driver',
-        dest='storage_driver',
+        "--storage-driver",
+        dest="storage_driver",
         type=str,
         default=None,
-        help='Storage driver label to include in results path (for example: portworx-3.6, ceph)'
+        help="Storage driver label to include in results path (for example: portworx-3.6, ceph)",
     )
 
-    
     args = parser.parse_args()
 
     # Validation
@@ -260,22 +232,16 @@ Examples:
 
 def detect_disk_count_from_template(vm_template_path: str) -> Optional[int]:
     """Return non-cloud-init disk count from a VM template, or None on failure."""
-    with open(vm_template_path, 'r') as f:
+    with open(vm_template_path) as f:
         docs = list(yaml.safe_load_all(f))
 
-    vm_spec = next((doc for doc in docs if doc and doc.get('kind') == 'VirtualMachine'), None)
+    vm_spec = next((doc for doc in docs if doc and doc.get("kind") == "VirtualMachine"), None)
     if not vm_spec:
         return None
 
-    volumes = (
-        vm_spec.get('spec', {})
-        .get('template', {})
-        .get('spec', {})
-        .get('volumes', [])
-    )
+    volumes = vm_spec.get("spec", {}).get("template", {}).get("spec", {}).get("volumes", [])
     non_cloudinit_volumes = [
-        v for v in volumes
-        if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
+        v for v in volumes if not any(k in v for k in ["cloudInitNoCloud", "cloudInitConfigDrive"])
     ]
     return len(non_cloudinit_volumes)
 
@@ -315,14 +281,13 @@ def ensure_namespaces(start: int, end: int, prefix: str, batch_size: int, logger
     if len(successful) != len(namespaces):
         failed = set(namespaces) - set(successful)
         logger.error(f"Failed to create {len(failed)} namespaces: {failed}")
-        raise RuntimeError(f"Failed to create some namespaces")
+        raise RuntimeError("Failed to create some namespaces")
 
     logger.info(f"All {len(namespaces)} namespaces ready")
     return namespaces
 
 
-def create_secret(ns: str, secret_yaml: str, logger,
-                  max_retries: int = 3, initial_delay: float = 1.0) -> bool:
+def create_secret(ns: str, secret_yaml: str, logger, max_retries: int = 3, initial_delay: float = 1.0) -> bool:
     """
     Create a Kubernetes secret in the specified namespace with retry logic.
 
@@ -340,28 +305,26 @@ def create_secret(ns: str, secret_yaml: str, logger,
 
     # List of retryable error patterns
     retryable_errors = [
-        'context deadline exceeded',
-        'webhook',
-        'Internal error',
-        'InternalError',
-        'connection refused',
-        'timeout',
-        'temporarily unavailable'
+        "context deadline exceeded",
+        "webhook",
+        "Internal error",
+        "InternalError",
+        "connection refused",
+        "timeout",
+        "temporarily unavailable",
     ]
 
     for attempt in range(1, max_retries + 1):
         try:
             returncode, stdout, stderr = run_kubectl_command(
-                ['create', '-f', secret_yaml, '-n', ns],
-                check=False,
-                logger=logger
+                ["create", "-f", secret_yaml, "-n", ns], check=False, logger=logger
             )
 
             if returncode == 0:
                 logger.info(f"[{ns}] Secret created successfully")
                 return True
             else:
-                if 'AlreadyExists' in stderr:
+                if "AlreadyExists" in stderr:
                     logger.warning(f"[{ns}] Secret already exists, continuing")
                     return True
 
@@ -370,7 +333,9 @@ def create_secret(ns: str, secret_yaml: str, logger,
 
                 if is_retryable and attempt < max_retries:
                     delay = initial_delay * (2 ** (attempt - 1))  # Exponential backoff
-                    logger.warning(f"[{ns}] Retryable error creating secret (attempt {attempt}/{max_retries}): {stderr.strip()}")
+                    logger.warning(
+                        f"[{ns}] Retryable error creating secret (attempt {attempt}/{max_retries}): {stderr.strip()}"
+                    )
                     logger.info(f"[{ns}] Retrying in {delay:.1f}s...")
                     time.sleep(delay)
                     continue
@@ -391,9 +356,15 @@ def create_secret(ns: str, secret_yaml: str, logger,
     return False
 
 
-def create_vm(ns: str, vm_yaml: str, node_name: Optional[str], logger,
-              secret_yaml: Optional[str] = None,
-              max_retries: int = 5, initial_delay: float = 2.0) -> Tuple[str, datetime]:
+def create_vm(
+    ns: str,
+    vm_yaml: str,
+    node_name: Optional[str],
+    logger,
+    secret_yaml: Optional[str] = None,
+    max_retries: int = 5,
+    initial_delay: float = 2.0,
+) -> Tuple[str, datetime]:
     """
     Create a VM in the specified namespace with retry logic.
 
@@ -421,13 +392,13 @@ def create_vm(ns: str, vm_yaml: str, node_name: Optional[str], logger,
 
     # List of retryable error patterns
     retryable_errors = [
-        'context deadline exceeded',
-        'webhook',
-        'Internal error',
-        'InternalError',
-        'connection refused',
-        'timeout',
-        'temporarily unavailable'
+        "context deadline exceeded",
+        "webhook",
+        "Internal error",
+        "InternalError",
+        "connection refused",
+        "timeout",
+        "temporarily unavailable",
     ]
 
     for attempt in range(1, max_retries + 1):
@@ -440,34 +411,30 @@ def create_vm(ns: str, vm_yaml: str, node_name: Optional[str], logger,
                 if modified_yaml:
                     # Create VM using modified YAML via stdin
                     process = subprocess.Popen(
-                        ['kubectl', 'create', '-f', '-', '-n', ns],
+                        ["kubectl", "create", "-f", "-", "-n", ns],
                         stdin=subprocess.PIPE,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
-                        text=True
+                        text=True,
                     )
                     stdout, stderr = process.communicate(input=modified_yaml)
                     returncode = process.returncode
                 else:
                     logger.warning(f"[{ns}] Failed to modify YAML, creating without nodeSelector")
                     returncode, stdout, stderr = run_kubectl_command(
-                        ['create', '-f', vm_yaml, '-n', ns],
-                        check=False,
-                        logger=logger
+                        ["create", "-f", vm_yaml, "-n", ns], check=False, logger=logger
                     )
             else:
                 # Create VM normally without nodeSelector
                 returncode, stdout, stderr = run_kubectl_command(
-                    ['create', '-f', vm_yaml, '-n', ns],
-                    check=False,
-                    logger=logger
+                    ["create", "-f", vm_yaml, "-n", ns], check=False, logger=logger
                 )
 
             if returncode == 0:
                 logger.info(f"[{ns}] VM creation API call completed")
                 return ns, start_ts
             else:
-                if 'AlreadyExists' in stderr:
+                if "AlreadyExists" in stderr:
                     logger.warning(f"[{ns}] VM already exists, continuing with existing VM")
                     return ns, start_ts
 
@@ -518,23 +485,16 @@ def get_vm_disk_count(ns: str, vm_name: str, logger) -> int:
     """
     try:
         result = subprocess.run(
-            ['kubectl', 'get', 'vm', vm_name, '-n', ns, '-o', 'json'],
-            capture_output=True, text=True, check=True
+            ["kubectl", "get", "vm", vm_name, "-n", ns, "-o", "json"], capture_output=True, text=True, check=True
         )
         vm_spec = json.loads(result.stdout)
 
         # Get list of volumes under spec.template.spec.volumes
-        volumes = (
-            vm_spec.get('spec', {})
-            .get('template', {})
-            .get('spec', {})
-            .get('volumes', [])
-        )
+        volumes = vm_spec.get("spec", {}).get("template", {}).get("spec", {}).get("volumes", [])
 
         # Exclude cloudInit volumes
         non_cloudinit_volumes = [
-            v for v in volumes
-            if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
+            v for v in volumes if not any(k in v for k in ["cloudInitNoCloud", "cloudInitConfigDrive"])
         ]
 
         disk_count = len(non_cloudinit_volumes)
@@ -552,60 +512,61 @@ def get_vm_disk_count(ns: str, vm_name: str, logger) -> int:
 def wait_for_vm_running(ns: str, vm_name: str, start_ts: datetime, poll_interval: int, logger) -> Tuple[str, float]:
     """
     Wait for VM to reach Running state.
-    
+
     Args:
         ns: Namespace
         vm_name: VM name
         start_ts: Creation timestamp
         poll_interval: Polling interval in seconds
         logger: Logger instance
-    
+
     Returns:
         Tuple of (namespace, elapsed_seconds)
     """
     logger.info(f"[{ns}] Waiting for VM {vm_name} to reach Running state...")
-    
+
     while True:
         status = get_vm_status(vm_name, ns, logger)
-        
-        if status == 'Running':
+
+        if status == "Running":
             elapsed = (datetime.now() - start_ts).total_seconds()
             logger.info(f"[{ns}] VM Running after {elapsed:.2f}s")
             return ns, elapsed
-        
+
         time.sleep(poll_interval)
 
 
 def wait_for_vmi_ip(ns: str, vm_name: str, poll_interval: int, logger) -> str:
     """
     Wait for VMI to have an IP address.
-    
+
     Args:
         ns: Namespace
         vm_name: VM name (same as VMI name)
         poll_interval: Polling interval in seconds
         logger: Logger instance
-    
+
     Returns:
         IP address
     """
     logger.info(f"[{ns}] Waiting for VMI to get IP address...")
-    
+
     while True:
         ip = get_vmi_ip(vm_name, ns, logger)
-        
+
         if ip:
             logger.info(f"[{ns}] VMI IP: {ip}")
             return ip
-        
+
         time.sleep(poll_interval)
 
 
-def wait_for_ping(ns: str, ip: str, start_ts: datetime, ssh_pod: str, ssh_pod_ns: str,
-                  poll_interval: int, timeout: int, logger) -> Tuple[str, float, bool]:
+def wait_for_ping(
+    ns: str, ip: str, start_ts: datetime, ssh_pod: str, ssh_pod_ns: str, poll_interval: int, timeout: int, logger
+) -> Tuple[str, float, bool]:
     """
     Wait for VM to respond to ping.
-    
+
     Args:
         ns: Namespace
         ip: VM IP address
@@ -615,31 +576,40 @@ def wait_for_ping(ns: str, ip: str, start_ts: datetime, ssh_pod: str, ssh_pod_ns
         poll_interval: Polling interval in seconds
         timeout: Timeout in seconds
         logger: Logger instance
-    
+
     Returns:
         Tuple of (namespace, elapsed_seconds, success)
     """
     logger.info(f"[{ns}] Pinging {ip} (timeout: {timeout}s)...")
     ping_start = datetime.now()
-    
+
     while True:
         elapsed_ping = (datetime.now() - ping_start).total_seconds()
-        
+
         if elapsed_ping > timeout:
             logger.warning(f"[{ns}] Ping timeout after {timeout}s")
             return ns, None, False
-        
+
         if ping_vm(ip, ssh_pod, ssh_pod_ns, logger):
             elapsed_total = (datetime.now() - start_ts).total_seconds()
             logger.info(f"[{ns}] Ping successful after {elapsed_total:.2f}s")
             return ns, elapsed_total, True
-        
+
         time.sleep(poll_interval)
 
 
-def monitor_vm(ns: str, vm_name: str, start_ts: datetime, ssh_pod: str, ssh_pod_ns: str,
-               poll_interval: int, ping_timeout: int, logger, skip_dv_clone_tracking=False,
-               vm_template_path: Optional[str] = None) -> Tuple[str, float, float, float, bool]:
+def monitor_vm(
+    ns: str,
+    vm_name: str,
+    start_ts: datetime,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    poll_interval: int,
+    ping_timeout: int,
+    logger,
+    skip_dv_clone_tracking=False,
+    vm_template_path: Optional[str] = None,
+) -> Tuple[str, float, float, float, bool]:
     """
     Monitor a single VM through its lifecycle and record clone timing.
 
@@ -683,7 +653,6 @@ def monitor_vm(ns: str, vm_name: str, start_ts: datetime, ssh_pod: str, ssh_pod_
         return ns, None, None, None, False
 
 
-
 def extract_datavolume_name_from_yaml(vm_template_path: str, logger) -> Optional[str]:
     """
     Extract the boot disk DataVolume name from the VM template YAML.
@@ -700,45 +669,45 @@ def extract_datavolume_name_from_yaml(vm_template_path: str, logger) -> Optional
         DataVolume name if found, None otherwise
     """
     try:
-        with open(vm_template_path, 'r') as f:
+        with open(vm_template_path) as f:
             docs = list(yaml.safe_load_all(f))
 
         for doc in docs:
             if not doc:
                 continue
 
-            if doc.get('kind') == 'VirtualMachine':
-                template_spec = doc.get('spec', {}).get('template', {}).get('spec', {})
+            if doc.get("kind") == "VirtualMachine":
+                template_spec = doc.get("spec", {}).get("template", {}).get("spec", {})
 
                 # Step 1: Find disk with bootOrder: 1, or use first disk as fallback
-                disks = template_spec.get('domain', {}).get('devices', {}).get('disks', [])
+                disks = template_spec.get("domain", {}).get("devices", {}).get("disks", [])
                 boot_disk_name = None
                 for disk in disks:
-                    if disk.get('bootOrder') == 1:
-                        boot_disk_name = disk.get('name')
+                    if disk.get("bootOrder") == 1:
+                        boot_disk_name = disk.get("name")
                         break
 
                 if not boot_disk_name and disks:
                     # Fallback to first disk if no bootOrder: 1 found
-                    boot_disk_name = disks[0].get('name')
+                    boot_disk_name = disks[0].get("name")
                     logger.debug(f"No bootOrder: 1 found, using first disk: {boot_disk_name}")
 
                 if not boot_disk_name:
-                    logger.debug(f"No disks found in template")
+                    logger.debug("No disks found in template")
                     continue
 
                 # Step 2: Find volume with matching name and get dataVolume.name or PVC claimName
                 # Prefer dataVolume, fallback to persistentVolumeClaim
-                volumes = template_spec.get('volumes', [])
+                volumes = template_spec.get("volumes", [])
                 for volume in volumes:
-                    if volume.get('name') == boot_disk_name:
-                        if 'dataVolume' in volume:
-                            dv_name = volume.get('dataVolume', {}).get('name')
+                    if volume.get("name") == boot_disk_name:
+                        if "dataVolume" in volume:
+                            dv_name = volume.get("dataVolume", {}).get("name")
                             if dv_name:
                                 logger.debug(f"Found boot disk DataVolume: {dv_name}")
                                 return dv_name
-                        elif 'persistentVolumeClaim' in volume:
-                            pvc_name = volume.get('persistentVolumeClaim', {}).get('claimName')
+                        elif "persistentVolumeClaim" in volume:
+                            pvc_name = volume.get("persistentVolumeClaim", {}).get("claimName")
                             if pvc_name:
                                 logger.debug(f"Found boot disk PVC: {pvc_name}")
                                 return pvc_name
@@ -750,8 +719,15 @@ def extract_datavolume_name_from_yaml(vm_template_path: str, logger) -> Optional
         return None
 
 
-def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interval: int, logger,
-                        vm_template_path: Optional[str] = None, timeout: int = 1800):
+def track_clone_progress(
+    ns: str,
+    vm_name: str,
+    start_ts: datetime,
+    poll_interval: int,
+    logger,
+    vm_template_path: Optional[str] = None,
+    timeout: int = 1800,
+):
     """
     Track DataVolume/PVC clone timing for a given VM, including inferred clone start logic.
 
@@ -784,8 +760,7 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
     # Check if it's a DataVolume or PVC
     # First try DataVolume, then fall back to PVC
     result = subprocess.run(
-        ["kubectl", "get", "dv", dv_name, "-n", ns, "--no-headers"],
-        capture_output=True, text=True, check=False
+        ["kubectl", "get", "dv", dv_name, "-n", ns, "--no-headers"], capture_output=True, text=True, check=False
     )
     is_datavolume = result.returncode == 0
 
@@ -806,7 +781,9 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
         try:
             result = subprocess.run(
                 ["kubectl", "get", resource_type, dv_name, "-n", ns, "-o", "json"],
-                capture_output=True, text=True, check=False
+                capture_output=True,
+                text=True,
+                check=False,
             )
             if result.returncode != 0 or not result.stdout:
                 time.sleep(poll_interval)
@@ -829,7 +806,9 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
             # CloneScheduled observed
             if phase == "clonescheduled" and not clone_start:
                 clone_start = datetime.now()
-                logger.info(f"[{ns}] {dv_name} entered CloneScheduled ({(clone_start - start_ts).total_seconds():.2f}s after VM creation)")
+                logger.info(
+                    f"[{ns}] {dv_name} entered CloneScheduled ({(clone_start - start_ts).total_seconds():.2f}s after VM creation)"
+                )
 
             # Clone in progress but no CloneScheduled observed (inferred)
             elif phase == "csicloneinprogress" and not clone_start:
@@ -844,7 +823,9 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
                     clone_start = start_ts
                 clone_inferred = True
                 clone_start_delta = (clone_start - start_ts).total_seconds()
-                logger.info(f"[{ns}] {dv_name} in CSICloneInProgress (inferred clone start: {clone_start_delta:.2f}s after VM creation)")
+                logger.info(
+                    f"[{ns}] {dv_name} in CSICloneInProgress (inferred clone start: {clone_start_delta:.2f}s after VM creation)"
+                )
 
             # Clone succeeded (DataVolume) or Bound (PVC)
             elif phase == "succeeded":
@@ -857,8 +838,12 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
                     else:
                         clone_start = inferred_start
                     clone_inferred = True
-                    logger.info(f"[{ns}] {dv_name} clone was fast (inferred clone start: {(clone_start - start_ts).total_seconds():.2f}s after VM creation)")
-                logger.info(f"[{ns}] {dv_name} clone succeeded ({(clone_end - start_ts).total_seconds():.2f}s after VM creation)")
+                    logger.info(
+                        f"[{ns}] {dv_name} clone was fast (inferred clone start: {(clone_start - start_ts).total_seconds():.2f}s after VM creation)"
+                    )
+                logger.info(
+                    f"[{ns}] {dv_name} clone succeeded ({(clone_end - start_ts).total_seconds():.2f}s after VM creation)"
+                )
                 break
 
             elif phase == "failed":
@@ -927,7 +912,7 @@ def main():
                     delete_namespaces=True,
                     dry_run=False,
                     batch_size=args.namespace_batch_size,
-                    logger=logger
+                    logger=logger,
                 )
                 print_cleanup_summary(stats, logger)
             except Exception as e:
@@ -1010,8 +995,7 @@ def main():
     if not args.skip_namespace_creation:
         try:
             namespaces = ensure_namespaces(
-                args.start, args.end, args.namespace_prefix,
-                args.namespace_batch_size, logger
+                args.start, args.end, args.namespace_prefix, args.namespace_batch_size, logger
             )
             namespaces_created.extend(namespaces)  # Track for cleanup on interrupt
         except Exception as e:
@@ -1079,8 +1063,17 @@ def main():
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
             futures = {
                 executor.submit(
-                    monitor_vm, ns, args.vm_name, ts, args.ssh_pod, args.ssh_pod_ns,
-                    args.poll_interval, args.ping_timeout, logger, False, args.vm_template
+                    monitor_vm,
+                    ns,
+                    args.vm_name,
+                    ts,
+                    args.ssh_pod,
+                    args.ssh_pod_ns,
+                    args.poll_interval,
+                    args.ping_timeout,
+                    logger,
+                    False,
+                    args.vm_template,
                 ): ns
                 for ns, ts in start_times.items()
             }
@@ -1110,12 +1103,7 @@ def main():
 
             # Save initial creation test results
             save_results(
-                args,
-                results,
-                base_dir=out_dir,
-                prefix="vm_creation_results",
-                logger=logger,
-                total_time=total_elapsed
+                args, results, base_dir=out_dir, prefix="vm_creation_results", logger=logger, total_time=total_elapsed
             )
             logger.info(f"Detailed and summary results saved under: {out_dir}")
         else:
@@ -1133,10 +1121,7 @@ def main():
         stop_start = datetime.now()
 
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
-            stop_futures = {
-                executor.submit(stop_vm, args.vm_name, ns, logger): ns
-                for ns in namespaces
-            }
+            stop_futures = {executor.submit(stop_vm, args.vm_name, ns, logger): ns for ns in namespaces}
 
             for future in as_completed(stop_futures):
                 ns = stop_futures[future]
@@ -1154,8 +1139,7 @@ def main():
 
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
             wait_futures = {
-                executor.submit(wait_for_vm_stopped, args.vm_name, ns, 300, logger): ns
-                for ns in namespaces
+                executor.submit(wait_for_vm_stopped, args.vm_name, ns, 300, logger): ns for ns in namespaces
             }
 
             stopped_count = 0
@@ -1178,10 +1162,7 @@ def main():
         boot_start_times = {}
 
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
-            start_futures = {
-                executor.submit(start_vm, args.vm_name, ns, logger): ns
-                for ns in namespaces
-            }
+            start_futures = {executor.submit(start_vm, args.vm_name, ns, logger): ns for ns in namespaces}
 
             for future in as_completed(start_futures):
                 ns = start_futures[future]
@@ -1201,9 +1182,17 @@ def main():
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
             boot_futures = {
                 executor.submit(
-                    monitor_vm, ns, args.vm_name, ts, args.ssh_pod, args.ssh_pod_ns,
-                    args.poll_interval, args.ping_timeout, logger, skip_dv_clone_tracking=True,
-                    vm_template_path=args.vm_template
+                    monitor_vm,
+                    ns,
+                    args.vm_name,
+                    ts,
+                    args.ssh_pod,
+                    args.ssh_pod_ns,
+                    args.poll_interval,
+                    args.ping_timeout,
+                    logger,
+                    skip_dv_clone_tracking=True,
+                    vm_template_path=args.vm_template,
                 ): ns
                 for ns, ts in boot_start_times.items()
             }
@@ -1226,8 +1215,15 @@ def main():
         # Print boot storm summary
         print_summary_table(boot_storm_results, "Boot Storm Performance Test Results", skip_clone=True, logger=logger)
         if args.save_results:
-            save_results(args, boot_storm_results, base_dir=out_dir, prefix="boot_storm_results", logger=logger,
-                         skip_clone=True, total_time=boot_total_elapsed)
+            save_results(
+                args,
+                boot_storm_results,
+                base_dir=out_dir,
+                prefix="boot_storm_results",
+                logger=logger,
+                skip_clone=True,
+                total_time=boot_total_elapsed,
+            )
 
     failed_count = sum(1 for r in results if len(r) > 4 and not r[4]) if results else 0
     should_cleanup = args.cleanup or (args.cleanup_on_failure and failed_count > 0)
@@ -1253,7 +1249,7 @@ def main():
                     delete_namespaces=True,
                     dry_run=args.dry_run_cleanup,
                     batch_size=args.namespace_batch_size,
-                    logger=logger
+                    logger=logger,
                 )
 
                 print_cleanup_summary(stats, logger)
@@ -1271,5 +1267,5 @@ def main():
     sys.exit(0 if failed_count == 0 else 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

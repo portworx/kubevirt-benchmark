@@ -99,4 +99,3 @@ if [[ "$SOURCE_NODE" != "auto" ]]; then
     echo "Node $SOURCE_NODE is now ready for maintenance."
 fi
 echo "=========================================="
-

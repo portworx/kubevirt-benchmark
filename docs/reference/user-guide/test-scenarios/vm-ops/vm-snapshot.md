@@ -100,4 +100,3 @@ The log captures, per batch:
 
 * [Cleanup Guide](../../cleanup-guide.md) — for removing snapshots after the
   test.
-

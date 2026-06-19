@@ -282,4 +282,3 @@ main() {
 # Parse arguments and run main installation
 parse_args "$@"
 main
-

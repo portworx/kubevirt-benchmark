@@ -21,10 +21,8 @@ Usage:
 """
 
 import argparse
-import json
 import logging
 import subprocess
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import List, Tuple
@@ -38,10 +36,7 @@ def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
     # Clear any existing handlers
     logger.handlers = []
 
-    formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     # Console handler
     console_handler = logging.StreamHandler()
@@ -51,11 +46,12 @@ def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
     # File handler (if log_file specified)
     if log_file:
         import os
+
         log_dir = os.path.dirname(log_file)
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
 
-        file_handler = logging.FileHandler(log_file, mode='a')
+        file_handler = logging.FileHandler(log_file, mode="a")
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
         logger.info(f"Logging to file: {log_file}")
@@ -66,12 +62,7 @@ def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
 def run_kubectl(args: List[str], timeout: int = 60) -> Tuple[int, str, str]:
     """Run kubectl command and return (returncode, stdout, stderr)."""
     try:
-        result = subprocess.run(
-            ["kubectl"] + args,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
+        result = subprocess.run(["kubectl"] + args, capture_output=True, text=True, timeout=timeout, check=False)
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return -1, "", "Command timed out"
@@ -81,19 +72,18 @@ def run_kubectl(args: List[str], timeout: int = 60) -> Tuple[int, str, str]:
 
 def get_vmi_ip(namespace: str, vm_name: str, logger: logging.Logger) -> str:
     """Get VMI IP address."""
-    rc, stdout, stderr = run_kubectl([
-        "get", "vmi", vm_name, "-n", namespace,
-        "-o", "jsonpath={.status.interfaces[0].ipAddress}"
-    ])
+    rc, stdout, stderr = run_kubectl(
+        ["get", "vmi", vm_name, "-n", namespace, "-o", "jsonpath={.status.interfaces[0].ipAddress}"]
+    )
     if rc != 0:
         logger.debug(f"[{namespace}/{vm_name}] Failed to get IP: {stderr}")
         return ""
     return stdout.strip()
 
 
-def ssh_exec_command(ip: str, command: str, ssh_pod: str, ssh_pod_ns: str,
-                     vm_user: str, vm_password: str,
-                     logger: logging.Logger) -> Tuple[int, str, str]:
+def ssh_exec_command(
+    ip: str, command: str, ssh_pod: str, ssh_pod_ns: str, vm_user: str, vm_password: str, logger: logging.Logger
+) -> Tuple[int, str, str]:
     """Execute command on VM via SSH pod."""
     ssh_cmd = (
         f"sshpass -p '{vm_password}' ssh -o StrictHostKeyChecking=no "
@@ -101,19 +91,21 @@ def ssh_exec_command(ip: str, command: str, ssh_pod: str, ssh_pod_ns: str,
         f"{vm_user}@{ip} '{command}'"
     )
 
-    rc, stdout, stderr = run_kubectl([
-        "exec", ssh_pod, "-n", ssh_pod_ns, "--",
-        "sh", "-c", ssh_cmd
-    ], timeout=300)
+    rc, stdout, stderr = run_kubectl(["exec", ssh_pod, "-n", ssh_pod_ns, "--", "sh", "-c", ssh_cmd], timeout=300)
 
     return rc, stdout, stderr
 
 
-def get_available_disks(ip: str, ssh_pod: str, ssh_pod_ns: str,
-                        vm_user: str, vm_password: str,
-                        logger: logging.Logger,
-                        log_prefix: str = "",
-                        min_size_mb: int = 10) -> List[str]:
+def get_available_disks(
+    ip: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    vm_user: str,
+    vm_password: str,
+    logger: logging.Logger,
+    log_prefix: str = "",
+    min_size_mb: int = 10,
+) -> List[str]:
     """Get list of available data disks (vdb, vdc, vdd, sda, sdb, etc.).
 
     Args:
@@ -122,10 +114,8 @@ def get_available_disks(ip: str, ssh_pod: str, ssh_pod_ns: str,
     # Get all block devices except vda (root disk), with size > min_size_mb
     # Use simple grep/sed instead of awk to avoid escaping issues
     min_size_bytes = min_size_mb * 1024 * 1024
-    cmd = f"lsblk -d -n -o NAME,TYPE,SIZE -b | grep disk | grep -v vda | while read name type size; do [ \"$size\" -gt {min_size_bytes} ] && echo /dev/$name; done"
-    rc, stdout, stderr = ssh_exec_command(
-        ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
-    )
+    cmd = f'lsblk -d -n -o NAME,TYPE,SIZE -b | grep disk | grep -v vda | while read name type size; do [ "$size" -gt {min_size_bytes} ] && echo /dev/$name; done'
+    rc, stdout, stderr = ssh_exec_command(ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger)
 
     logger.debug(f"{log_prefix} get_available_disks: rc={rc}, stdout='{stdout}', stderr='{stderr}'")
 
@@ -133,17 +123,22 @@ def get_available_disks(ip: str, ssh_pod: str, ssh_pod_ns: str,
         logger.debug(f"{log_prefix} No disks found matching criteria")
         return []
 
-    disks = [d.strip() for d in stdout.strip().split('\n') if d.strip()]
+    disks = [d.strip() for d in stdout.strip().split("\n") if d.strip()]
     logger.debug(f"{log_prefix} Found disks: {disks}")
     return disks
 
 
-def run_blkdiscard_on_vm(namespace: str, vm_name: str,
-                         ssh_pod: str, ssh_pod_ns: str,
-                         vm_user: str, vm_password: str,
-                         disks: List[str],
-                         logger: logging.Logger,
-                         dry_run: bool = False) -> dict:
+def run_blkdiscard_on_vm(
+    namespace: str,
+    vm_name: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    vm_user: str,
+    vm_password: str,
+    disks: List[str],
+    logger: logging.Logger,
+    dry_run: bool = False,
+) -> dict:
     """Run blkdiscard on specified disks in a VM."""
     log_prefix = f"[{namespace}/{vm_name}]"
     result = {
@@ -152,7 +147,7 @@ def run_blkdiscard_on_vm(namespace: str, vm_name: str,
         "success": False,
         "disks_processed": [],
         "disks_failed": [],
-        "error": None
+        "error": None,
     }
 
     # Get VM IP
@@ -184,9 +179,7 @@ def run_blkdiscard_on_vm(namespace: str, vm_name: str,
         cmd = f"blkdiscard {disk}"
         logger.debug(f"{log_prefix} Running: {cmd}")
 
-        rc, stdout, stderr = ssh_exec_command(
-            ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
-        )
+        rc, stdout, stderr = ssh_exec_command(ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger)
 
         if rc == 0:
             result["disks_processed"].append(disk)
@@ -200,46 +193,36 @@ def run_blkdiscard_on_vm(namespace: str, vm_name: str,
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run blkdiscard on data disks inside VMs"
-    )
-    parser.add_argument("--namespace-prefix", required=True,
-                        help="Namespace prefix (e.g., rhel-eb-filler)")
-    parser.add_argument("--start", type=int, required=True,
-                        help="Start namespace index")
-    parser.add_argument("--end", type=int, required=True,
-                        help="End namespace index")
-    parser.add_argument("--vm-name", required=True,
-                        help="VM name in each namespace")
+    parser = argparse.ArgumentParser(description="Run blkdiscard on data disks inside VMs")
+    parser.add_argument("--namespace-prefix", required=True, help="Namespace prefix (e.g., rhel-eb-filler)")
+    parser.add_argument("--start", type=int, required=True, help="Start namespace index")
+    parser.add_argument("--end", type=int, required=True, help="End namespace index")
+    parser.add_argument("--vm-name", required=True, help="VM name in each namespace")
 
     # Disk options
-    parser.add_argument("--disks", nargs="+", default=None,
-                        help="Specific disks to run blkdiscard on (e.g., vdb vdc). "
-                             "If not specified, auto-detects all data disks")
+    parser.add_argument(
+        "--disks",
+        nargs="+",
+        default=None,
+        help="Specific disks to run blkdiscard on (e.g., vdb vdc). " "If not specified, auto-detects all data disks",
+    )
 
     # SSH options
-    parser.add_argument("--ssh-pod", default="ssh-test-pod",
-                        help="SSH pod name (default: ssh-test-pod)")
-    parser.add_argument("--ssh-pod-ns", default="default",
-                        help="SSH pod namespace (default: default)")
-    parser.add_argument("--vm-user", default="root",
-                        help="VM SSH user (default: root)")
-    parser.add_argument("--vm-password", default="Password1",
-                        help="VM SSH password (default: Password1)")
-    parser.add_argument("--concurrency", type=int, default=10,
-                        help="Max concurrent operations (default: 10)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be done without doing it")
-    parser.add_argument("--log-level", default="INFO",
-                        choices=["DEBUG", "INFO", "WARNING", "ERROR"])
-    parser.add_argument("--log-file", default=None,
-                        help="Path to log file. If not specified, uses default.")
+    parser.add_argument("--ssh-pod", default="ssh-test-pod", help="SSH pod name (default: ssh-test-pod)")
+    parser.add_argument("--ssh-pod-ns", default="default", help="SSH pod namespace (default: default)")
+    parser.add_argument("--vm-user", default="root", help="VM SSH user (default: root)")
+    parser.add_argument("--vm-password", default="Password1", help="VM SSH password (default: Password1)")
+    parser.add_argument("--concurrency", type=int, default=10, help="Max concurrent operations (default: 10)")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without doing it")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument("--log-file", default=None, help="Path to log file. If not specified, uses default.")
 
     args = parser.parse_args()
 
     # Always log to a file
     import os
     from datetime import datetime as dt
+
     log_file = args.log_file
     if not log_file:
         os.makedirs("logs", exist_ok=True)
@@ -261,7 +244,7 @@ def main():
     if disks:
         logger.info(f"Target disks: {', '.join(disks)}")
     else:
-        logger.info(f"Target disks: auto-detect all data disks")
+        logger.info("Target disks: auto-detect all data disks")
     if args.dry_run:
         logger.info("DRY-RUN MODE - No changes will be made")
 
@@ -272,9 +255,16 @@ def main():
     with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
         futures = {
             executor.submit(
-                run_blkdiscard_on_vm, ns, args.vm_name,
-                args.ssh_pod, args.ssh_pod_ns, args.vm_user, args.vm_password,
-                disks, logger, args.dry_run
+                run_blkdiscard_on_vm,
+                ns,
+                args.vm_name,
+                args.ssh_pod,
+                args.ssh_pod_ns,
+                args.vm_user,
+                args.vm_password,
+                disks,
+                logger,
+                args.dry_run,
             ): ns
             for ns in namespaces
         }
@@ -286,14 +276,16 @@ def main():
                 all_results.append(result)
             except Exception as e:
                 logger.error(f"[{ns}/{args.vm_name}] Exception: {e}")
-                all_results.append({
-                    "namespace": ns,
-                    "vm_name": args.vm_name,
-                    "success": False,
-                    "disks_processed": [],
-                    "disks_failed": [],
-                    "error": str(e)
-                })
+                all_results.append(
+                    {
+                        "namespace": ns,
+                        "vm_name": args.vm_name,
+                        "success": False,
+                        "disks_processed": [],
+                        "disks_failed": [],
+                        "error": str(e),
+                    }
+                )
 
     elapsed = (datetime.now() - start_time).total_seconds()
 

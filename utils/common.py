@@ -6,41 +6,43 @@ This module provides shared functionality including logging setup,
 kubectl command execution, and common helper functions.
 """
 
+import csv
 import json
 import logging
+import os
 import shlex
 import subprocess
 import sys
 import time
 from datetime import datetime
-import os
-from typing import Optional, Tuple, List
-import csv
+from typing import List, Optional, Tuple
+
 
 # Minimum required Python version
 MIN_PYTHON_VERSION = (3, 8)
 
 SENSITIVE_ARG_KEYWORDS = (
-    'password',
-    'passwd',
-    'token',
-    'api-key',
-    'apikey',
-    'pwd',
+    "password",
+    "passwd",
+    "token",
+    "api-key",
+    "apikey",
+    "pwd",
 )
 
 
 class Colors:
     """ANSI color codes for terminal output."""
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
 
 
 def check_python_version(logger: Optional[logging.Logger] = None) -> bool:
@@ -69,7 +71,9 @@ def check_python_version(logger: Optional[logging.Logger] = None) -> bool:
         return False
 
     if logger:
-        logger.info(f"[OK] Python version {current_version[0]}.{current_version[1]} meets requirement (>= {min_version[0]}.{min_version[1]})")
+        logger.info(
+            f"[OK] Python version {current_version[0]}.{current_version[1]} meets requirement (>= {min_version[0]}.{min_version[1]})"
+        )
 
     return True
 
@@ -86,7 +90,7 @@ def require_python_version():
 
 
 def _is_sensitive_arg(arg: str) -> bool:
-    key = arg.lstrip('-').split('=', 1)[0].lower()
+    key = arg.lstrip("-").split("=", 1)[0].lower()
     return any(keyword in key for keyword in SENSITIVE_ARG_KEYWORDS)
 
 
@@ -96,12 +100,12 @@ def redact_command_args(args: List[str]) -> List[str]:
     redact_next = False
     for arg in args:
         if redact_next:
-            redacted.append('***')
+            redacted.append("***")
             redact_next = False
             continue
 
-        if arg.startswith('--') and '=' in arg:
-            key, _ = arg.split('=', 1)
+        if arg.startswith("--") and "=" in arg:
+            key, _ = arg.split("=", 1)
             if _is_sensitive_arg(key):
                 redacted.append(f"{key}=***")
             else:
@@ -109,7 +113,7 @@ def redact_command_args(args: List[str]) -> List[str]:
             continue
 
         redacted.append(arg)
-        if arg.startswith('--') and _is_sensitive_arg(arg):
+        if arg.startswith("--") and _is_sensitive_arg(arg):
             redact_next = True
 
     return redacted
@@ -118,7 +122,7 @@ def redact_command_args(args: List[str]) -> List[str]:
 def get_command_for_logging() -> str:
     """Return the virtbench command, or direct Python argv, with secrets redacted."""
     raw_args = None
-    env_args = os.getenv('VIRTBENCH_COMMAND_ARGS')
+    env_args = os.getenv("VIRTBENCH_COMMAND_ARGS")
     if env_args:
         try:
             loaded = json.loads(env_args)
@@ -133,7 +137,7 @@ def get_command_for_logging() -> str:
     return shlex.join(redact_command_args(raw_args))
 
 
-def setup_logging(log_file: Optional[str] = None, log_level: str = 'INFO') -> logging.Logger:
+def setup_logging(log_file: Optional[str] = None, log_level: str = "INFO") -> logging.Logger:
     """
     Configure logging for the test suite.
 
@@ -144,17 +148,14 @@ def setup_logging(log_file: Optional[str] = None, log_level: str = 'INFO') -> lo
     Returns:
         Configured logger instance
     """
-    logger = logging.getLogger('kubevirt-perf')
+    logger = logging.getLogger("kubevirt-perf")
     logger.setLevel(getattr(logging, log_level.upper()))
 
     # Clear any existing handlers
     logger.handlers.clear()
 
     # Create formatter
-    formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
@@ -184,7 +185,7 @@ def run_kubectl_command(
     check: bool = True,
     capture_output: bool = True,
     timeout: Optional[int] = None,
-    logger: Optional[logging.Logger] = None
+    logger: Optional[logging.Logger] = None,
 ) -> Tuple[int, str, str]:
     """
     Execute a kubectl command with error handling.
@@ -203,19 +204,13 @@ def run_kubectl_command(
         subprocess.CalledProcessError: If check=True and command fails
         subprocess.TimeoutExpired: If command exceeds timeout
     """
-    cmd = ['kubectl'] + args
+    cmd = ["kubectl"] + args
 
     if logger:
         logger.debug(f"Executing: {' '.join(cmd)}")
 
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=capture_output,
-            text=True,
-            timeout=timeout,
-            check=check
-        )
+        result = subprocess.run(cmd, capture_output=capture_output, text=True, timeout=timeout, check=check)
         return result.returncode, result.stdout, result.stderr
     except subprocess.CalledProcessError as e:
         if logger:
@@ -225,7 +220,7 @@ def run_kubectl_command(
         if check:
             raise
         return e.returncode, e.stdout, e.stderr
-    except subprocess.TimeoutExpired as e:
+    except subprocess.TimeoutExpired:
         if logger:
             logger.error(f"Command timed out after {timeout}s: {' '.join(cmd)}")
         raise
@@ -243,11 +238,7 @@ def namespace_exists(namespace: str, logger: Optional[logging.Logger] = None) ->
         True if namespace exists, False otherwise
     """
     try:
-        returncode, _, _ = run_kubectl_command(
-            ['get', 'namespace', namespace],
-            check=False,
-            logger=logger
-        )
+        returncode, _, _ = run_kubectl_command(["get", "namespace", namespace], check=False, logger=logger)
         return returncode == 0
     except Exception as e:
         if logger:
@@ -272,7 +263,7 @@ def create_namespace(namespace: str, logger: Optional[logging.Logger] = None) ->
         return True
 
     try:
-        run_kubectl_command(['create', 'namespace', namespace], logger=logger)
+        run_kubectl_command(["create", "namespace", namespace], logger=logger)
         if logger:
             logger.info(f"Created namespace: {namespace}")
         return True
@@ -282,8 +273,9 @@ def create_namespace(namespace: str, logger: Optional[logging.Logger] = None) ->
         return False
 
 
-def create_namespaces_parallel(namespaces: List[str], batch_size: int = 20,
-                               logger: Optional[logging.Logger] = None) -> List[str]:
+def create_namespaces_parallel(
+    namespaces: List[str], batch_size: int = 20, logger: Optional[logging.Logger] = None
+) -> List[str]:
     """
     Create multiple namespaces in parallel batches.
 
@@ -337,7 +329,7 @@ def delete_namespace(namespace: str, wait: bool = False, logger: Optional[loggin
         True if deleted successfully, False on error
     """
     try:
-        run_kubectl_command(['delete', 'namespace', namespace], logger=logger)
+        run_kubectl_command(["delete", "namespace", namespace], logger=logger)
         if logger:
             logger.info(f"Deleted namespace: {namespace}")
 
@@ -359,8 +351,9 @@ def delete_namespace(namespace: str, wait: bool = False, logger: Optional[loggin
         return False
 
 
-def delete_namespaces_parallel(namespaces: List[str], batch_size: int = 20,
-                               logger: Optional[logging.Logger] = None) -> Tuple[List[str], List[str]]:
+def delete_namespaces_parallel(
+    namespaces: List[str], batch_size: int = 20, logger: Optional[logging.Logger] = None
+) -> Tuple[List[str], List[str]]:
     """
     Delete multiple namespaces in parallel batches.
 
@@ -414,7 +407,7 @@ def delete_vm(vm_name: str, namespace: str, logger: Optional[logging.Logger] = N
         True if deleted successfully, False on error
     """
     try:
-        run_kubectl_command(['delete', 'vm', vm_name, '-n', namespace], check=False, logger=logger)
+        run_kubectl_command(["delete", "vm", vm_name, "-n", namespace], check=False, logger=logger)
         if logger:
             logger.debug(f"Deleted VM {vm_name} in namespace {namespace}")
         return True
@@ -437,7 +430,7 @@ def delete_datavolume(dv_name: str, namespace: str, logger: Optional[logging.Log
         True if deleted successfully, False on error
     """
     try:
-        run_kubectl_command(['delete', 'dv', dv_name, '-n', namespace], check=False, logger=logger)
+        run_kubectl_command(["delete", "dv", dv_name, "-n", namespace], check=False, logger=logger)
         if logger:
             logger.debug(f"Deleted DataVolume {dv_name} in namespace {namespace}")
         return True
@@ -460,7 +453,7 @@ def delete_pvc(pvc_name: str, namespace: str, logger: Optional[logging.Logger] =
         True if deleted successfully, False on error
     """
     try:
-        run_kubectl_command(['delete', 'pvc', pvc_name, '-n', namespace], check=False, logger=logger)
+        run_kubectl_command(["delete", "pvc", pvc_name, "-n", namespace], check=False, logger=logger)
         if logger:
             logger.debug(f"Deleted PVC {pvc_name} in namespace {namespace}")
         return True
@@ -483,8 +476,9 @@ def delete_vmim(vmim_name: str, namespace: str, logger: Optional[logging.Logger]
         True if deleted successfully, False on error
     """
     try:
-        run_kubectl_command(['delete', 'virtualmachineinstancemigration', vmim_name, '-n', namespace],
-                          check=False, logger=logger)
+        run_kubectl_command(
+            ["delete", "virtualmachineinstancemigration", vmim_name, "-n", namespace], check=False, logger=logger
+        )
         if logger:
             logger.debug(f"Deleted VMIM {vmim_name} in namespace {namespace}")
         return True
@@ -494,8 +488,9 @@ def delete_vmim(vmim_name: str, namespace: str, logger: Optional[logging.Logger]
         return False
 
 
-def list_resources_in_namespace(namespace: str, resource_type: str,
-                                logger: Optional[logging.Logger] = None) -> List[str]:
+def list_resources_in_namespace(
+    namespace: str, resource_type: str, logger: Optional[logging.Logger] = None
+) -> List[str]:
     """
     List all resources of a specific type in a namespace.
 
@@ -509,9 +504,9 @@ def list_resources_in_namespace(namespace: str, resource_type: str,
     """
     try:
         returncode, stdout, _ = run_kubectl_command(
-            ['get', resource_type, '-n', namespace, '-o', 'jsonpath={.items[*].metadata.name}'],
+            ["get", resource_type, "-n", namespace, "-o", "jsonpath={.items[*].metadata.name}"],
             check=False,
-            logger=logger
+            logger=logger,
         )
         if returncode == 0 and stdout:
             return stdout.strip().split()
@@ -522,8 +517,9 @@ def list_resources_in_namespace(namespace: str, resource_type: str,
         return []
 
 
-def cleanup_namespace_resources(namespace: str, vm_name: Optional[str] = None,
-                                dry_run: bool = False, logger: Optional[logging.Logger] = None) -> dict:
+def cleanup_namespace_resources(
+    namespace: str, vm_name: Optional[str] = None, dry_run: bool = False, logger: Optional[logging.Logger] = None
+) -> dict:
     """
     Clean up all test resources in a namespace.
 
@@ -536,13 +532,7 @@ def cleanup_namespace_resources(namespace: str, vm_name: Optional[str] = None,
     Returns:
         Dictionary with cleanup statistics
     """
-    stats = {
-        'vms_deleted': 0,
-        'dvs_deleted': 0,
-        'pvcs_deleted': 0,
-        'vmims_deleted': 0,
-        'errors': 0
-    }
+    stats = {"vms_deleted": 0, "dvs_deleted": 0, "pvcs_deleted": 0, "vmims_deleted": 0, "errors": 0}
 
     if not namespace_exists(namespace, logger):
         if logger:
@@ -550,64 +540,66 @@ def cleanup_namespace_resources(namespace: str, vm_name: Optional[str] = None,
         return stats
 
     # Delete VirtualMachineInstanceMigrations
-    vmims = list_resources_in_namespace(namespace, 'virtualmachineinstancemigration', logger)
+    vmims = list_resources_in_namespace(namespace, "virtualmachineinstancemigration", logger)
     for vmim in vmims:
         if dry_run:
             if logger:
                 logger.info(f"[DRY RUN] Would delete VMIM: {vmim} in {namespace}")
+        elif delete_vmim(vmim, namespace, logger):
+            stats["vmims_deleted"] += 1
         else:
-            if delete_vmim(vmim, namespace, logger):
-                stats['vmims_deleted'] += 1
-            else:
-                stats['errors'] += 1
+            stats["errors"] += 1
 
     # Delete VMs
     if vm_name:
         vms = [vm_name]
     else:
-        vms = list_resources_in_namespace(namespace, 'vm', logger)
+        vms = list_resources_in_namespace(namespace, "vm", logger)
 
     for vm in vms:
         if dry_run:
             if logger:
                 logger.info(f"[DRY RUN] Would delete VM: {vm} in {namespace}")
+        elif delete_vm(vm, namespace, logger):
+            stats["vms_deleted"] += 1
         else:
-            if delete_vm(vm, namespace, logger):
-                stats['vms_deleted'] += 1
-            else:
-                stats['errors'] += 1
+            stats["errors"] += 1
 
     # Delete DataVolumes
-    dvs = list_resources_in_namespace(namespace, 'dv', logger)
+    dvs = list_resources_in_namespace(namespace, "dv", logger)
     for dv in dvs:
         if dry_run:
             if logger:
                 logger.info(f"[DRY RUN] Would delete DataVolume: {dv} in {namespace}")
+        elif delete_datavolume(dv, namespace, logger):
+            stats["dvs_deleted"] += 1
         else:
-            if delete_datavolume(dv, namespace, logger):
-                stats['dvs_deleted'] += 1
-            else:
-                stats['errors'] += 1
+            stats["errors"] += 1
 
     # Delete PVCs (if any remain after DV deletion)
-    pvcs = list_resources_in_namespace(namespace, 'pvc', logger)
+    pvcs = list_resources_in_namespace(namespace, "pvc", logger)
     for pvc in pvcs:
         if dry_run:
             if logger:
                 logger.info(f"[DRY RUN] Would delete PVC: {pvc} in {namespace}")
+        elif delete_pvc(pvc, namespace, logger):
+            stats["pvcs_deleted"] += 1
         else:
-            if delete_pvc(pvc, namespace, logger):
-                stats['pvcs_deleted'] += 1
-            else:
-                stats['errors'] += 1
+            stats["errors"] += 1
 
     return stats
 
 
-def cleanup_test_namespaces(namespace_prefix: str, start: int, end: int,
-                           vm_name: Optional[str] = None, delete_namespaces: bool = True,
-                           dry_run: bool = False, batch_size: int = 20,
-                           logger: Optional[logging.Logger] = None) -> dict:
+def cleanup_test_namespaces(
+    namespace_prefix: str,
+    start: int,
+    end: int,
+    vm_name: Optional[str] = None,
+    delete_namespaces: bool = True,
+    dry_run: bool = False,
+    batch_size: int = 20,
+    logger: Optional[logging.Logger] = None,
+) -> dict:
     """
     Clean up all test resources across multiple namespaces.
 
@@ -632,44 +624,41 @@ def cleanup_test_namespaces(namespace_prefix: str, start: int, end: int,
         logger.info(f"{'[DRY RUN] ' if dry_run else ''}Cleaning up {len(namespaces)} namespaces...")
 
     overall_stats = {
-        'namespaces_processed': 0,
-        'namespaces_deleted': 0,
-        'total_vms_deleted': 0,
-        'total_dvs_deleted': 0,
-        'total_pvcs_deleted': 0,
-        'total_vmims_deleted': 0,
-        'total_errors': 0
+        "namespaces_processed": 0,
+        "namespaces_deleted": 0,
+        "total_vms_deleted": 0,
+        "total_dvs_deleted": 0,
+        "total_pvcs_deleted": 0,
+        "total_vmims_deleted": 0,
+        "total_errors": 0,
     }
 
     # Clean up resources in each namespace
     with ThreadPoolExecutor(max_workers=batch_size) as executor:
-        futures = {
-            executor.submit(cleanup_namespace_resources, ns, vm_name, dry_run, logger): ns
-            for ns in namespaces
-        }
+        futures = {executor.submit(cleanup_namespace_resources, ns, vm_name, dry_run, logger): ns for ns in namespaces}
 
         for future in as_completed(futures):
             ns = futures[future]
             try:
                 stats = future.result()
-                overall_stats['namespaces_processed'] += 1
-                overall_stats['total_vms_deleted'] += stats['vms_deleted']
-                overall_stats['total_dvs_deleted'] += stats['dvs_deleted']
-                overall_stats['total_pvcs_deleted'] += stats['pvcs_deleted']
-                overall_stats['total_vmims_deleted'] += stats['vmims_deleted']
-                overall_stats['total_errors'] += stats['errors']
+                overall_stats["namespaces_processed"] += 1
+                overall_stats["total_vms_deleted"] += stats["vms_deleted"]
+                overall_stats["total_dvs_deleted"] += stats["dvs_deleted"]
+                overall_stats["total_pvcs_deleted"] += stats["pvcs_deleted"]
+                overall_stats["total_vmims_deleted"] += stats["vmims_deleted"]
+                overall_stats["total_errors"] += stats["errors"]
             except Exception as e:
                 if logger:
                     logger.error(f"Exception cleaning namespace {ns}: {e}")
-                overall_stats['total_errors'] += 1
+                overall_stats["total_errors"] += 1
 
     # Delete namespaces if requested
     if delete_namespaces and not dry_run:
         if logger:
             logger.info(f"Deleting {len(namespaces)} namespaces...")
         successful, failed = delete_namespaces_parallel(namespaces, batch_size, logger)
-        overall_stats['namespaces_deleted'] = len(successful)
-        overall_stats['total_errors'] += len(failed)
+        overall_stats["namespaces_deleted"] = len(successful)
+        overall_stats["total_errors"] += len(failed)
     elif delete_namespaces and dry_run:
         if logger:
             for ns in namespaces:
@@ -692,19 +681,12 @@ def remove_far_annotation(vm_name: str, namespace: str, logger: Optional[logging
     """
     try:
         import json
-        patch = {
-            "metadata": {
-                "annotations": {
-                    "vm.kubevirt.io/fenced": None
-                }
-            }
-        }
+
+        patch = {"metadata": {"annotations": {"vm.kubevirt.io/fenced": None}}}
         patch_json = json.dumps(patch)
 
         run_kubectl_command(
-            ['patch', 'vm', vm_name, '-n', namespace, '--type', 'merge', '-p', patch_json],
-            check=False,
-            logger=logger
+            ["patch", "vm", vm_name, "-n", namespace, "--type", "merge", "-p", patch_json], check=False, logger=logger
         )
         if logger:
             logger.debug(f"Removed FAR annotation from VM {vm_name} in {namespace}")
@@ -715,8 +697,7 @@ def remove_far_annotation(vm_name: str, namespace: str, logger: Optional[logging
         return False
 
 
-def delete_far_resource(far_name: str, namespace: str = 'default',
-                       logger: Optional[logging.Logger] = None) -> bool:
+def delete_far_resource(far_name: str, namespace: str = "default", logger: Optional[logging.Logger] = None) -> bool:
     """
     Delete a FenceAgentsRemediation custom resource.
 
@@ -729,11 +710,7 @@ def delete_far_resource(far_name: str, namespace: str = 'default',
         True if deleted successfully, False on error
     """
     try:
-        run_kubectl_command(
-            ['delete', 'fenceagentsremediation', far_name, '-n', namespace],
-            check=False,
-            logger=logger
-        )
+        run_kubectl_command(["delete", "fenceagentsremediation", far_name, "-n", namespace], check=False, logger=logger)
         if logger:
             logger.info(f"Deleted FAR resource: {far_name} in namespace {namespace}")
         return True
@@ -755,7 +732,7 @@ def uncordon_node(node_name: str, logger: Optional[logging.Logger] = None) -> bo
         True if successful, False otherwise
     """
     try:
-        run_kubectl_command(['uncordon', node_name], logger=logger)
+        run_kubectl_command(["uncordon", node_name], logger=logger)
         if logger:
             logger.info(f"Uncordoned node: {node_name}")
         return True
@@ -782,8 +759,8 @@ def confirm_cleanup(num_namespaces: int, auto_yes: bool = False) -> bool:
     if num_namespaces > 10:
         print(f"\n{Colors.WARNING}WARNING: You are about to clean up {num_namespaces} namespaces.{Colors.ENDC}")
         print(f"{Colors.WARNING}This will delete all VMs, DataVolumes, PVCs, and other resources.{Colors.ENDC}")
-        response = input(f"\nAre you sure you want to continue? (yes/no): ").strip().lower()
-        return response in ['yes', 'y']
+        response = input("\nAre you sure you want to continue? (yes/no): ").strip().lower()
+        return response in ["yes", "y"]
 
     return True
 
@@ -830,9 +807,9 @@ def get_vm_status(vm_name: str, namespace: str, logger: Optional[logging.Logger]
     """
     try:
         returncode, stdout, _ = run_kubectl_command(
-            ['get', 'vm', vm_name, '-n', namespace, '-o', 'jsonpath={.status.printableStatus}'],
+            ["get", "vm", vm_name, "-n", namespace, "-o", "jsonpath={.status.printableStatus}"],
             check=False,
-            logger=logger
+            logger=logger,
         )
         if returncode == 0 and stdout:
             return stdout.strip()
@@ -857,11 +834,11 @@ def get_vmi_ip(vmi_name: str, namespace: str, logger: Optional[logging.Logger] =
     """
     try:
         returncode, stdout, _ = run_kubectl_command(
-            ['get', 'vmi', vmi_name, '-n', namespace, '-o', 'jsonpath={.status.interfaces[0].ipAddress}'],
+            ["get", "vmi", vmi_name, "-n", namespace, "-o", "jsonpath={.status.interfaces[0].ipAddress}"],
             check=False,
-            logger=logger
+            logger=logger,
         )
-        if returncode == 0 and stdout and stdout != '<none>':
+        if returncode == 0 and stdout and stdout != "<none>":
             return stdout.strip()
         return None
     except Exception as e:
@@ -870,8 +847,7 @@ def get_vmi_ip(vmi_name: str, namespace: str, logger: Optional[logging.Logger] =
         return None
 
 
-def get_vm_disk_count(vm_name: str, namespace: str,
-                      logger: Optional[logging.Logger] = None) -> int:
+def get_vm_disk_count(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> int:
     """
     Get the number of data disks on a VM from the VM spec.
 
@@ -888,16 +864,14 @@ def get_vm_disk_count(vm_name: str, namespace: str,
     """
     try:
         returncode, stdout, stderr = run_kubectl_command(
-            ['get', 'vm', vm_name, '-n', namespace,
-             '-o', 'jsonpath={.spec.template.spec.volumes}'],
+            ["get", "vm", vm_name, "-n", namespace, "-o", "jsonpath={.spec.template.spec.volumes}"],
             check=False,
-            logger=logger
+            logger=logger,
         )
         if returncode == 0 and stdout.strip():
             volumes = json.loads(stdout.strip())
             non_cloudinit_volumes = [
-                v for v in volumes
-                if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
+                v for v in volumes if not any(k in v for k in ["cloudInitNoCloud", "cloudInitConfigDrive"])
             ]
             if logger:
                 logger.debug(f"Detected {len(non_cloudinit_volumes)} disks from VM spec (excluding cloud-init)")
@@ -921,10 +895,9 @@ def get_pvc_status(namespace: str, logger: Optional[logging.Logger] = None) -> s
     """
     try:
         returncode, stdout, _ = run_kubectl_command(
-            ['get', 'pvc', '-n', namespace,
-             '-o', 'jsonpath={range .items[*]}{.metadata.name}={.status.phase} {end}'],
+            ["get", "pvc", "-n", namespace, "-o", "jsonpath={range .items[*]}{.metadata.name}={.status.phase} {end}"],
             check=False,
-            logger=logger
+            logger=logger,
         )
         if returncode == 0:
             return stdout.strip() or "No PVCs"
@@ -935,10 +908,16 @@ def get_pvc_status(namespace: str, logger: Optional[logging.Logger] = None) -> s
         return "Error"
 
 
-def ssh_exec_command(ip: str, command: str, ssh_pod: str, ssh_pod_ns: str,
-                     vm_user: str, vm_password: str,
-                     logger: Optional[logging.Logger] = None,
-                     timeout: int = 30) -> Tuple[int, str, str]:
+def ssh_exec_command(
+    ip: str,
+    command: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    vm_user: str,
+    vm_password: str,
+    logger: Optional[logging.Logger] = None,
+    timeout: int = 30,
+) -> Tuple[int, str, str]:
     """
     Execute a command on a VM via SSH through an existing helper pod.
 
@@ -965,10 +944,7 @@ def ssh_exec_command(ip: str, command: str, ssh_pod: str, ssh_pod_ns: str,
         f"{vm_user}@{ip} '{command}'"
     )
     return run_kubectl_command(
-        ['exec', '-n', ssh_pod_ns, ssh_pod, '--', 'sh', '-c', ssh_cmd],
-        check=False,
-        timeout=timeout,
-        logger=logger
+        ["exec", "-n", ssh_pod_ns, ssh_pod, "--", "sh", "-c", ssh_cmd], check=False, timeout=timeout, logger=logger
     )
 
 
@@ -987,11 +963,11 @@ def ping_vm(ip: str, ssh_pod: str, ssh_pod_ns: str, logger: Optional[logging.Log
     """
     try:
         returncode, _, _ = run_kubectl_command(
-            ['exec', '-n', ssh_pod_ns, ssh_pod, '--', 'ping', '-c', '1', '-W', '2', ip],
+            ["exec", "-n", ssh_pod_ns, ssh_pod, "--", "ping", "-c", "1", "-W", "2", ip],
             check=False,
             capture_output=True,
             timeout=5,
-            logger=logger
+            logger=logger,
         )
         return returncode == 0
     except Exception as e:
@@ -1014,9 +990,8 @@ def stop_vm(vm_name: str, namespace: str, logger: Optional[logging.Logger] = Non
     """
     try:
         run_kubectl_command(
-            ['patch', 'vm', vm_name, '-n', namespace, '--type', 'merge',
-             '-p', '{"spec":{"runStrategy":"Halted"}}'],
-            logger=logger
+            ["patch", "vm", vm_name, "-n", namespace, "--type", "merge", "-p", '{"spec":{"runStrategy":"Halted"}}'],
+            logger=logger,
         )
         if logger:
             logger.info(f"Stopped VM {vm_name} in namespace {namespace}")
@@ -1041,9 +1016,8 @@ def start_vm(vm_name: str, namespace: str, logger: Optional[logging.Logger] = No
     """
     try:
         run_kubectl_command(
-            ['patch', 'vm', vm_name, '-n', namespace, '--type', 'merge',
-             '-p', '{"spec":{"runStrategy":"Always"}}'],
-            logger=logger
+            ["patch", "vm", vm_name, "-n", namespace, "--type", "merge", "-p", '{"spec":{"runStrategy":"Always"}}'],
+            logger=logger,
         )
         if logger:
             logger.info(f"Started VM {vm_name} in namespace {namespace}")
@@ -1054,8 +1028,9 @@ def start_vm(vm_name: str, namespace: str, logger: Optional[logging.Logger] = No
         return False
 
 
-def wait_for_vm_stopped(vm_name: str, namespace: str, timeout: int = 300,
-                        logger: Optional[logging.Logger] = None) -> bool:
+def wait_for_vm_stopped(
+    vm_name: str, namespace: str, timeout: int = 300, logger: Optional[logging.Logger] = None
+) -> bool:
     """
     Wait for a VM to be fully stopped (VMI deleted).
 
@@ -1069,15 +1044,12 @@ def wait_for_vm_stopped(vm_name: str, namespace: str, timeout: int = 300,
         True if VM stopped, False on timeout
     """
     import time
+
     start_time = time.time()
 
     while time.time() - start_time < timeout:
         try:
-            returncode, _, _ = run_kubectl_command(
-                ['get', 'vmi', vm_name, '-n', namespace],
-                check=False,
-                logger=logger
-            )
+            returncode, _, _ = run_kubectl_command(["get", "vmi", vm_name, "-n", namespace], check=False, logger=logger)
             if returncode != 0:  # VMI not found = VM is stopped
                 if logger:
                     logger.debug(f"VM {vm_name} in {namespace} is stopped")
@@ -1106,24 +1078,23 @@ def get_worker_nodes(logger: Optional[logging.Logger] = None) -> List[str]:
     try:
         # Get worker nodes with full JSON output to check status
         returncode, stdout, stderr = run_kubectl_command(
-            ['get', 'nodes', '-l', 'node-role.kubernetes.io/worker=', '-o', 'json'],
-            logger=logger
+            ["get", "nodes", "-l", "node-role.kubernetes.io/worker=", "-o", "json"], logger=logger
         )
 
         if returncode == 0 and stdout:
             data = json.loads(stdout)
-            nodes = data.get('items', [])
+            nodes = data.get("items", [])
             ready_nodes = []
             not_ready_nodes = []
 
             for node in nodes:
-                node_name = node.get('metadata', {}).get('name')
-                conditions = node.get('status', {}).get('conditions', [])
+                node_name = node.get("metadata", {}).get("name")
+                conditions = node.get("status", {}).get("conditions", [])
 
                 # Check if node is Ready
                 is_ready = False
                 for condition in conditions:
-                    if condition.get('type') == 'Ready' and condition.get('status') == 'True':
+                    if condition.get("type") == "Ready" and condition.get("status") == "True":
                         is_ready = True
                         break
 
@@ -1135,31 +1106,30 @@ def get_worker_nodes(logger: Optional[logging.Logger] = None) -> List[str]:
             if logger:
                 logger.info(f"Found {len(ready_nodes)} Ready worker nodes: {', '.join(ready_nodes)}")
                 if not_ready_nodes:
-                    logger.warning(f"Skipping {len(not_ready_nodes)} NotReady worker nodes: {', '.join(not_ready_nodes)}")
+                    logger.warning(
+                        f"Skipping {len(not_ready_nodes)} NotReady worker nodes: {', '.join(not_ready_nodes)}"
+                    )
 
             return ready_nodes
         else:
             if logger:
                 logger.warning("No worker nodes found, trying all nodes...")
             # Fallback: get all nodes with Ready status check
-            returncode, stdout, stderr = run_kubectl_command(
-                ['get', 'nodes', '-o', 'json'],
-                logger=logger
-            )
+            returncode, stdout, stderr = run_kubectl_command(["get", "nodes", "-o", "json"], logger=logger)
             if returncode == 0 and stdout:
                 data = json.loads(stdout)
-                nodes = data.get('items', [])
+                nodes = data.get("items", [])
                 ready_nodes = []
                 not_ready_nodes = []
 
                 for node in nodes:
-                    node_name = node.get('metadata', {}).get('name')
-                    conditions = node.get('status', {}).get('conditions', [])
+                    node_name = node.get("metadata", {}).get("name")
+                    conditions = node.get("status", {}).get("conditions", [])
 
                     # Check if node is Ready
                     is_ready = False
                     for condition in conditions:
-                        if condition.get('type') == 'Ready' and condition.get('status') == 'True':
+                        if condition.get("type") == "Ready" and condition.get("status") == "True":
                             is_ready = True
                             break
 
@@ -1197,9 +1167,7 @@ def is_node_ready(node_name: str, logger: Optional[logging.Logger] = None) -> bo
 
     try:
         returncode, stdout, stderr = run_kubectl_command(
-            ['get', 'node', node_name, '-o', 'json'],
-            check=False,
-            logger=logger
+            ["get", "node", node_name, "-o", "json"], check=False, logger=logger
         )
 
         if returncode != 0:
@@ -1208,11 +1176,11 @@ def is_node_ready(node_name: str, logger: Optional[logging.Logger] = None) -> bo
             return False
 
         data = json.loads(stdout)
-        conditions = data.get('status', {}).get('conditions', [])
+        conditions = data.get("status", {}).get("conditions", [])
 
         for condition in conditions:
-            if condition.get('type') == 'Ready':
-                is_ready = condition.get('status') == 'True'
+            if condition.get("type") == "Ready":
+                is_ready = condition.get("status") == "True"
                 if logger:
                     if is_ready:
                         logger.info(f"Node {node_name} is Ready")
@@ -1255,8 +1223,7 @@ def select_random_node(logger: Optional[logging.Logger] = None) -> Optional[str]
     return selected_node
 
 
-def get_vm_node(vm_name: str, namespace: str,
-                logger: Optional[logging.Logger] = None) -> Optional[str]:
+def get_vm_node(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> Optional[str]:
     """
     Get the node where a VM is currently running.
 
@@ -1269,7 +1236,7 @@ def get_vm_node(vm_name: str, namespace: str,
         Node name where VM is running, or None if not found
     """
     try:
-        args = ['get', 'vmi', vm_name, '-n', namespace, '-o', "jsonpath='{.status.nodeName}'"]
+        args = ["get", "vmi", vm_name, "-n", namespace, "-o", "jsonpath='{.status.nodeName}'"]
         returncode, stdout, stderr = run_kubectl_command(args, check=False, logger=logger)
 
         if returncode == 0 and stdout and stdout.strip():
@@ -1288,8 +1255,7 @@ def get_vm_node(vm_name: str, namespace: str,
         return None
 
 
-def remove_node_selector_from_vm(vm_name: str, namespace: str,
-                                 logger: Optional[logging.Logger] = None) -> bool:
+def remove_node_selector_from_vm(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> bool:
     """
     Remove nodeSelector from a VM to allow live migration.
 
@@ -1306,20 +1272,11 @@ def remove_node_selector_from_vm(vm_name: str, namespace: str,
             logger.debug(f"[{namespace}] Removing nodeSelector from VM {vm_name}")
 
         # Remove nodeSelector from VM spec using kubectl patch
-        patch = {
-            "spec": {
-                "template": {
-                    "spec": {
-                        "nodeSelector": None
-                    }
-                }
-            }
-        }
+        patch = {"spec": {"template": {"spec": {"nodeSelector": None}}}}
 
         patch_json = json.dumps(patch)
 
-        args = ['patch', 'vm', vm_name, '-n', namespace,
-                '--type', 'merge', '-p', patch_json]
+        args = ["patch", "vm", vm_name, "-n", namespace, "--type", "merge", "-p", patch_json]
         returncode, stdout, stderr = run_kubectl_command(args, check=False, logger=logger)
 
         if returncode != 0:
@@ -1338,8 +1295,7 @@ def remove_node_selector_from_vm(vm_name: str, namespace: str,
         return False
 
 
-def remove_node_selector_from_vmi(vm_name: str, namespace: str,
-                                   logger: Optional[logging.Logger] = None) -> bool:
+def remove_node_selector_from_vmi(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> bool:
     """
     Remove nodeSelector from a VMI to allow live migration.
 
@@ -1356,16 +1312,11 @@ def remove_node_selector_from_vmi(vm_name: str, namespace: str,
             logger.debug(f"[{namespace}] Removing nodeSelector from VMI {vm_name}")
 
         # Remove nodeSelector from VMI spec using kubectl patch
-        patch = {
-            "spec": {
-                "nodeSelector": None
-            }
-        }
+        patch = {"spec": {"nodeSelector": None}}
 
         patch_json = json.dumps(patch)
 
-        args = ['patch', 'vmi', vm_name, '-n', namespace,
-                '--type', 'merge', '-p', patch_json]
+        args = ["patch", "vmi", vm_name, "-n", namespace, "--type", "merge", "-p", patch_json]
         returncode, stdout, stderr = run_kubectl_command(args, check=False, logger=logger)
 
         if returncode != 0:
@@ -1384,8 +1335,7 @@ def remove_node_selector_from_vmi(vm_name: str, namespace: str,
         return False
 
 
-def remove_node_selectors(vm_name: str, namespace: str,
-                          logger: Optional[logging.Logger] = None) -> bool:
+def remove_node_selectors(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> bool:
     """
     Remove nodeSelector from both VM and VMI to allow live migration.
 
@@ -1403,8 +1353,9 @@ def remove_node_selectors(vm_name: str, namespace: str,
     return vm_success and vmi_success
 
 
-def migrate_vm(vm_name: str, namespace: str, target_node: Optional[str] = None,
-               logger: Optional[logging.Logger] = None) -> bool:
+def migrate_vm(
+    vm_name: str, namespace: str, target_node: Optional[str] = None, logger: Optional[logging.Logger] = None
+) -> bool:
     """
     Trigger live migration of a VM.
 
@@ -1435,14 +1386,8 @@ spec:
             if logger:
                 logger.warning(f"Target node specified ({target_node}), but KubeVirt migration uses scheduler")
 
-        # Trigger migration using virtctl or kubectl
-        cmd = f"kubectl create -f - <<EOF\napiVersion: kubevirt.io/v1\nkind: VirtualMachineInstanceMigration\nmetadata:\n  name: migration-{vm_name}-$(date +%s)\n  namespace: {namespace}\nspec:\n  vmiName: {vm_name}\nEOF"
-
-        # Simpler approach: use kubectl patch to trigger migration
-        cmd = f"kubectl patch vmi {vm_name} -n {namespace} --type merge -p '{{\"spec\":{{\"evictionStrategy\":\"LiveMigrate\"}}}}'"
-
-        # Actually, the best way is to create a VirtualMachineInstanceMigration object
         import subprocess
+
         migration_name = f"migration-{vm_name}"
         migration_yaml = f"""apiVersion: kubevirt.io/v1
 kind: VirtualMachineInstanceMigration
@@ -1456,13 +1401,19 @@ spec:
         # Delete any existing migration object first
         subprocess.run(
             f"kubectl delete virtualmachineinstancemigration {migration_name} -n {namespace} 2>/dev/null || true",
-            shell=True, capture_output=True
+            shell=True,
+            capture_output=True,
+            check=False,
         )
 
         # Create migration object
         result = subprocess.run(
-            f"kubectl create -f -",
-            shell=True, input=migration_yaml.encode(), capture_output=True, text=False
+            "kubectl create -f -",
+            shell=True,
+            input=migration_yaml.encode(),
+            capture_output=True,
+            text=False,
+            check=False,
         )
 
         if result.returncode == 0:
@@ -1480,8 +1431,7 @@ spec:
         return False
 
 
-def get_migration_status(vm_name: str, namespace: str,
-                        logger: Optional[logging.Logger] = None) -> Optional[str]:
+def get_migration_status(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> Optional[str]:
     """
     Get the current migration status of a VM.
 
@@ -1510,8 +1460,9 @@ def get_migration_status(vm_name: str, namespace: str,
         return None
 
 
-def get_vmim_timestamps(vm_name: str, namespace: str,
-                       logger: Optional[logging.Logger] = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def get_vmim_timestamps(
+    vm_name: str, namespace: str, logger: Optional[logging.Logger] = None
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Get migration timestamps from VirtualMachineInstanceMigration object.
 
@@ -1527,21 +1478,21 @@ def get_vmim_timestamps(vm_name: str, namespace: str,
         migration_name = f"migration-{vm_name}"
 
         # Get VMIM object
-        args = ['get', 'virtualmachineinstancemigration', migration_name, '-n', namespace,
-                '-o', 'json']
+        args = ["get", "virtualmachineinstancemigration", migration_name, "-n", namespace, "-o", "json"]
         returncode, stdout, stderr = run_kubectl_command(args, check=False, logger=logger)
 
         if returncode != 0:
             return None, None, None
 
         import json
+
         vmim = json.loads(stdout)
 
         # Extract timestamps from status.migrationState
-        migration_state = vmim.get('status', {}).get('migrationState', {})
-        start_ts = migration_state.get('startTimestamp')
-        end_ts = migration_state.get('endTimestamp')
-        phase = vmim.get('status', {}).get('phase')
+        migration_state = vmim.get("status", {}).get("migrationState", {})
+        start_ts = migration_state.get("startTimestamp")
+        end_ts = migration_state.get("endTimestamp")
+        phase = vmim.get("status", {}).get("phase")
 
         return start_ts, end_ts, phase
 
@@ -1566,8 +1517,8 @@ def calculate_vmim_duration(start_timestamp: str, end_timestamp: str) -> Optiona
         from datetime import datetime
 
         # Parse ISO 8601 timestamps
-        start = datetime.fromisoformat(start_timestamp.replace('Z', '+00:00'))
-        end = datetime.fromisoformat(end_timestamp.replace('Z', '+00:00'))
+        start = datetime.fromisoformat(start_timestamp.replace("Z", "+00:00"))
+        end = datetime.fromisoformat(end_timestamp.replace("Z", "+00:00"))
 
         duration = (end - start).total_seconds()
         return duration
@@ -1576,9 +1527,9 @@ def calculate_vmim_duration(start_timestamp: str, end_timestamp: str) -> Optiona
         return None
 
 
-def wait_for_migration_complete(vm_name: str, namespace: str, timeout: int = 600,
-                                poll_interval: int = 2,
-                                logger: Optional[logging.Logger] = None) -> Tuple[bool, float, Optional[str], Optional[float]]:
+def wait_for_migration_complete(
+    vm_name: str, namespace: str, timeout: int = 600, poll_interval: int = 2, logger: Optional[logging.Logger] = None
+) -> Tuple[bool, float, Optional[str], Optional[float]]:
     """
     Wait for VM migration to complete.
 
@@ -1615,11 +1566,16 @@ def wait_for_migration_complete(vm_name: str, namespace: str, timeout: int = 600
             if start_ts and end_ts:
                 vmim_duration = calculate_vmim_duration(start_ts, end_ts)
                 if logger and vmim_duration:
-                    logger.info(f"[{namespace}] Migration complete: {vm_name} moved from {original_node} to {current_node}")
-                    logger.info(f"[{namespace}]   Observed time: {observed_duration:.2f}s | VMIM time: {vmim_duration:.2f}s")
-            else:
-                if logger:
-                    logger.info(f"[{namespace}] Migration complete: {vm_name} moved from {original_node} to {current_node} in {observed_duration:.2f}s")
+                    logger.info(
+                        f"[{namespace}] Migration complete: {vm_name} moved from {original_node} to {current_node}"
+                    )
+                    logger.info(
+                        f"[{namespace}]   Observed time: {observed_duration:.2f}s | VMIM time: {vmim_duration:.2f}s"
+                    )
+            elif logger:
+                logger.info(
+                    f"[{namespace}] Migration complete: {vm_name} moved from {original_node} to {current_node} in {observed_duration:.2f}s"
+                )
 
             return True, observed_duration, current_node, vmim_duration
 
@@ -1645,8 +1601,7 @@ def wait_for_migration_complete(vm_name: str, namespace: str, timeout: int = 600
     return False, timeout, None, None
 
 
-def get_available_nodes(exclude_nodes: List[str] = None,
-                       logger: Optional[logging.Logger] = None) -> List[str]:
+def get_available_nodes(exclude_nodes: List[str] = None, logger: Optional[logging.Logger] = None) -> List[str]:
     """
     Get list of available worker nodes, optionally excluding specific nodes.
 
@@ -1669,8 +1624,7 @@ def get_available_nodes(exclude_nodes: List[str] = None,
     return available_nodes
 
 
-def find_busiest_node(namespaces: List[str], vm_name: str,
-                     logger: Optional[logging.Logger] = None) -> Optional[str]:
+def find_busiest_node(namespaces: List[str], vm_name: str, logger: Optional[logging.Logger] = None) -> Optional[str]:
     """
     Find the node with the most VMs from the given namespaces.
 
@@ -1700,7 +1654,7 @@ def find_busiest_node(namespaces: List[str], vm_name: str,
     busiest_node = max(node_counts, key=node_counts.get)
 
     if logger:
-        logger.info(f"\nVM distribution across nodes:")
+        logger.info("\nVM distribution across nodes:")
         for node, count in sorted(node_counts.items(), key=lambda x: x[1], reverse=True):
             logger.info(f"  {node}: {count} VMs")
         logger.info(f"\nBusiest node: {busiest_node} with {node_counts[busiest_node]} VMs")
@@ -1708,8 +1662,9 @@ def find_busiest_node(namespaces: List[str], vm_name: str,
     return busiest_node
 
 
-def get_vms_on_node(namespaces: List[str], vm_name: str, target_node: str,
-                   logger: Optional[logging.Logger] = None) -> List[str]:
+def get_vms_on_node(
+    namespaces: List[str], vm_name: str, target_node: str, logger: Optional[logging.Logger] = None
+) -> List[str]:
     """
     Get list of namespaces where VMs are running on a specific node.
 
@@ -1740,8 +1695,7 @@ def get_vms_on_node(namespaces: List[str], vm_name: str, target_node: str,
     return vms_on_node
 
 
-def add_node_selector_to_vm_yaml(yaml_file: str, node_name: str,
-                                  logger: Optional[logging.Logger] = None) -> str:
+def add_node_selector_to_vm_yaml(yaml_file: str, node_name: str, logger: Optional[logging.Logger] = None) -> str:
     """
     Add nodeSelector to a VM YAML file and return modified content.
 
@@ -1754,22 +1708,23 @@ def add_node_selector_to_vm_yaml(yaml_file: str, node_name: str,
         Modified YAML content as string
     """
     try:
-        with open(yaml_file, 'r') as f:
+        with open(yaml_file) as f:
             content = f.read()
 
         # Check if nodeSelector already exists
-        if 'nodeSelector:' in content:
+        if "nodeSelector:" in content:
             if logger:
                 logger.debug(f"nodeSelector already exists in {yaml_file}, will be replaced")
             # Remove existing nodeSelector section
             import re
-            content = re.sub(r'\s+nodeSelector:.*?(?=\n\s{0,6}\w|\Z)', '', content, flags=re.DOTALL)
+
+            content = re.sub(r"\s+nodeSelector:.*?(?=\n\s{0,6}\w|\Z)", "", content, flags=re.DOTALL)
 
         # Parse YAML to find the right location
         # We need to add nodeSelector under spec.template.spec
         # It should be at the same level as domain, networks, volumes, tolerations
 
-        lines = content.split('\n')
+        lines = content.split("\n")
         modified_lines = []
         added = False
         in_template = False
@@ -1778,28 +1733,28 @@ def add_node_selector_to_vm_yaml(yaml_file: str, node_name: str,
 
         for i, line in enumerate(lines):
             # Track if we're in the template section
-            if line.strip().startswith('template:'):
+            if line.strip().startswith("template:"):
                 in_template = True
                 modified_lines.append(line)
                 continue
 
             # Track if we're in template.spec
-            if in_template and line.strip().startswith('spec:') and not in_template_spec:
+            if in_template and line.strip().startswith("spec:") and not in_template_spec:
                 in_template_spec = True
                 template_spec_indent = len(line) - len(line.lstrip())
                 modified_lines.append(line)
 
                 # Add nodeSelector right after spec: line
                 node_selector_lines = [
-                    ' ' * (template_spec_indent + 2) + 'nodeSelector:',
-                    ' ' * (template_spec_indent + 4) + f'kubernetes.io/hostname: {node_name}'
+                    " " * (template_spec_indent + 2) + "nodeSelector:",
+                    " " * (template_spec_indent + 4) + f"kubernetes.io/hostname: {node_name}",
                 ]
                 modified_lines.extend(node_selector_lines)
                 added = True
                 continue
 
             # Check if we've left the template.spec section
-            if in_template_spec and line.strip() and not line.startswith(' ' * (template_spec_indent + 1)):
+            if in_template_spec and line.strip() and not line.startswith(" " * (template_spec_indent + 1)):
                 in_template_spec = False
                 in_template = False
 
@@ -1810,7 +1765,7 @@ def add_node_selector_to_vm_yaml(yaml_file: str, node_name: str,
                 logger.error(f"Could not find template.spec in {yaml_file}, nodeSelector not added")
             return content
 
-        result = '\n'.join(modified_lines)
+        result = "\n".join(modified_lines)
 
         if logger:
             logger.debug(f"Successfully added nodeSelector for node {node_name}")
@@ -1824,10 +1779,7 @@ def add_node_selector_to_vm_yaml(yaml_file: str, node_name: str,
 
 
 def print_summary_table(
-    results: List[Tuple],
-    title: str = "Performance Test Summary",
-    skip_clone: bool = False,
-    logger=None
+    results: List[Tuple], title: str = "Performance Test Summary", skip_clone: bool = False, logger=None
 ):
     """
     Print or log a formatted summary table of test results.
@@ -1838,6 +1790,7 @@ def print_summary_table(
         skip_clone: If True, omit clone duration column and statistics
         logger: Optional logger instance. If provided, logs instead of printing.
     """
+
     def output(msg=""):
         if logger:
             logger.info(msg)
@@ -1864,9 +1817,9 @@ def print_summary_table(
     for result in sorted(results, key=lambda x: x[0]):
         ns, run_t, ping_t, clone_t, ok = result[:5]
 
-        run_str = f"{run_t:.2f}" if run_t is not None else '-'
-        ping_str = f"{ping_t:.2f}" if ping_t is not None and ok else 'Timeout'
-        clone_str = f"{clone_t:.2f}" if clone_t is not None else '-'
+        run_str = f"{run_t:.2f}" if run_t is not None else "-"
+        ping_str = f"{ping_t:.2f}" if ping_t is not None and ok else "Timeout"
+        clone_str = f"{clone_t:.2f}" if clone_t is not None else "-"
         status = f"{Colors.OKGREEN}Success{Colors.ENDC}" if ok else f"{Colors.FAIL}Failed{Colors.ENDC}"
 
         if skip_clone:
@@ -1911,8 +1864,9 @@ def print_summary_table(
     output("=" * 95)
 
 
-def save_results(args, results, base_dir="results", prefix="vm_creation_results",
-                 logger=None, skip_clone=False, total_time=None):
+def save_results(
+    args, results, base_dir="results", prefix="vm_creation_results", logger=None, skip_clone=False, total_time=None
+):
     """
     Save test results into the specified results folder (or create a new one), including summary statistics.
 
@@ -2037,8 +1991,6 @@ def save_migration_results(args, results, base_dir="results", logger=None, total
         total_time: Total wall-clock migration duration (sec)
     """
 
-
-
     # --- Prepare base output directory ---
     if base_dir is None:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -2110,7 +2062,8 @@ def save_migration_results(args, results, base_dir="results", logger=None, total
             {
                 "metric": "difference_observed_vmim_sec",
                 "avg": round((sum(observed_times) / len(observed_times)) - (sum(vmim_times) / len(vmim_times)), 2)
-                if observed_times and vmim_times else None,
+                if observed_times and vmim_times
+                else None,
                 "note": "Difference includes polling overhead (~2s) and status update delays",
             },
         ],
@@ -2123,13 +2076,15 @@ def save_migration_results(args, results, base_dir="results", logger=None, total
         writer.writeheader()
         for m in summary["metrics"]:
             if "avg" in m:
-                writer.writerow({
-                    "metric": m["metric"],
-                    "avg": m.get("avg"),
-                    "min": m.get("min"),
-                    "max": m.get("max"),
-                    "count": m.get("count"),
-                })
+                writer.writerow(
+                    {
+                        "metric": m["metric"],
+                        "avg": m.get("avg"),
+                        "min": m.get("min"),
+                        "max": m.get("max"),
+                        "count": m.get("count"),
+                    }
+                )
 
     if logger:
         logger.info(f"Saved summary migration results to {summary_json_path}")
@@ -2171,10 +2126,10 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_driv
     # Create timestamped output directory following the standard structure:
     # results/{storage_driver}/{num_disks}-disk/{timestamp}_chaos_benchmark_{total_vms}vms/
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    total_vms = results.get('total_vms', 0)
+    total_vms = results.get("total_vms", 0)
 
     # Calculate total disks per VM (data volumes + 1 root volume)
-    data_volumes_per_vm = results.get('data_volumes_per_vm', 0)
+    data_volumes_per_vm = results.get("data_volumes_per_vm", 0)
     num_disks = data_volumes_per_vm + 1  # +1 for root volume
 
     # Build directory path
@@ -2198,22 +2153,22 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_driv
         "test_type": "chaos_benchmark",
         "timestamp": timestamp,
         "config": {
-            "storage_classes": results.get('storage_classes', 'N/A'),
-            "vms_per_iteration": results.get('vms_per_iteration', 0),
-            "data_volumes_per_vm": results.get('data_volumes_per_vm', 0),
-            "volume_size": results.get('volume_size', 'N/A'),
-            "vm_memory": results.get('vm_memory', 'N/A'),
-            "vm_cpu_cores": results.get('vm_cpu_cores', 0),
+            "storage_classes": results.get("storage_classes", "N/A"),
+            "vms_per_iteration": results.get("vms_per_iteration", 0),
+            "data_volumes_per_vm": results.get("data_volumes_per_vm", 0),
+            "volume_size": results.get("volume_size", "N/A"),
+            "vm_memory": results.get("vm_memory", "N/A"),
+            "vm_cpu_cores": results.get("vm_cpu_cores", 0),
         },
         "results": {
-            "iterations_completed": results.get('iterations_completed', 0),
-            "total_vms": results.get('total_vms', 0),
-            "total_pvcs": results.get('total_pvcs', 0),
-            "capacity_reached": results.get('capacity_reached', False),
-            "end_reason": results.get('end_reason', 'unknown'),
+            "iterations_completed": results.get("iterations_completed", 0),
+            "total_vms": results.get("total_vms", 0),
+            "total_pvcs": results.get("total_pvcs", 0),
+            "capacity_reached": results.get("capacity_reached", False),
+            "end_reason": results.get("end_reason", "unknown"),
         },
-        "phases_skipped": results.get('phases_skipped', []),
-        "duration": results.get('duration_str', 'N/A'),
+        "phases_skipped": results.get("phases_skipped", []),
+        "duration": results.get("duration_str", "N/A"),
     }
 
     # Save detailed JSON
@@ -2225,32 +2180,32 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_driv
     # Build summary JSON (compatible with dashboard format)
     # Extract duration in seconds from duration_str (format: "123.45s (2.06 minutes)")
     duration_sec = None
-    duration_str = results.get('duration_str', '')
-    if duration_str and 's' in duration_str:
+    duration_str = results.get("duration_str", "")
+    if duration_str and "s" in duration_str:
         try:
-            duration_sec = float(duration_str.split('s')[0])
+            duration_sec = float(duration_str.split("s")[0])
         except (ValueError, IndexError):
             pass
 
     summary = {
         "test_type": "chaos_benchmark",
-        "total_vms": results.get('total_vms', 0),
-        "total_pvcs": results.get('total_pvcs', 0),
-        "iterations_completed": results.get('iterations_completed', 0),
-        "capacity_reached": results.get('capacity_reached', False),
+        "total_vms": results.get("total_vms", 0),
+        "total_pvcs": results.get("total_pvcs", 0),
+        "iterations_completed": results.get("iterations_completed", 0),
+        "capacity_reached": results.get("capacity_reached", False),
         "total_test_duration_sec": duration_sec,
         "metrics": [
             {
                 "metric": "vms_per_iteration",
-                "value": results.get('vms_per_iteration', 0),
+                "value": results.get("vms_per_iteration", 0),
             },
             {
                 "metric": "data_volumes_per_vm",
-                "value": results.get('data_volumes_per_vm', 0),
+                "value": results.get("data_volumes_per_vm", 0),
             },
             {
                 "metric": "total_iterations",
-                "value": results.get('iterations_completed', 0),
+                "value": results.get("iterations_completed", 0),
             },
         ],
     }
@@ -2265,55 +2220,55 @@ def save_capacity_results(results: dict, base_dir: str = "results", storage_driv
     csv_data = [
         {
             "metric": "Storage Classes",
-            "value": results.get('storage_classes', 'N/A'),
+            "value": results.get("storage_classes", "N/A"),
         },
         {
             "metric": "VMs per Iteration",
-            "value": results.get('vms_per_iteration', 0),
+            "value": results.get("vms_per_iteration", 0),
         },
         {
             "metric": "Data Volumes per VM",
-            "value": results.get('data_volumes_per_vm', 0),
+            "value": results.get("data_volumes_per_vm", 0),
         },
         {
             "metric": "Volume Size",
-            "value": results.get('volume_size', 'N/A'),
+            "value": results.get("volume_size", "N/A"),
         },
         {
             "metric": "VM Memory",
-            "value": results.get('vm_memory', 'N/A'),
+            "value": results.get("vm_memory", "N/A"),
         },
         {
             "metric": "VM CPU Cores",
-            "value": results.get('vm_cpu_cores', 0),
+            "value": results.get("vm_cpu_cores", 0),
         },
         {
             "metric": "Iterations Completed",
-            "value": results.get('iterations_completed', 0),
+            "value": results.get("iterations_completed", 0),
         },
         {
             "metric": "Total VMs Created",
-            "value": results.get('total_vms', 0),
+            "value": results.get("total_vms", 0),
         },
         {
             "metric": "Total PVCs Created",
-            "value": results.get('total_pvcs', 0),
+            "value": results.get("total_pvcs", 0),
         },
         {
             "metric": "Capacity Reached",
-            "value": "Yes" if results.get('capacity_reached', False) else "No",
+            "value": "Yes" if results.get("capacity_reached", False) else "No",
         },
         {
             "metric": "End Reason",
-            "value": results.get('end_reason', 'unknown'),
+            "value": results.get("end_reason", "unknown"),
         },
         {
             "metric": "Test Duration",
-            "value": results.get('duration_str', 'N/A'),
+            "value": results.get("duration_str", "N/A"),
         },
         {
             "metric": "Phases Skipped",
-            "value": ", ".join(results.get('phases_skipped', [])) or "None",
+            "value": ", ".join(results.get("phases_skipped", [])) or "None",
         },
     ]
 
@@ -2347,7 +2302,7 @@ def validate_prerequisites(ssh_pod: str, ssh_pod_ns: str, logger: logging.Logger
 
     # Check kubectl connectivity
     try:
-        run_kubectl_command(['cluster-info'], logger=logger)
+        run_kubectl_command(["cluster-info"], logger=logger)
         logger.info("[OK] kubectl connectivity verified")
     except Exception as e:
         logger.error(f"[FAIL] kubectl connectivity failed: {e}")
@@ -2356,23 +2311,23 @@ def validate_prerequisites(ssh_pod: str, ssh_pod_ns: str, logger: logging.Logger
     # Check SSH pod exists and is Running
     try:
         returncode, stdout, _ = run_kubectl_command(
-            ['get', 'pod', ssh_pod, '-n', ssh_pod_ns, '-o', 'jsonpath={.status.phase}'],
+            ["get", "pod", ssh_pod, "-n", ssh_pod_ns, "-o", "jsonpath={.status.phase}"],
             check=False,
             capture_output=True,
-            logger=logger
+            logger=logger,
         )
-        if returncode == 0 and stdout.strip() == 'Running':
+        if returncode == 0 and stdout.strip() == "Running":
             logger.info(f"[OK] SSH pod '{ssh_pod}' is Running in namespace '{ssh_pod_ns}'")
         elif returncode == 0:
-            pod_status = stdout.strip() if stdout.strip() else 'Unknown'
+            pod_status = stdout.strip() if stdout.strip() else "Unknown"
             logger.error(f"[FAIL] SSH pod '{ssh_pod}' exists but is not Running (status: {pod_status})")
-            logger.error(f"  Please ensure the SSH pod is running before starting tests.")
+            logger.error("  Please ensure the SSH pod is running before starting tests.")
             logger.error(f"  Check pod status: kubectl get pod {ssh_pod} -n {ssh_pod_ns}")
             return False
         else:
             logger.error(f"[FAIL] SSH pod '{ssh_pod}' not found in namespace '{ssh_pod_ns}'")
-            logger.error(f"  The SSH pod is required for network validation (ping tests).")
-            logger.error(f"  Please create an SSH pod or use --skip-ping to skip network validation.")
+            logger.error("  The SSH pod is required for network validation (ping tests).")
+            logger.error("  Please create an SSH pod or use --skip-ping to skip network validation.")
             logger.error(f"  Example: kubectl run {ssh_pod} --image=alpine -n {ssh_pod_ns} -- sleep infinity")
             return False
     except Exception as e:
@@ -2380,6 +2335,7 @@ def validate_prerequisites(ssh_pod: str, ssh_pod_ns: str, logger: logging.Logger
         return False
 
     return True
+
 
 def restart_vm(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> bool:
     """
@@ -2421,8 +2377,7 @@ def restart_vm(vm_name: str, namespace: str, logger: Optional[logging.Logger] = 
         return False
 
 
-def resize_pvc(pvc_name: str, namespace: str, new_size: str,
-               logger: Optional[logging.Logger] = None) -> bool:
+def resize_pvc(pvc_name: str, namespace: str, new_size: str, logger: Optional[logging.Logger] = None) -> bool:
     """
     Resize a PersistentVolumeClaim.
 
@@ -2440,20 +2395,10 @@ def resize_pvc(pvc_name: str, namespace: str, new_size: str,
             logger.info(f"[{namespace}] Resizing PVC {pvc_name} to {new_size}")
 
         # Patch the PVC with new size
-        patch = json.dumps({
-            "spec": {
-                "resources": {
-                    "requests": {
-                        "storage": new_size
-                    }
-                }
-            }
-        })
+        patch = json.dumps({"spec": {"resources": {"requests": {"storage": new_size}}}})
 
         returncode, stdout, stderr = run_kubectl_command(
-            ['patch', 'pvc', pvc_name, '-n', namespace, '--type=merge', '-p', patch],
-            check=False,
-            logger=logger
+            ["patch", "pvc", pvc_name, "-n", namespace, "--type=merge", "-p", patch], check=False, logger=logger
         )
 
         if returncode != 0:
@@ -2471,9 +2416,14 @@ def resize_pvc(pvc_name: str, namespace: str, new_size: str,
         return False
 
 
-def wait_for_pvc_resize(pvc_name: str, namespace: str, expected_size: str,
-                        timeout: int = 600, poll_interval: int = 5,
-                        logger: Optional[logging.Logger] = None) -> bool:
+def wait_for_pvc_resize(
+    pvc_name: str,
+    namespace: str,
+    expected_size: str,
+    timeout: int = 600,
+    poll_interval: int = 5,
+    logger: Optional[logging.Logger] = None,
+) -> bool:
     """
     Wait for PVC resize to complete.
 
@@ -2493,15 +2443,13 @@ def wait_for_pvc_resize(pvc_name: str, namespace: str, expected_size: str,
     while time.time() - start_time < timeout:
         try:
             returncode, stdout, stderr = run_kubectl_command(
-                ['get', 'pvc', pvc_name, '-n', namespace, '-o', 'json'],
-                check=False,
-                logger=logger
+                ["get", "pvc", pvc_name, "-n", namespace, "-o", "json"], check=False, logger=logger
             )
 
             if returncode == 0:
                 pvc_data = json.loads(stdout)
-                status = pvc_data.get('status', {})
-                capacity = status.get('capacity', {}).get('storage', '')
+                status = pvc_data.get("status", {})
+                capacity = status.get("capacity", {}).get("storage", "")
 
                 # Check if resize is complete
                 if capacity == expected_size:
@@ -2510,12 +2458,12 @@ def wait_for_pvc_resize(pvc_name: str, namespace: str, expected_size: str,
                     return True
 
                 # Check for resize conditions
-                conditions = status.get('conditions', [])
+                conditions = status.get("conditions", [])
                 for condition in conditions:
-                    if condition.get('type') == 'Resizing' and condition.get('status') == 'True':
+                    if condition.get("type") == "Resizing" and condition.get("status") == "True":
                         if logger:
                             logger.debug(f"[{namespace}] PVC {pvc_name} is resizing...")
-                    elif condition.get('type') == 'FileSystemResizePending':
+                    elif condition.get("type") == "FileSystemResizePending":
                         if logger:
                             logger.debug(f"[{namespace}] PVC {pvc_name} filesystem resize pending...")
 
@@ -2531,8 +2479,9 @@ def wait_for_pvc_resize(pvc_name: str, namespace: str, expected_size: str,
     return False
 
 
-def create_vm_snapshot(vm_name: str, snapshot_name: str, namespace: str,
-                       logger: Optional[logging.Logger] = None) -> bool:
+def create_vm_snapshot(
+    vm_name: str, snapshot_name: str, namespace: str, logger: Optional[logging.Logger] = None
+) -> bool:
     """
     Create a VirtualMachineSnapshot.
 
@@ -2564,11 +2513,11 @@ spec:
 
         # Apply snapshot
         process = subprocess.Popen(
-            ['kubectl', 'apply', '-f', '-'],
+            ["kubectl", "apply", "-f", "-"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
         stdout, stderr = process.communicate(input=snapshot_yaml)
 
@@ -2587,8 +2536,13 @@ spec:
         return False
 
 
-def wait_for_snapshot_ready(snapshot_name: str, namespace: str, timeout: int = 600,
-                            poll_interval: int = 5, logger: Optional[logging.Logger] = None) -> bool:
+def wait_for_snapshot_ready(
+    snapshot_name: str,
+    namespace: str,
+    timeout: int = 600,
+    poll_interval: int = 5,
+    logger: Optional[logging.Logger] = None,
+) -> bool:
     """
     Wait for VirtualMachineSnapshot to be ready.
 
@@ -2607,15 +2561,13 @@ def wait_for_snapshot_ready(snapshot_name: str, namespace: str, timeout: int = 6
     while time.time() - start_time < timeout:
         try:
             returncode, stdout, stderr = run_kubectl_command(
-                ['get', 'vmsnapshot', snapshot_name, '-n', namespace, '-o', 'json'],
-                check=False,
-                logger=logger
+                ["get", "vmsnapshot", snapshot_name, "-n", namespace, "-o", "json"], check=False, logger=logger
             )
 
             if returncode == 0:
                 snapshot_data = json.loads(stdout)
-                status = snapshot_data.get('status', {})
-                ready_to_use = status.get('readyToUse', False)
+                status = snapshot_data.get("status", {})
+                ready_to_use = status.get("readyToUse", False)
 
                 if ready_to_use:
                     if logger:
@@ -2623,11 +2575,11 @@ def wait_for_snapshot_ready(snapshot_name: str, namespace: str, timeout: int = 6
                     return True
 
                 # Check for errors
-                conditions = status.get('conditions', [])
+                conditions = status.get("conditions", [])
                 for condition in conditions:
-                    if condition.get('type') == 'Ready' and condition.get('status') == 'False':
-                        reason = condition.get('reason', 'Unknown')
-                        message = condition.get('message', '')
+                    if condition.get("type") == "Ready" and condition.get("status") == "False":
+                        reason = condition.get("reason", "Unknown")
+                        message = condition.get("message", "")
                         if logger:
                             logger.warning(f"[{namespace}] Snapshot not ready: {reason} - {message}")
 
@@ -2643,8 +2595,7 @@ def wait_for_snapshot_ready(snapshot_name: str, namespace: str, timeout: int = 6
     return False
 
 
-def delete_vm_snapshot(snapshot_name: str, namespace: str,
-                       logger: Optional[logging.Logger] = None) -> bool:
+def delete_vm_snapshot(snapshot_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> bool:
     """
     Delete a VirtualMachineSnapshot.
 
@@ -2658,9 +2609,7 @@ def delete_vm_snapshot(snapshot_name: str, namespace: str,
     """
     try:
         returncode, stdout, stderr = run_kubectl_command(
-            ['delete', 'vmsnapshot', snapshot_name, '-n', namespace],
-            check=False,
-            logger=logger
+            ["delete", "vmsnapshot", snapshot_name, "-n", namespace], check=False, logger=logger
         )
 
         if returncode == 0:
@@ -2692,14 +2641,12 @@ def get_pvc_size(pvc_name: str, namespace: str, logger: Optional[logging.Logger]
     """
     try:
         returncode, stdout, stderr = run_kubectl_command(
-            ['get', 'pvc', pvc_name, '-n', namespace, '-o', 'json'],
-            check=False,
-            logger=logger
+            ["get", "pvc", pvc_name, "-n", namespace, "-o", "json"], check=False, logger=logger
         )
 
         if returncode == 0:
             pvc_data = json.loads(stdout)
-            size = pvc_data.get('status', {}).get('capacity', {}).get('storage', '')
+            size = pvc_data.get("status", {}).get("capacity", {}).get("storage", "")
             return size if size else None
 
         return None
@@ -2710,8 +2657,7 @@ def get_pvc_size(pvc_name: str, namespace: str, logger: Optional[logging.Logger]
         return None
 
 
-def get_vm_volume_names(vm_name: str, namespace: str,
-                        logger: Optional[logging.Logger] = None) -> List[str]:
+def get_vm_volume_names(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> List[str]:
     """
     Get list of PVC names used by a VM.
 
@@ -2725,25 +2671,23 @@ def get_vm_volume_names(vm_name: str, namespace: str,
     """
     try:
         returncode, stdout, stderr = run_kubectl_command(
-            ['get', 'vm', vm_name, '-n', namespace, '-o', 'json'],
-            check=False,
-            logger=logger
+            ["get", "vm", vm_name, "-n", namespace, "-o", "json"], check=False, logger=logger
         )
 
         if returncode != 0:
             return []
 
         vm_data = json.loads(stdout)
-        volumes = vm_data.get('spec', {}).get('template', {}).get('spec', {}).get('volumes', [])
+        volumes = vm_data.get("spec", {}).get("template", {}).get("spec", {}).get("volumes", [])
 
         pvc_names = []
         for volume in volumes:
             # Check for dataVolume
-            if 'dataVolume' in volume:
-                pvc_names.append(volume['dataVolume']['name'])
+            if "dataVolume" in volume:
+                pvc_names.append(volume["dataVolume"]["name"])
             # Check for persistentVolumeClaim
-            elif 'persistentVolumeClaim' in volume:
-                pvc_names.append(volume['persistentVolumeClaim']['claimName'])
+            elif "persistentVolumeClaim" in volume:
+                pvc_names.append(volume["persistentVolumeClaim"]["claimName"])
 
         return pvc_names
 

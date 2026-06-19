@@ -183,4 +183,3 @@ The dashboard shows:
 - KPI cards (Hotplug/Coldplug avg time, success rate)
 - Time breakdown chart (API, Volume Ready/Boot, Validation)
 - Per-VM results table with validation status
-

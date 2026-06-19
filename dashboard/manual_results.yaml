@@ -23,4 +23,3 @@ results:
     Minimum: XXXs
     Ping checks skipped: True
     Log file : kubevirt-perf-XXX-XXX.log
-

@@ -186,7 +186,7 @@ The script generates a single HTML file (`results_dashboard.html` by default) co
    - Boot Storm Duration
    - Live Migration Duration
 4. **VM Size Tabs**: Further nested tabs for each VM count (50 VMs, 100 VMs, etc.)
-5. **Detailed Tables**: 
+5. **Detailed Tables**:
    - Creation + Boot Storm subtab with summary and detailed results
    - Live Migration subtab with summary and detailed results
 6. **Cluster Info Tab**: (if `--cluster-info` provided) Displays cluster metadata
@@ -263,4 +263,3 @@ The script generates a single HTML file (`results_dashboard.html` by default) co
 ## Support
 
 For issues or questions about the dashboard generator, please refer to the main project documentation or contact the development team.
-

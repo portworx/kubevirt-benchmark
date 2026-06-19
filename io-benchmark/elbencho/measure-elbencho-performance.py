@@ -71,42 +71,36 @@ from typing import List, Optional, Tuple
 
 import yaml
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from utils.common import (
-    setup_logging,
     get_vm_disk_count,
     get_vmi_ip,
+    setup_logging,
     ssh_exec_command,
 )
 
 
 def detect_disk_count_from_template(vm_template_path: str) -> Optional[int]:
     """Return non-cloud-init disk count from a VM template, or None on failure."""
-    with open(vm_template_path, 'r') as f:
+    with open(vm_template_path) as f:
         docs = list(yaml.safe_load_all(f))
 
-    vm_spec = next((doc for doc in docs if doc and doc.get('kind') == 'VirtualMachine'), None)
+    vm_spec = next((doc for doc in docs if doc and doc.get("kind") == "VirtualMachine"), None)
     if not vm_spec:
         return None
 
-    volumes = (
-        vm_spec.get('spec', {})
-        .get('template', {})
-        .get('spec', {})
-        .get('volumes', [])
-    )
+    volumes = vm_spec.get("spec", {}).get("template", {}).get("spec", {}).get("volumes", [])
     non_cloudinit_volumes = [
-        v for v in volumes
-        if not any(k in v for k in ['cloudInitNoCloud', 'cloudInitConfigDrive'])
+        v for v in volumes if not any(k in v for k in ["cloudInitNoCloud", "cloudInitConfigDrive"])
     ]
     return len(non_cloudinit_volumes)
 
 
-def build_elbencho_output_dir(args, vm_targets: List[Tuple[str, str]],
-                              logger: Optional[logging.Logger] = None) -> str:
+def build_elbencho_output_dir(args, vm_targets: List[Tuple[str, str]], logger: Optional[logging.Logger] = None) -> str:
     """Build and cache the canonical elbencho result directory."""
-    if getattr(args, '_output_dir', None):
+    if getattr(args, "_output_dir", None):
         return args._output_dir
 
     disks_per_vm = args.disks_per_vm
@@ -148,10 +142,16 @@ def build_elbencho_output_dir(args, vm_targets: List[Tuple[str, str]],
     return output_dir
 
 
-def stop_all_elbencho(ip: str, ssh_pod: str, ssh_pod_ns: str,
-                      vm_user: str, vm_password: str,
-                      logger: logging.Logger, log_prefix: str,
-                      wait_for_json: bool = True) -> bool:
+def stop_all_elbencho(
+    ip: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    vm_user: str,
+    vm_password: str,
+    logger: logging.Logger,
+    log_prefix: str,
+    wait_for_json: bool = True,
+) -> bool:
     """Stop all elbencho processes and services on a VM.
 
     Args:
@@ -159,26 +159,30 @@ def stop_all_elbencho(ip: str, ssh_pod: str, ssh_pod_ns: str,
     """
     # Stop the systemd service first
     ssh_exec_command(
-        ip, "systemctl stop elbencho-1iops.service 2>/dev/null || true",
-        ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
+        ip,
+        "systemctl stop elbencho-1iops.service 2>/dev/null || true",
+        ssh_pod,
+        ssh_pod_ns,
+        vm_user,
+        vm_password,
+        logger,
     )
 
     # Send SIGINT first to allow graceful shutdown and JSON file writing
     ssh_exec_command(
-        ip, "pkill -SIGINT elbencho 2>/dev/null || true",
-        ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
+        ip, "pkill -SIGINT elbencho 2>/dev/null || true", ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
     )
 
     if wait_for_json:
         # Wait for elbencho to write JSON files (it needs time to finalize)
         logger.debug(f"{log_prefix} Waiting for elbencho to write result files...")
         import time
+
         time.sleep(10)
 
         # Check if processes are still running
         rc, stdout, _ = ssh_exec_command(
-            ip, "pgrep elbencho || echo 'no_process'",
-            ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
+            ip, "pgrep elbencho || echo 'no_process'", ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
         )
 
         if stdout.strip() and "no_process" not in stdout:
@@ -186,24 +190,27 @@ def stop_all_elbencho(ip: str, ssh_pod: str, ssh_pod_ns: str,
             logger.debug(f"{log_prefix} Elbencho still running, waiting more...")
             time.sleep(2)
             ssh_exec_command(
-                ip, "pkill -9 elbencho 2>/dev/null || true",
-                ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
+                ip, "pkill -9 elbencho 2>/dev/null || true", ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
             )
     else:
         # Quick kill without waiting
         ssh_exec_command(
-            ip, "sleep 1; pkill -9 elbencho 2>/dev/null || true",
-            ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
+            ip, "sleep 1; pkill -9 elbencho 2>/dev/null || true", ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
         )
 
     logger.debug(f"{log_prefix} Stopped all elbencho processes")
     return True
 
 
-def get_available_disks(ip: str, ssh_pod: str, ssh_pod_ns: str,
-                        vm_user: str, vm_password: str,
-                        logger: logging.Logger,
-                        min_size_mb: int = 10) -> List[str]:
+def get_available_disks(
+    ip: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    vm_user: str,
+    vm_password: str,
+    logger: logging.Logger,
+    min_size_mb: int = 10,
+) -> List[str]:
     """Get list of available data disks (vdb, vdc, vdd, sda, sdb, etc.).
 
     Args:
@@ -212,27 +219,34 @@ def get_available_disks(ip: str, ssh_pod: str, ssh_pod_ns: str,
     # Get all block devices except vda (root disk), with size > min_size_mb
     # Use simple grep/sed instead of awk to avoid escaping issues
     min_size_bytes = min_size_mb * 1024 * 1024
-    cmd = f"lsblk -d -n -o NAME,TYPE,SIZE -b | grep disk | grep -v vda | while read name type size; do [ \"$size\" -gt {min_size_bytes} ] && echo /dev/$name; done"
-    rc, stdout, stderr = ssh_exec_command(
-        ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
-    )
+    cmd = f'lsblk -d -n -o NAME,TYPE,SIZE -b | grep disk | grep -v vda | while read name type size; do [ "$size" -gt {min_size_bytes} ] && echo /dev/$name; done'
+    rc, stdout, stderr = ssh_exec_command(ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger)
 
     logger.debug(f"get_available_disks: rc={rc}, stdout='{stdout}', stderr='{stderr}'")
 
     if rc != 0 and not stdout.strip():
         return []
 
-    disks = [d.strip() for d in stdout.strip().split('\n') if d.strip()]
+    disks = [d.strip() for d in stdout.strip().split("\n") if d.strip()]
     logger.debug(f"Found disks: {disks}")
     return disks
 
 
-def start_elbencho_iops_mode(ip: str, ssh_pod: str, ssh_pod_ns: str,
-                             vm_user: str, vm_password: str,
-                             block_size: str, disks: List[str],
-                             iops: int, iodepth: int, threads: int,
-                             duration: int,
-                             logger: logging.Logger, log_prefix: str) -> bool:
+def start_elbencho_iops_mode(
+    ip: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    vm_user: str,
+    vm_password: str,
+    block_size: str,
+    disks: List[str],
+    iops: int,
+    iodepth: int,
+    threads: int,
+    duration: int,
+    logger: logging.Logger,
+    log_prefix: str,
+) -> bool:
     """Start elbencho in IOPS mode - runs separate read and write processes.
 
     IOPS is split equally between read and write.
@@ -250,19 +264,24 @@ def start_elbencho_iops_mode(ip: str, ssh_pod: str, ssh_pod_ns: str,
 
     # Create directories
     ssh_exec_command(
-        ip, "mkdir -p /var/log/elbencho /root/elbencho_results /var/run/elbencho",
-        ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
+        ip,
+        "mkdir -p /var/log/elbencho /root/elbencho_results /var/run/elbencho",
+        ssh_pod,
+        ssh_pod_ns,
+        vm_user,
+        vm_password,
+        logger,
     )
 
-    disk_args = ' '.join(disks)
+    disk_args = " ".join(disks)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Parse block size to bytes
     block_size_upper = block_size.upper()
-    if 'K' in block_size_upper:
-        block_bytes = int(block_size_upper.replace('K', '')) * 1024
-    elif 'M' in block_size_upper:
-        block_bytes = int(block_size_upper.replace('M', '')) * 1024 * 1024
+    if "K" in block_size_upper:
+        block_bytes = int(block_size_upper.replace("K", "")) * 1024
+    elif "M" in block_size_upper:
+        block_bytes = int(block_size_upper.replace("M", "")) * 1024 * 1024
     else:
         block_bytes = int(block_size)
 
@@ -296,12 +315,12 @@ def start_elbencho_iops_mode(ip: str, ssh_pod: str, ssh_pod_ns: str,
     )
 
     logger.debug(f"{log_prefix} Write command: {write_cmd}")
-    logger.debug(f"{log_prefix} Calculated: iops_per_direction={iops_per_direction}, iops_per_thread={iops_per_thread}, "
-                 f"block_bytes={block_bytes}, limit_bytes={limit_bytes} (per thread)")
-
-    rc, _, stderr = ssh_exec_command(
-        ip, write_cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger, timeout=30
+    logger.debug(
+        f"{log_prefix} Calculated: iops_per_direction={iops_per_direction}, iops_per_thread={iops_per_thread}, "
+        f"block_bytes={block_bytes}, limit_bytes={limit_bytes} (per thread)"
     )
+
+    rc, _, stderr = ssh_exec_command(ip, write_cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger, timeout=30)
     if rc != 0:
         logger.warning(f"{log_prefix} Failed to start write elbencho: {stderr}")
         return False
@@ -319,26 +338,35 @@ def start_elbencho_iops_mode(ip: str, ssh_pod: str, ssh_pod_ns: str,
 
     logger.debug(f"{log_prefix} Read command: {read_cmd}")
 
-    rc, _, stderr = ssh_exec_command(
-        ip, read_cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger, timeout=30
-    )
+    rc, _, stderr = ssh_exec_command(ip, read_cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger, timeout=30)
     if rc != 0:
         logger.warning(f"{log_prefix} Failed to start read elbencho: {stderr}")
         return False
 
     duration_desc = f"{duration}s" if duration > 0 else "infinite"
-    logger.info(f"{log_prefix} Started IOPS mode: {iops} total IOPS ({iops_per_direction} read + {iops_per_direction} write), "
-                f"{block_size} block, {threads} threads ({iops_per_thread} IOPS/thread), iodepth {iodepth}, "
-                f"{len(disks)} disks, duration: {duration_desc}")
+    logger.info(
+        f"{log_prefix} Started IOPS mode: {iops} total IOPS ({iops_per_direction} read + {iops_per_direction} write), "
+        f"{block_size} block, {threads} threads ({iops_per_thread} IOPS/thread), iodepth {iodepth}, "
+        f"{len(disks)} disks, duration: {duration_desc}"
+    )
     return True
 
 
-def start_elbencho_rwmix_mode(ip: str, ssh_pod: str, ssh_pod_ns: str,
-                               vm_user: str, vm_password: str,
-                               block_size: str, disks: List[str],
-                               rwmixpct: int, iodepth: int, threads: int,
-                               duration: int,
-                               logger: logging.Logger, log_prefix: str) -> bool:
+def start_elbencho_rwmix_mode(
+    ip: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    vm_user: str,
+    vm_password: str,
+    block_size: str,
+    disks: List[str],
+    rwmixpct: int,
+    iodepth: int,
+    threads: int,
+    duration: int,
+    logger: logging.Logger,
+    log_prefix: str,
+) -> bool:
     """Start elbencho in rwmixpct mode - single process with mixed read/write.
 
     Args:
@@ -351,13 +379,18 @@ def start_elbencho_rwmix_mode(ip: str, ssh_pod: str, ssh_pod_ns: str,
         logger.warning(f"{log_prefix} No disks available for IO")
         return False
 
-    disk_args = ' '.join(disks)
+    disk_args = " ".join(disks)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Create directories
     ssh_exec_command(
-        ip, "mkdir -p /var/log/elbencho /root/elbencho_results /var/run/elbencho",
-        ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
+        ip,
+        "mkdir -p /var/log/elbencho /root/elbencho_results /var/run/elbencho",
+        ssh_pod,
+        ssh_pod_ns,
+        vm_user,
+        vm_password,
+        logger,
     )
 
     # Time limit or infinite loop
@@ -380,32 +413,29 @@ def start_elbencho_rwmix_mode(ip: str, ssh_pod: str, ssh_pod_ns: str,
         f"echo $! > /var/run/elbencho/rwmix.pid"
     )
 
-    rc, _, stderr = ssh_exec_command(
-        ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger, timeout=30
-    )
+    rc, _, stderr = ssh_exec_command(ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger, timeout=30)
     if rc != 0:
         logger.warning(f"{log_prefix} Failed to start rwmix elbencho: {stderr}")
         return False
 
     duration_desc = f"{duration}s" if duration > 0 else "infinite"
-    logger.info(f"{log_prefix} Started rwmix mode: {rwmixpct}% read / {100-rwmixpct}% write, "
-                f"{block_size} block, {threads} threads, iodepth {iodepth}, {len(disks)} disks, duration: {duration_desc}")
+    logger.info(
+        f"{log_prefix} Started rwmix mode: {rwmixpct}% read / {100-rwmixpct}% write, "
+        f"{block_size} block, {threads} threads, iodepth {iodepth}, {len(disks)} disks, duration: {duration_desc}"
+    )
     return True
 
 
-def get_elbencho_result_files(ip: str, ssh_pod: str, ssh_pod_ns: str,
-                              vm_user: str, vm_password: str,
-                              logger: logging.Logger,
-                              log_prefix: str = "") -> List[dict]:
+def get_elbencho_result_files(
+    ip: str, ssh_pod: str, ssh_pod_ns: str, vm_user: str, vm_password: str, logger: logging.Logger, log_prefix: str = ""
+) -> List[dict]:
     """Get list of result file sets from running elbencho processes.
 
     Returns list of dicts with keys: json, txt, csv, live_csv
     """
     # Get command lines of running elbencho processes to find file paths
     cmd = "ps aux | grep elbencho | grep -v grep | grep jsonfile"
-    rc, stdout, stderr = ssh_exec_command(
-        ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
-    )
+    rc, stdout, stderr = ssh_exec_command(ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger)
 
     logger.debug(f"{log_prefix} get_elbencho_result_files: rc={rc}, stdout_len={len(stdout) if stdout else 0}")
     logger.debug(f"{log_prefix} ps output: {stdout[:500] if stdout else 'empty'}")
@@ -413,24 +443,25 @@ def get_elbencho_result_files(ip: str, ssh_pod: str, ssh_pod_ns: str,
     result_sets = []
     if rc == 0 and stdout.strip():
         import re
-        for line in stdout.strip().split('\n'):
+
+        for line in stdout.strip().split("\n"):
             logger.debug(f"{log_prefix} Processing line: {line[:200]}")
             files = {}
             # Extract --jsonfile path
-            json_match = re.search(r'--jsonfile\s+(\S+)', line)
+            json_match = re.search(r"--jsonfile\s+(\S+)", line)
             if json_match:
                 files["json"] = json_match.group(1)
                 logger.debug(f"{log_prefix} Found json: {files['json']}")
             # Extract --resfile path (txt)
-            res_match = re.search(r'--resfile\s+(\S+)', line)
+            res_match = re.search(r"--resfile\s+(\S+)", line)
             if res_match:
                 files["txt"] = res_match.group(1)
             # Extract --csvfile path
-            csv_match = re.search(r'--csvfile\s+(\S+)', line)
+            csv_match = re.search(r"--csvfile\s+(\S+)", line)
             if csv_match:
                 files["csv"] = csv_match.group(1)
             # Extract --livecsv path
-            live_match = re.search(r'--livecsv\s+(\S+)', line)
+            live_match = re.search(r"--livecsv\s+(\S+)", line)
             if live_match:
                 files["live_csv"] = live_match.group(1)
 
@@ -443,11 +474,16 @@ def get_elbencho_result_files(ip: str, ssh_pod: str, ssh_pod_ns: str,
     return result_sets
 
 
-def gather_results_from_vm(namespace: str, vm_name: str,
-                           ssh_pod: str, ssh_pod_ns: str,
-                           vm_user: str, vm_password: str,
-                           output_dir: str,
-                           logger: logging.Logger) -> dict:
+def gather_results_from_vm(
+    namespace: str,
+    vm_name: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    vm_user: str,
+    vm_password: str,
+    output_dir: str,
+    logger: logging.Logger,
+) -> dict:
     """Gather elbencho results from a VM.
 
     Returns dict with:
@@ -472,7 +508,7 @@ def gather_results_from_vm(namespace: str, vm_name: str,
         "min_latency_us": 0,
         "max_latency_us": 0,
         "skipped": False,
-        "error": None
+        "error": None,
     }
 
     # Get VM IP
@@ -520,19 +556,19 @@ def gather_results_from_vm(namespace: str, vm_name: str,
 
             logger.debug(f"{log_prefix} Downloading {file_type}: {remote_path}")
             cmd = f"cat {remote_path}"
-            rc, stdout, stderr = ssh_exec_command(
-                ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
-            )
+            rc, stdout, stderr = ssh_exec_command(ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger)
 
             logger.debug(f"{log_prefix} cat {remote_path}: rc={rc}, stdout_len={len(stdout) if stdout else 0}")
             if rc != 0 or not stdout.strip():
-                logger.debug(f"{log_prefix} Failed to read {remote_path}: rc={rc}, stderr={stderr[:200] if stderr else 'none'}")
+                logger.debug(
+                    f"{log_prefix} Failed to read {remote_path}: rc={rc}, stderr={stderr[:200] if stderr else 'none'}"
+                )
                 continue
 
             # Save file locally
             local_filename = os.path.basename(remote_path)
             local_path = f"{vm_output_dir}/{local_filename}"
-            with open(local_path, 'w') as f:
+            with open(local_path, "w") as f:
                 f.write(stdout)
             logger.debug(f"{log_prefix} Saved {local_filename} ({len(stdout)} bytes)")
 
@@ -607,12 +643,9 @@ def gather_results_from_vm(namespace: str, vm_name: str,
                         max_lat = max(max_lat, read_max_lat)
 
                 if avg_lat > 0:
-                    result["latencies"].append({
-                        "file": json_file_name,
-                        "avg_us": avg_lat,
-                        "min_us": min_lat,
-                        "max_us": max_lat
-                    })
+                    result["latencies"].append(
+                        {"file": json_file_name, "avg_us": avg_lat, "min_us": min_lat, "max_us": max_lat}
+                    )
 
             total_iops = write_iops + (read_iops if "RWMIX" in phase_type or "MIX" in phase_type else 0)
             logger.debug(f"{log_prefix} Parsed {json_file_name}: phase={phase_type}, total_iops={total_iops}")
@@ -627,28 +660,36 @@ def gather_results_from_vm(namespace: str, vm_name: str,
 
     # Calculate average latency
     if result["latencies"]:
-        result["avg_latency_us"] = sum(l["avg_us"] for l in result["latencies"]) / len(result["latencies"])
-        result["min_latency_us"] = min(l["min_us"] for l in result["latencies"])
-        result["max_latency_us"] = max(l["max_us"] for l in result["latencies"])
+        result["avg_latency_us"] = sum(lat["avg_us"] for lat in result["latencies"]) / len(result["latencies"])
+        result["min_latency_us"] = min(lat["min_us"] for lat in result["latencies"])
+        result["max_latency_us"] = max(lat["max_us"] for lat in result["latencies"])
 
-    logger.info(f"{log_prefix} Total IOPS: {result['total_iops']} (R:{result['total_read_iops']}/W:{result['total_write_iops']}), "
-                f"Throughput: {result['total_throughput_bytes']/1024/1024:.2f} MB/s, "
-                f"Avg Latency: {result['avg_latency_us']:.0f} us")
+    logger.info(
+        f"{log_prefix} Total IOPS: {result['total_iops']} (R:{result['total_read_iops']}/W:{result['total_write_iops']}), "
+        f"Throughput: {result['total_throughput_bytes']/1024/1024:.2f} MB/s, "
+        f"Avg Latency: {result['avg_latency_us']:.0f} us"
+    )
 
     return result
 
 
-def manage_service_on_vm(namespace: str, vm_name: str, action: str,
-                         ssh_pod: str, ssh_pod_ns: str,
-                         vm_user: str, vm_password: str,
-                         logger: logging.Logger,
-                         block_size: str = "4K",
-                         num_disks: int = 0,
-                         iops: int = 0,
-                         rwmixpct: int = 0,
-                         iodepth: int = 1,
-                         threads: int = 0,
-                         duration: int = 0) -> bool:
+def manage_service_on_vm(
+    namespace: str,
+    vm_name: str,
+    action: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    vm_user: str,
+    vm_password: str,
+    logger: logging.Logger,
+    block_size: str = "4K",
+    num_disks: int = 0,
+    iops: int = 0,
+    rwmixpct: int = 0,
+    iodepth: int = 1,
+    threads: int = 0,
+    duration: int = 0,
+) -> bool:
     """Start, stop, or change elbencho workload on a VM.
 
     Two modes:
@@ -688,16 +729,36 @@ def manage_service_on_vm(namespace: str, vm_name: str, action: str,
         if iops > 0:
             # IOPS mode - separate read/write processes
             return start_elbencho_iops_mode(
-                ip, ssh_pod, ssh_pod_ns, vm_user, vm_password,
-                block_size, disks, iops, iodepth, actual_threads, duration,
-                logger, log_prefix
+                ip,
+                ssh_pod,
+                ssh_pod_ns,
+                vm_user,
+                vm_password,
+                block_size,
+                disks,
+                iops,
+                iodepth,
+                actual_threads,
+                duration,
+                logger,
+                log_prefix,
             )
         elif rwmixpct > 0:
             # rwmixpct mode - single mixed process
             return start_elbencho_rwmix_mode(
-                ip, ssh_pod, ssh_pod_ns, vm_user, vm_password,
-                block_size, disks, rwmixpct, iodepth, actual_threads, duration,
-                logger, log_prefix
+                ip,
+                ssh_pod,
+                ssh_pod_ns,
+                vm_user,
+                vm_password,
+                block_size,
+                disks,
+                rwmixpct,
+                iodepth,
+                actual_threads,
+                duration,
+                logger,
+                log_prefix,
             )
         else:
             logger.error(f"{log_prefix} Must specify either --iops or --rwmixpct")
@@ -720,9 +781,7 @@ def manage_service_on_vm(namespace: str, vm_name: str, action: str,
         logger.error(f"{log_prefix} Unknown action: {action}")
         return False
 
-    rc, stdout, stderr = ssh_exec_command(
-        ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger
-    )
+    rc, stdout, stderr = ssh_exec_command(ip, cmd, ssh_pod, ssh_pod_ns, vm_user, vm_password, logger)
 
     if action == "status":
         status = stdout.strip() if rc == 0 else "inactive"
@@ -738,78 +797,111 @@ def manage_service_on_vm(namespace: str, vm_name: str, action: str,
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Manage elbencho workloads on VMs"
+    parser = argparse.ArgumentParser(description="Manage elbencho workloads on VMs")
+    parser.add_argument("--namespace-prefix", required=True, help="Namespace prefix (e.g., datasource-clone)")
+    parser.add_argument("--start", type=int, required=True, help="Start namespace index")
+    parser.add_argument("--end", type=int, required=True, help="End namespace index")
+    parser.add_argument("--vm-name", required=True, help="VM name in each namespace")
+    parser.add_argument(
+        "--action",
+        required=True,
+        choices=[
+            "run-all",
+            "deploy",
+            "start",
+            "stop",
+            "restart",
+            "status",
+            "stop-all",
+            "change-workload",
+            "gather-results",
+            "cleanup",
+        ],
+        help="Action to perform (run-all: full workflow - deploy, workload, wait, gather, cleanup)",
     )
-    parser.add_argument("--namespace-prefix", required=True,
-                        help="Namespace prefix (e.g., datasource-clone)")
-    parser.add_argument("--start", type=int, required=True,
-                        help="Start namespace index")
-    parser.add_argument("--end", type=int, required=True,
-                        help="End namespace index")
-    parser.add_argument("--vm-name", required=True,
-                        help="VM name in each namespace")
-    parser.add_argument("--action", required=True,
-                        choices=["run-all", "deploy", "start", "stop", "restart", "status", "stop-all", "change-workload", "gather-results", "cleanup"],
-                        help="Action to perform (run-all: full workflow - deploy, workload, wait, gather, cleanup)")
 
     # Deploy action parameters
-    parser.add_argument("--vm-template", type=str, default=None,
-                        help="Path to VM template YAML (required for deploy and run-all actions)")
-    parser.add_argument("--secret-yaml", type=str, default=None,
-                        help="Path to cloudinit secret YAML file (optional, for deploy/run-all action)")
-    parser.add_argument("--save-results", action="store_true",
-                        help="Save results to JSON/CSV")
-    parser.add_argument("--ping-timeout", type=int, default=300,
-                        help="Timeout for ping tests in seconds (for deploy/run-all action, default: 300)")
+    parser.add_argument(
+        "--vm-template",
+        type=str,
+        default=None,
+        help="Path to VM template YAML (required for deploy and run-all actions)",
+    )
+    parser.add_argument(
+        "--secret-yaml",
+        type=str,
+        default=None,
+        help="Path to cloudinit secret YAML file (optional, for deploy/run-all action)",
+    )
+    parser.add_argument("--save-results", action="store_true", help="Save results to JSON/CSV")
+    parser.add_argument(
+        "--ping-timeout",
+        type=int,
+        default=300,
+        help="Timeout for ping tests in seconds (for deploy/run-all action, default: 300)",
+    )
 
     # Workload parameters for change-workload action
     # Mode 1: IOPS mode (--iops) - runs separate read/write processes
-    parser.add_argument("--iops", type=int, default=0,
-                        help="IOPS mode: Total IOPS (must be multiple of 2, split equally between read/write)")
+    parser.add_argument(
+        "--iops",
+        type=int,
+        default=0,
+        help="IOPS mode: Total IOPS (must be multiple of 2, split equally between read/write)",
+    )
 
     # Mode 2: rwmixpct mode (--rwmixpct) - runs single mixed process
-    parser.add_argument("--rwmixpct", type=int, default=0,
-                        help="rwmixpct mode: Read percentage (0-100), cannot be used with --iops")
+    parser.add_argument(
+        "--rwmixpct", type=int, default=0, help="rwmixpct mode: Read percentage (0-100), cannot be used with --iops"
+    )
 
     # Common parameters
-    parser.add_argument("--block-size", type=str, default="4K",
-                        help="Block size (default: 4K)")
-    parser.add_argument("--num-disks", type=int, default=0,
-                        help="Number of disks to use (0 = all available, default: 0)")
-    parser.add_argument("--iodepth", type=int, default=1,
-                        help="IO depth per thread (default: 1)")
-    parser.add_argument("--threads", type=int, default=0,
-                        help="Number of threads (0 = same as num disks, default: 0)")
-    parser.add_argument("--duration", type=int, default=0,
-                        help="Duration in seconds (0 = infinite, default: 0)")
+    parser.add_argument("--block-size", type=str, default="4K", help="Block size (default: 4K)")
+    parser.add_argument(
+        "--num-disks", type=int, default=0, help="Number of disks to use (0 = all available, default: 0)"
+    )
+    parser.add_argument("--iodepth", type=int, default=1, help="IO depth per thread (default: 1)")
+    parser.add_argument("--threads", type=int, default=0, help="Number of threads (0 = same as num disks, default: 0)")
+    parser.add_argument("--duration", type=int, default=0, help="Duration in seconds (0 = infinite, default: 0)")
 
     # gather-results parameters
-    parser.add_argument("--results-dir", type=str, default="./results",
-                        help="Base results directory (default: ./results)")
-    parser.add_argument("--storage-driver", type=str, default="Not-Specified",
-                        help="Storage driver for results folder (default: Not-Specified)")
-    parser.add_argument("--disks-per-vm", type=str, default="auto",
-                        help="Disks per VM for results folder name (default: auto-detect from first VM, fallback: 1-disk)")
-    parser.add_argument("--run-name", type=str, default=None,
-                        help="Custom run name (default: auto-generated with timestamp and VM count)")
-    parser.add_argument("--output-dir", type=str, default=None,
-                        help="DEPRECATED: Use --results-dir instead. Full output directory path (overrides --results-dir/--storage-driver/--disks-per-vm)")
+    parser.add_argument(
+        "--results-dir", type=str, default="./results", help="Base results directory (default: ./results)"
+    )
+    parser.add_argument(
+        "--storage-driver",
+        type=str,
+        default="Not-Specified",
+        help="Storage driver for results folder (default: Not-Specified)",
+    )
+    parser.add_argument(
+        "--disks-per-vm",
+        type=str,
+        default="auto",
+        help="Disks per VM for results folder name (default: auto-detect from first VM, fallback: 1-disk)",
+    )
+    parser.add_argument(
+        "--run-name",
+        type=str,
+        default=None,
+        help="Custom run name (default: auto-generated with timestamp and VM count)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="DEPRECATED: Use --results-dir instead. Full output directory path (overrides --results-dir/--storage-driver/--disks-per-vm)",
+    )
 
-    parser.add_argument("--ssh-pod", default="ssh-test-pod",
-                        help="SSH pod name (default: ssh-test-pod)")
-    parser.add_argument("--ssh-pod-ns", default="default",
-                        help="SSH pod namespace (default: default)")
-    parser.add_argument("--vm-user", default="root",
-                        help="VM SSH user (default: root)")
-    parser.add_argument("--vm-password", default="Password1",
-                        help="VM SSH password (default: Password1)")
-    parser.add_argument("--concurrency", type=int, default=20,
-                        help="Max concurrent operations (default: 20)")
-    parser.add_argument("--log-level", default="INFO",
-                        choices=["DEBUG", "INFO", "WARNING", "ERROR"])
-    parser.add_argument("--log-file", default=None,
-                        help="Path to log file. If not specified, uses default based on action.")
+    parser.add_argument("--ssh-pod", default="ssh-test-pod", help="SSH pod name (default: ssh-test-pod)")
+    parser.add_argument("--ssh-pod-ns", default="default", help="SSH pod namespace (default: default)")
+    parser.add_argument("--vm-user", default="root", help="VM SSH user (default: root)")
+    parser.add_argument("--vm-password", default="Password1", help="VM SSH password (default: Password1)")
+    parser.add_argument("--concurrency", type=int, default=20, help="Max concurrent operations (default: 20)")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument(
+        "--log-file", default=None, help="Path to log file. If not specified, uses default based on action."
+    )
 
     args = parser.parse_args()
 
@@ -861,7 +953,9 @@ def main():
             logger.info(f"Mode: IOPS ({args.iops} total = {args.iops//2} read + {args.iops//2} write)")
         else:
             logger.info(f"Mode: rwmixpct ({args.rwmixpct}% read / {100-args.rwmixpct}% write)")
-        logger.info(f"Block size: {args.block_size}, Disks: {disk_info}, {thread_info}, iodepth: {args.iodepth}, Duration: {duration_info}")
+        logger.info(
+            f"Block size: {args.block_size}, Disks: {disk_info}, {thread_info}, iodepth: {args.iodepth}, Duration: {duration_info}"
+        )
 
     start_time = datetime.now()
 
@@ -883,9 +977,15 @@ def main():
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
             futures = {
                 executor.submit(
-                    gather_results_from_vm, ns, vm_name,
-                    args.ssh_pod, args.ssh_pod_ns, args.vm_user, args.vm_password,
-                    output_dir, logger
+                    gather_results_from_vm,
+                    ns,
+                    vm_name,
+                    args.ssh_pod,
+                    args.ssh_pod_ns,
+                    args.vm_user,
+                    args.vm_password,
+                    output_dir,
+                    logger,
                 ): (ns, vm_name)
                 for ns, vm_name in vm_targets
             }
@@ -949,7 +1049,9 @@ def main():
         logger.info("-" * 80)
         for r in sorted(all_results, key=lambda x: x["namespace"]):
             throughput_mb = r["total_throughput_bytes"] / 1024 / 1024
-            logger.info(f"{r['namespace']:<30} {r['total_iops']:>10,} {throughput_mb:>12.2f} MB/s {r['avg_latency_us']:>15.0f}")
+            logger.info(
+                f"{r['namespace']:<30} {r['total_iops']:>10,} {throughput_mb:>12.2f} MB/s {r['avg_latency_us']:>15.0f}"
+            )
         logger.info("=" * 80)
 
         # Save aggregated results to JSON
@@ -967,13 +1069,13 @@ def main():
                 "write_throughput_bytes": total_write_throughput,
                 "avg_latency_us": avg_latency,
                 "min_latency_us": min(min_latencies) if min_latencies else 0,
-                "max_latency_us": max(max_latencies) if max_latencies else 0
+                "max_latency_us": max(max_latencies) if max_latencies else 0,
             },
-            "per_vm_results": all_results
+            "per_vm_results": all_results,
         }
 
         summary_file = f"{output_dir}/aggregated_results.json"
-        with open(summary_file, 'w') as f:
+        with open(summary_file, "w") as f:
             json.dump(summary, f, indent=2)
         logger.info(f"Results saved to: {output_dir}/")
         logger.info(f"Aggregated summary: {summary_file}")
@@ -995,8 +1097,8 @@ def main():
 
         # Find the datasource-clone script
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        repo_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-        datasource_clone_script = os.path.join(repo_root, 'datasource-clone', 'measure-vm-creation-time.py')
+        repo_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
+        datasource_clone_script = os.path.join(repo_root, "datasource-clone", "measure-vm-creation-time.py")
 
         if not os.path.exists(datasource_clone_script):
             logger.error(f"datasource-clone script not found: {datasource_clone_script}")
@@ -1004,33 +1106,44 @@ def main():
 
         # Build command to call datasource-clone
         cmd = [
-            sys.executable, datasource_clone_script,
-            '--start', str(args.start),
-            '--end', str(args.end),
-            '--vm-name', args.vm_name,
-            '--vm-template', args.vm_template,
-            '--namespace-prefix', args.namespace_prefix,
-            '--concurrency', str(args.concurrency),
-            '--ping-timeout', str(args.ping_timeout),
-            '--ssh-pod', args.ssh_pod,
-            '--ssh-pod-ns', args.ssh_pod_ns,
-            '--log-level', args.log_level,
+            sys.executable,
+            datasource_clone_script,
+            "--start",
+            str(args.start),
+            "--end",
+            str(args.end),
+            "--vm-name",
+            args.vm_name,
+            "--vm-template",
+            args.vm_template,
+            "--namespace-prefix",
+            args.namespace_prefix,
+            "--concurrency",
+            str(args.concurrency),
+            "--ping-timeout",
+            str(args.ping_timeout),
+            "--ssh-pod",
+            args.ssh_pod,
+            "--ssh-pod-ns",
+            args.ssh_pod_ns,
+            "--log-level",
+            args.log_level,
         ]
 
         if args.secret_yaml:
-            cmd.extend(['--secret-yaml', args.secret_yaml])
+            cmd.extend(["--secret-yaml", args.secret_yaml])
 
         if args.save_results:
-            cmd.append('--save-results')
-            cmd.extend(['--results-folder', args.results_dir])
+            cmd.append("--save-results")
+            cmd.extend(["--results-folder", args.results_dir])
             if args.storage_driver != "Not-Specified":
-                cmd.extend(['--storage-driver', args.storage_driver])
+                cmd.extend(["--storage-driver", args.storage_driver])
 
         logger.info(f"Running: {' '.join(cmd[:3])}...")
         logger.debug(f"Full command: {' '.join(cmd)}")
 
         try:
-            result = subprocess.run(cmd, cwd=repo_root)
+            result = subprocess.run(cmd, cwd=repo_root, check=False)
             if result.returncode != 0:
                 logger.error(f"Deploy failed with return code: {result.returncode}")
                 sys.exit(result.returncode)
@@ -1046,7 +1159,7 @@ def main():
 
     # Handle cleanup action
     if args.action == "cleanup":
-        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+        sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
         from utils.common import cleanup_test_namespaces
 
         logger.info("=" * 60)
@@ -1063,7 +1176,7 @@ def main():
             vm_name=args.vm_name,
             delete_namespaces=True,
             batch_size=20,
-            logger=logger
+            logger=logger,
         )
 
         elapsed = (datetime.now() - start_time).total_seconds()
@@ -1079,7 +1192,9 @@ def main():
         logger.info("=" * 60)
         logger.info("ELBENCHO - FULL RUN")
         logger.info("=" * 60)
-        logger.info(f"Namespaces: {args.namespace_prefix}-{args.start} to {args.namespace_prefix}-{args.end} ({len(vm_targets)} VMs)")
+        logger.info(
+            f"Namespaces: {args.namespace_prefix}-{args.start} to {args.namespace_prefix}-{args.end} ({len(vm_targets)} VMs)"
+        )
         logger.info(f"VM Template: {args.vm_template}")
         disk_info = f"{args.num_disks} disks" if args.num_disks > 0 else "all disks"
         thread_info = f"{args.threads} threads" if args.threads > 0 else "threads=disks"
@@ -1095,34 +1210,45 @@ def main():
         logger.info("")
         logger.info("[1/4] Deploying VMs...")
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        repo_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-        datasource_clone_script = os.path.join(repo_root, 'datasource-clone', 'measure-vm-creation-time.py')
+        repo_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
+        datasource_clone_script = os.path.join(repo_root, "datasource-clone", "measure-vm-creation-time.py")
 
         if not os.path.exists(datasource_clone_script):
             logger.error(f"datasource-clone script not found: {datasource_clone_script}")
             sys.exit(1)
 
         deploy_cmd = [
-            sys.executable, datasource_clone_script,
-            '--start', str(args.start),
-            '--end', str(args.end),
-            '--vm-name', args.vm_name,
-            '--vm-template', args.vm_template,
-            '--namespace-prefix', args.namespace_prefix,
-            '--concurrency', str(args.concurrency),
-            '--ping-timeout', str(args.ping_timeout),
-            '--ssh-pod', args.ssh_pod,
-            '--ssh-pod-ns', args.ssh_pod_ns,
-            '--log-level', args.log_level,
+            sys.executable,
+            datasource_clone_script,
+            "--start",
+            str(args.start),
+            "--end",
+            str(args.end),
+            "--vm-name",
+            args.vm_name,
+            "--vm-template",
+            args.vm_template,
+            "--namespace-prefix",
+            args.namespace_prefix,
+            "--concurrency",
+            str(args.concurrency),
+            "--ping-timeout",
+            str(args.ping_timeout),
+            "--ssh-pod",
+            args.ssh_pod,
+            "--ssh-pod-ns",
+            args.ssh_pod_ns,
+            "--log-level",
+            args.log_level,
         ]
 
         if args.secret_yaml:
-            deploy_cmd.extend(['--secret-yaml', args.secret_yaml])
+            deploy_cmd.extend(["--secret-yaml", args.secret_yaml])
 
         logger.debug(f"Deploy command: {' '.join(deploy_cmd)}")
 
         try:
-            result = subprocess.run(deploy_cmd, cwd=repo_root)
+            result = subprocess.run(deploy_cmd, cwd=repo_root, check=False)
             if result.returncode != 0:
                 logger.error(f"Deploy failed with return code: {result.returncode}")
                 sys.exit(result.returncode)
@@ -1148,10 +1274,22 @@ def main():
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
             futures = {
                 executor.submit(
-                    manage_service_on_vm, ns, vm_name, "change-workload",
-                    args.ssh_pod, args.ssh_pod_ns, args.vm_user, args.vm_password, logger,
-                    args.block_size, args.num_disks, args.iops, args.rwmixpct,
-                    args.iodepth, args.threads, args.duration
+                    manage_service_on_vm,
+                    ns,
+                    vm_name,
+                    "change-workload",
+                    args.ssh_pod,
+                    args.ssh_pod_ns,
+                    args.vm_user,
+                    args.vm_password,
+                    logger,
+                    args.block_size,
+                    args.num_disks,
+                    args.iops,
+                    args.rwmixpct,
+                    args.iodepth,
+                    args.threads,
+                    args.duration,
                 ): (ns, vm_name)
                 for ns, vm_name in vm_targets
             }
@@ -1189,7 +1327,7 @@ def main():
             elapsed_wait = (datetime.now() - wait_start).total_seconds()
             logger.info(f"  Progress: {elapsed_wait:.0f}s / {args.duration}s ({100*elapsed_wait/args.duration:.1f}%)")
 
-        logger.info(f"Workload duration completed")
+        logger.info("Workload duration completed")
 
         # Step 4: Gather results
         logger.info("")
@@ -1205,9 +1343,15 @@ def main():
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
             futures = {
                 executor.submit(
-                    gather_results_from_vm, ns, vm_name,
-                    args.ssh_pod, args.ssh_pod_ns, args.vm_user, args.vm_password,
-                    output_dir, logger
+                    gather_results_from_vm,
+                    ns,
+                    vm_name,
+                    args.ssh_pod,
+                    args.ssh_pod_ns,
+                    args.vm_user,
+                    args.vm_password,
+                    output_dir,
+                    logger,
                 ): (ns, vm_name)
                 for ns, vm_name in vm_targets
             }
@@ -1282,7 +1426,7 @@ def main():
                     "num_disks": args.num_disks,
                     "iodepth": args.iodepth,
                     "threads": args.threads,
-                    "duration": args.duration
+                    "duration": args.duration,
                 },
                 "aggregated": {
                     "total_iops": total_iops,
@@ -1293,13 +1437,13 @@ def main():
                     "write_throughput_bytes": total_write_throughput,
                     "avg_latency_us": avg_latency,
                     "min_latency_us": min(min_latencies) if min_latencies else 0,
-                    "max_latency_us": max(max_latencies) if max_latencies else 0
+                    "max_latency_us": max(max_latencies) if max_latencies else 0,
                 },
-                "per_vm_results": all_results
+                "per_vm_results": all_results,
             }
 
             summary_file = f"{output_dir}/aggregated_results.json"
-            with open(summary_file, 'w') as f:
+            with open(summary_file, "w") as f:
                 json.dump(summary, f, indent=2)
             logger.info(f"Results saved to: {output_dir}/")
             logger.info(f"Aggregated summary: {summary_file}")
@@ -1313,10 +1457,22 @@ def main():
     with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
         futures = {
             executor.submit(
-                manage_service_on_vm, ns, vm_name, args.action,
-                args.ssh_pod, args.ssh_pod_ns, args.vm_user, args.vm_password, logger,
-                args.block_size, args.num_disks, args.iops, args.rwmixpct,
-                args.iodepth, args.threads, args.duration
+                manage_service_on_vm,
+                ns,
+                vm_name,
+                args.action,
+                args.ssh_pod,
+                args.ssh_pod_ns,
+                args.vm_user,
+                args.vm_password,
+                logger,
+                args.block_size,
+                args.num_disks,
+                args.iops,
+                args.rwmixpct,
+                args.iodepth,
+                args.threads,
+                args.duration,
             ): (ns, vm_name)
             for ns, vm_name in vm_targets
         }

@@ -87,4 +87,3 @@ At the end of the run a summary table shows, per node:
   most production clusters.
 * When chaining with [`power-toggle-vms`](power-toggle-vms.md), drain
   *after* powering off VMs to avoid unnecessary live migrations.
-

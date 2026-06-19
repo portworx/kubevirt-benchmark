@@ -48,30 +48,32 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from utils.common import (
-    setup_logging,
-    run_kubectl_command,
-    ping_vm,
     cleanup_test_namespaces,
     confirm_cleanup,
-    remove_far_annotation,
     delete_far_resource,
-    uncordon_node,
+    ping_vm,
+    remove_far_annotation,
+    run_kubectl_command,
     save_results,
+    setup_logging,
+    uncordon_node,
 )
 
+
 # Default values
-DEFAULT_VM_NAME = 'rhel-9-vm'
-DEFAULT_NAMESPACE_PREFIX = 'perf-test'
-DEFAULT_FAR_CONFIG = 'far-template.yaml'
+DEFAULT_VM_NAME = "rhel-9-vm"
+DEFAULT_NAMESPACE_PREFIX = "perf-test"
+DEFAULT_FAR_CONFIG = "far-template.yaml"
 DEFAULT_POLL_INTERVAL = 2
 DEFAULT_CONCURRENCY = 128
-DEFAULT_NODE_TIMEOUT = 600       # 10 minutes for node to go down
-DEFAULT_RECOVERY_TIMEOUT = 600   # 10 minutes for VMs to recover
-DEFAULT_SSH_POD = 'ssh-test-pod'
-DEFAULT_SSH_POD_NS = 'default'
+DEFAULT_NODE_TIMEOUT = 600  # 10 minutes for node to go down
+DEFAULT_RECOVERY_TIMEOUT = 600  # 10 minutes for VMs to recover
+DEFAULT_SSH_POD = "ssh-test-pod"
+DEFAULT_SSH_POD_NS = "default"
 
 
 def run_kubectl(args: List[str], logger: Optional[logging.Logger] = None) -> Tuple[int, str, str]:
@@ -81,18 +83,15 @@ def run_kubectl(args: List[str], logger: Optional[logging.Logger] = None) -> Tup
     except Exception as e:
         if logger:
             logger.error(f"kubectl command failed: {e}")
-        return 1, '', str(e)
+        return 1, "", str(e)
 
 
-def get_vmis_on_node(node_name: str, vm_name: str, namespace_prefix: str,
-                     logger: logging.Logger) -> List[str]:
+def get_vmis_on_node(node_name: str, vm_name: str, namespace_prefix: str, logger: logging.Logger) -> List[str]:
     """
     Get list of namespaces with VMIs running on the specified node.
     Must be called BEFORE node failure to capture which VMIs are on the node.
     """
-    returncode, output, stderr = run_kubectl(
-        ['get', 'vmi', '--all-namespaces', '-o', 'json'], logger=logger
-    )
+    returncode, output, stderr = run_kubectl(["get", "vmi", "--all-namespaces", "-o", "json"], logger=logger)
 
     if returncode != 0:
         logger.error(f"Failed to get VMIs: {stderr}")
@@ -105,11 +104,11 @@ def get_vmis_on_node(node_name: str, vm_name: str, namespace_prefix: str,
         return []
 
     namespaces = []
-    for vmi in vmis_data.get('items', []):
-        vmi_n = vmi.get('metadata', {}).get('name', '')
-        namespace = vmi.get('metadata', {}).get('namespace', '')
-        scheduled_node = vmi.get('status', {}).get('nodeName', '')
-        phase = vmi.get('status', {}).get('phase', '')
+    for vmi in vmis_data.get("items", []):
+        vmi_n = vmi.get("metadata", {}).get("name", "")
+        namespace = vmi.get("metadata", {}).get("namespace", "")
+        scheduled_node = vmi.get("status", {}).get("nodeName", "")
+        phase = vmi.get("status", {}).get("phase", "")
 
         if vmi_n != vm_name:
             continue
@@ -125,9 +124,7 @@ def get_vmis_on_node(node_name: str, vm_name: str, namespace_prefix: str,
 def remove_node_selector(namespace: str, vm_name: str, logger: logging.Logger) -> bool:
     """Remove nodeSelector from a VM to allow rescheduling."""
     returncode, output, _ = run_kubectl(
-        ['get', 'vm', vm_name, '-n', namespace,
-         '-o', 'jsonpath={.spec.template.spec.nodeSelector}'],
-        logger=logger
+        ["get", "vm", vm_name, "-n", namespace, "-o", "jsonpath={.spec.template.spec.nodeSelector}"], logger=logger
     )
 
     if returncode != 0 or not output.strip():
@@ -135,9 +132,17 @@ def remove_node_selector(namespace: str, vm_name: str, logger: logging.Logger) -
         return True
 
     returncode, _, stderr = run_kubectl(
-        ['patch', 'vm', vm_name, '-n', namespace, '--type=json',
-         '-p', '[{"op":"remove","path":"/spec/template/spec/nodeSelector"}]'],
-        logger=logger
+        [
+            "patch",
+            "vm",
+            vm_name,
+            "-n",
+            namespace,
+            "--type=json",
+            "-p",
+            '[{"op":"remove","path":"/spec/template/spec/nodeSelector"}]',
+        ],
+        logger=logger,
     )
 
     if returncode == 0:
@@ -148,8 +153,9 @@ def remove_node_selector(namespace: str, vm_name: str, logger: logging.Logger) -
     return False
 
 
-def remove_node_selectors_parallel(namespaces: List[str], vm_name: str,
-                                   concurrency: int, logger: logging.Logger) -> Tuple[int, int]:
+def remove_node_selectors_parallel(
+    namespaces: List[str], vm_name: str, concurrency: int, logger: logging.Logger
+) -> Tuple[int, int]:
     """Remove nodeSelector from all VMs in parallel. Returns (success_count, fail_count)."""
     logger.info(f"Removing nodeSelector from {len(namespaces)} VMs...")
 
@@ -157,10 +163,7 @@ def remove_node_selectors_parallel(namespaces: List[str], vm_name: str,
     failed = 0
 
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
-        futures = {
-            executor.submit(remove_node_selector, ns, vm_name, logger): ns
-            for ns in namespaces
-        }
+        futures = {executor.submit(remove_node_selector, ns, vm_name, logger): ns for ns in namespaces}
         for future in as_completed(futures):
             ns = futures[future]
             try:
@@ -183,7 +186,7 @@ def apply_far_config(far_config: str, logger: logging.Logger) -> bool:
         return False
 
     logger.info(f"Applying FAR configuration from {far_config}")
-    returncode, _, stderr = run_kubectl(['apply', '-f', far_config], logger=logger)
+    returncode, _, stderr = run_kubectl(["apply", "-f", far_config], logger=logger)
 
     if returncode != 0:
         logger.error(f"Failed to apply FAR config: {stderr}")
@@ -200,7 +203,7 @@ def remove_far_config(far_config: str, logger: logging.Logger) -> bool:
         return False
 
     logger.info(f"Removing FAR configuration from {far_config}")
-    returncode, _, stderr = run_kubectl(['delete', '-f', far_config], logger=logger)
+    returncode, _, stderr = run_kubectl(["delete", "-f", far_config], logger=logger)
 
     if returncode != 0:
         logger.warning(f"Failed to remove FAR config: {stderr}")
@@ -210,14 +213,13 @@ def remove_far_config(far_config: str, logger: logging.Logger) -> bool:
     return True
 
 
-def wait_for_node_down(node_name: str, timeout: int, mode: str,
-                       logger: logging.Logger) -> Optional[datetime]:
+def wait_for_node_down(node_name: str, timeout: int, mode: str, logger: logging.Logger) -> Optional[datetime]:
     """
     Wait for the target node to become NotReady.
     In manual mode, prompt the operator to power off the node via BMC.
     Returns the timestamp the node was first observed NotReady, or None on timeout.
     """
-    if mode == 'manual':
+    if mode == "manual":
         logger.info("=" * 70)
         logger.info(f"ACTION REQUIRED: Power off node '{node_name}' via BMC/IPMI now")
         logger.info("=" * 70)
@@ -227,15 +229,12 @@ def wait_for_node_down(node_name: str, timeout: int, mode: str,
 
     while time.time() - start < timeout:
         returncode, output, _ = run_kubectl(
-            ['get', 'node', node_name, '-o',
-             'jsonpath={.status.conditions[?(@.type=="Ready")].status}'],
-            logger=logger
+            ["get", "node", node_name, "-o", 'jsonpath={.status.conditions[?(@.type=="Ready")].status}'], logger=logger
         )
 
-        if returncode == 0 and output.strip() in ('False', 'Unknown'):
+        if returncode == 0 and output.strip() in ("False", "Unknown"):
             down_ts = datetime.utcnow()
-            logger.info(f"Node {node_name} is NotReady at {down_ts.isoformat()}Z "
-                        f"(status={output.strip()})")
+            logger.info(f"Node {node_name} is NotReady at {down_ts.isoformat()}Z " f"(status={output.strip()})")
             return down_ts
 
         time.sleep(2)
@@ -244,69 +243,72 @@ def wait_for_node_down(node_name: str, timeout: int, mode: str,
     return None
 
 
-def get_vmi_status(namespace: str, vmi_name: str,
-                   logger: logging.Logger) -> Tuple[str, bool, str]:
+def get_vmi_status(namespace: str, vmi_name: str, logger: logging.Logger) -> Tuple[str, bool, str]:
     """
     Get VMI phase, ready status, and IP via JSON.
     Returns (phase, ready, ip).
     """
-    returncode, output, _ = run_kubectl(
-        ['get', 'vmi', vmi_name, '-n', namespace, '-o', 'json'],
-        logger=logger
-    )
+    returncode, output, _ = run_kubectl(["get", "vmi", vmi_name, "-n", namespace, "-o", "json"], logger=logger)
 
     if returncode != 0:
-        return '', False, ''
+        return "", False, ""
 
     try:
         vmi_data = json.loads(output)
     except json.JSONDecodeError:
-        return '', False, ''
+        return "", False, ""
 
-    phase = vmi_data.get('status', {}).get('phase', '')
+    phase = vmi_data.get("status", {}).get("phase", "")
 
     ready = False
-    for cond in vmi_data.get('status', {}).get('conditions', []):
-        if cond.get('type') == 'Ready' and cond.get('status') == 'True':
+    for cond in vmi_data.get("status", {}).get("conditions", []):
+        if cond.get("type") == "Ready" and cond.get("status") == "True":
             ready = True
             break
 
-    ip = ''
-    interfaces = vmi_data.get('status', {}).get('interfaces', [])
+    ip = ""
+    interfaces = vmi_data.get("status", {}).get("interfaces", [])
     if interfaces:
-        ip = interfaces[0].get('ipAddress', '')
+        ip = interfaces[0].get("ipAddress", "")
 
     return phase, ready, ip
 
 
-def wait_for_vmi_running(namespace: str, vmi_name: str, start_ts: datetime,
-                         poll_interval: int, timeout: int,
-                         logger: logging.Logger) -> Tuple[str, float]:
+def wait_for_vmi_running(
+    namespace: str, vmi_name: str, start_ts: datetime, poll_interval: int, timeout: int, logger: logging.Logger
+) -> Tuple[str, float]:
     """Wait for VMI to be Running and Ready. Returns (final_phase, recovery_seconds)."""
     deadline = time.time() + timeout
 
     while time.time() < deadline:
         phase, ready, _ = get_vmi_status(namespace, vmi_name, logger)
 
-        if phase == 'Running' and ready:
+        if phase == "Running" and ready:
             elapsed = (datetime.utcnow() - start_ts).total_seconds()
             return phase, elapsed
 
         time.sleep(poll_interval)
 
-    return 'Timeout', -1.0
+    return "Timeout", -1.0
 
 
-def wait_for_ping_recovery(namespace: str, vmi_name: str, ssh_pod: str, ssh_pod_ns: str,
-                           start_ts: datetime, poll_interval: int, timeout: int,
-                           logger: logging.Logger) -> Tuple[bool, float, str]:
+def wait_for_ping_recovery(
+    namespace: str,
+    vmi_name: str,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    start_ts: datetime,
+    poll_interval: int,
+    timeout: int,
+    logger: logging.Logger,
+) -> Tuple[bool, float, str]:
     """
     Wait for the VM to respond to ping. The IP is re-fetched on each iteration in case
     it changes during recovery.
     Returns (ping_success, ping_recovery_seconds, ip).
     """
     deadline = time.time() + timeout
-    last_ip = ''
+    last_ip = ""
 
     while time.time() < deadline:
         _, _, ip = get_vmi_status(namespace, vmi_name, logger)
@@ -322,28 +324,35 @@ def wait_for_ping_recovery(namespace: str, vmi_name: str, ssh_pod: str, ssh_pod_
     return False, -1.0, last_ip
 
 
-def monitor_single_vm(namespace: str, vmi_name: str, node_down_ts: datetime,
-                      ssh_pod: str, ssh_pod_ns: str, poll_interval: int,
-                      recovery_timeout: int, do_ping: bool,
-                      logger: logging.Logger) -> Dict:
+def monitor_single_vm(
+    namespace: str,
+    vmi_name: str,
+    node_down_ts: datetime,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    poll_interval: int,
+    recovery_timeout: int,
+    do_ping: bool,
+    logger: logging.Logger,
+) -> Dict:
     """Monitor recovery of a single VMI. Returns a result dict."""
     result = {
-        'namespace': namespace,
-        'vmi': vmi_name,
-        'phase': '',
-        'recovery_seconds': -1.0,
-        'ping_success': False,
-        'ping_recovery_seconds': -1.0,
-        'ip': '',
+        "namespace": namespace,
+        "vmi": vmi_name,
+        "phase": "",
+        "recovery_seconds": -1.0,
+        "ping_success": False,
+        "ping_recovery_seconds": -1.0,
+        "ip": "",
     }
 
     phase, recovery_secs = wait_for_vmi_running(
         namespace, vmi_name, node_down_ts, poll_interval, recovery_timeout, logger
     )
-    result['phase'] = phase
-    result['recovery_seconds'] = recovery_secs
+    result["phase"] = phase
+    result["recovery_seconds"] = recovery_secs
 
-    if phase != 'Running' or recovery_secs < 0:
+    if phase != "Running" or recovery_secs < 0:
         logger.warning(f"[{namespace}/{vmi_name}] Did not reach Running+Ready (phase={phase})")
         return result
 
@@ -351,12 +360,11 @@ def monitor_single_vm(namespace: str, vmi_name: str, node_down_ts: datetime,
 
     if do_ping:
         ping_ok, ping_secs, ip = wait_for_ping_recovery(
-            namespace, vmi_name, ssh_pod, ssh_pod_ns,
-            node_down_ts, poll_interval, recovery_timeout, logger
+            namespace, vmi_name, ssh_pod, ssh_pod_ns, node_down_ts, poll_interval, recovery_timeout, logger
         )
-        result['ping_success'] = ping_ok
-        result['ping_recovery_seconds'] = ping_secs
-        result['ip'] = ip
+        result["ping_success"] = ping_ok
+        result["ping_recovery_seconds"] = ping_secs
+        result["ip"] = ip
 
         if ping_ok:
             logger.info(f"[{namespace}/{vmi_name}] Ping recovered in {ping_secs:.1f}s (IP={ip})")
@@ -366,21 +374,37 @@ def monitor_single_vm(namespace: str, vmi_name: str, node_down_ts: datetime,
     return result
 
 
-def monitor_vm_recovery(namespaces: List[str], vmi_name: str, node_down_ts: datetime,
-                        ssh_pod: str, ssh_pod_ns: str, poll_interval: int,
-                        recovery_timeout: int, concurrency: int, do_ping: bool,
-                        logger: logging.Logger) -> List[Dict]:
+def monitor_vm_recovery(
+    namespaces: List[str],
+    vmi_name: str,
+    node_down_ts: datetime,
+    ssh_pod: str,
+    ssh_pod_ns: str,
+    poll_interval: int,
+    recovery_timeout: int,
+    concurrency: int,
+    do_ping: bool,
+    logger: logging.Logger,
+) -> List[Dict]:
     """Monitor recovery of all VMIs in parallel."""
-    logger.info(f"Monitoring recovery of {len(namespaces)} VMIs "
-                f"(timeout={recovery_timeout}s, ping={do_ping})...")
+    logger.info(f"Monitoring recovery of {len(namespaces)} VMIs " f"(timeout={recovery_timeout}s, ping={do_ping})...")
 
     results: List[Dict] = []
 
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
         futures = {
-            executor.submit(monitor_single_vm, ns, vmi_name, node_down_ts,
-                            ssh_pod, ssh_pod_ns, poll_interval, recovery_timeout,
-                            do_ping, logger): ns
+            executor.submit(
+                monitor_single_vm,
+                ns,
+                vmi_name,
+                node_down_ts,
+                ssh_pod,
+                ssh_pod_ns,
+                poll_interval,
+                recovery_timeout,
+                do_ping,
+                logger,
+            ): ns
             for ns in namespaces
         }
         for future in as_completed(futures):
@@ -389,15 +413,17 @@ def monitor_vm_recovery(namespaces: List[str], vmi_name: str, node_down_ts: date
                 results.append(future.result())
             except Exception as e:
                 logger.error(f"[{ns}] Error monitoring VM: {e}")
-                results.append({
-                    'namespace': ns,
-                    'vmi': vmi_name,
-                    'phase': 'Error',
-                    'recovery_seconds': -1.0,
-                    'ping_success': False,
-                    'ping_recovery_seconds': -1.0,
-                    'ip': '',
-                })
+                results.append(
+                    {
+                        "namespace": ns,
+                        "vmi": vmi_name,
+                        "phase": "Error",
+                        "recovery_seconds": -1.0,
+                        "ping_success": False,
+                        "ping_recovery_seconds": -1.0,
+                        "ip": "",
+                    }
+                )
 
     return results
 
@@ -405,8 +431,8 @@ def monitor_vm_recovery(namespaces: List[str], vmi_name: str, node_down_ts: date
 def print_summary(results: List[Dict], do_ping: bool, logger: logging.Logger) -> None:
     """Print detailed per-VMI table and summary statistics."""
     total = len(results)
-    recovered = [r for r in results if r['phase'] == 'Running' and r['recovery_seconds'] >= 0]
-    pinged = [r for r in results if r['ping_success']]
+    recovered = [r for r in results if r["phase"] == "Running" and r["recovery_seconds"] >= 0]
+    pinged = [r for r in results if r["ping_success"]]
 
     logger.info("")
     logger.info("=" * 100)
@@ -416,21 +442,21 @@ def print_summary(results: List[Dict], do_ping: bool, logger: logging.Logger) ->
     if not do_ping:
         logger.info("Ping recovery checks were skipped (--skip-ping enabled)")
 
-    for r in sorted(results, key=lambda x: x['namespace']):
-        run_str = f"{r['recovery_seconds']:.2f}" if r['recovery_seconds'] >= 0 else 'Failed'
+    for r in sorted(results, key=lambda x: x["namespace"]):
+        run_str = f"{r['recovery_seconds']:.2f}" if r["recovery_seconds"] >= 0 else "Failed"
         if not do_ping:
-            ping_str = 'Skipped'
-        elif r['ping_recovery_seconds'] >= 0:
+            ping_str = "Skipped"
+        elif r["ping_recovery_seconds"] >= 0:
             ping_str = f"{r['ping_recovery_seconds']:.2f}"
         else:
-            ping_str = 'Failed'
+            ping_str = "Failed"
 
-        if r['phase'] == 'Running' and (not do_ping or r['ping_success']):
-            status = 'OK'
-        elif r['phase'] == 'Running':
-            status = 'No-Ping'
+        if r["phase"] == "Running" and (not do_ping or r["ping_success"]):
+            status = "OK"
+        elif r["phase"] == "Running":
+            status = "No-Ping"
         else:
-            status = r['phase'] or 'Error'
+            status = r["phase"] or "Error"
 
         logger.info(f"{r['namespace']:<30}{run_str:<15}{ping_str:<17}{r['ip']:<20}{status:<15}")
 
@@ -443,20 +469,24 @@ def print_summary(results: List[Dict], do_ping: bool, logger: logging.Logger) ->
     logger.info(f"Recovered to Running+Ready: {len(recovered)}/{total}")
 
     if recovered:
-        rec_times = [r['recovery_seconds'] for r in recovered]
-        logger.info(f"  Recovery time min/avg/max: "
-                    f"{min(rec_times):.1f}s / {sum(rec_times)/len(rec_times):.1f}s / "
-                    f"{max(rec_times):.1f}s")
+        rec_times = [r["recovery_seconds"] for r in recovered]
+        logger.info(
+            f"  Recovery time min/avg/max: "
+            f"{min(rec_times):.1f}s / {sum(rec_times)/len(rec_times):.1f}s / "
+            f"{max(rec_times):.1f}s"
+        )
 
     if do_ping:
         logger.info(f"Ping recovered: {len(pinged)}/{total}")
         if pinged:
-            ping_times = [r['ping_recovery_seconds'] for r in pinged]
-            logger.info(f"  Ping recovery time min/avg/max: "
-                        f"{min(ping_times):.1f}s / {sum(ping_times)/len(ping_times):.1f}s / "
-                        f"{max(ping_times):.1f}s")
+            ping_times = [r["ping_recovery_seconds"] for r in pinged]
+            logger.info(
+                f"  Ping recovery time min/avg/max: "
+                f"{min(ping_times):.1f}s / {sum(ping_times)/len(ping_times):.1f}s / "
+                f"{max(ping_times):.1f}s"
+            )
 
-    failed = [r for r in results if r['phase'] != 'Running' or r['recovery_seconds'] < 0]
+    failed = [r for r in results if r["phase"] != "Running" or r["recovery_seconds"] < 0]
     if failed:
         logger.info(f"Failed/timeout VMIs: {len(failed)}")
         for r in failed:
@@ -469,15 +499,14 @@ def results_to_tuples(results: List[Dict]) -> List[Tuple]:
     """Convert result dicts to 5-tuples expected by utils.common.save_results."""
     tuples = []
     for r in results:
-        run_t = r['recovery_seconds'] if r['recovery_seconds'] >= 0 else None
-        ping_t = r['ping_recovery_seconds'] if r['ping_recovery_seconds'] >= 0 else None
-        success = r['phase'] == 'Running' and r['recovery_seconds'] >= 0
-        tuples.append((r['namespace'], run_t, ping_t, None, success))
+        run_t = r["recovery_seconds"] if r["recovery_seconds"] >= 0 else None
+        ping_t = r["ping_recovery_seconds"] if r["ping_recovery_seconds"] >= 0 else None
+        success = r["phase"] == "Running" and r["recovery_seconds"] >= 0
+        tuples.append((r["namespace"], run_t, ping_t, None, success))
     return tuples
 
 
-def run_cleanup_phase(args: argparse.Namespace, namespaces: List[str],
-                      logger: logging.Logger) -> None:
+def run_cleanup_phase(args: argparse.Namespace, namespaces: List[str], logger: logging.Logger) -> None:
     """Run post-test cleanup of FAR resources, annotations, nodes, and optionally VMs."""
     logger.info("")
     logger.info("=" * 80)
@@ -488,19 +517,18 @@ def run_cleanup_phase(args: argparse.Namespace, namespaces: List[str],
         logger.info("Cleanup cancelled by user")
         return
 
-    prefix = '[DRY RUN] ' if args.dry_run_cleanup else ''
+    prefix = "[DRY RUN] " if args.dry_run_cleanup else ""
     logger.info(f"{prefix}Cleaning up FAR resources...")
 
-    stats = {'far_deleted': 0, 'annotations_removed': 0, 'nodes_uncordoned': 0, 'errors': 0}
+    stats = {"far_deleted": 0, "annotations_removed": 0, "nodes_uncordoned": 0, "errors": 0}
 
     if args.far_name:
         if args.dry_run_cleanup:
-            logger.info(f"[DRY RUN] Would delete FAR resource {args.far_name} "
-                        f"in namespace {args.far_namespace}")
+            logger.info(f"[DRY RUN] Would delete FAR resource {args.far_name} " f"in namespace {args.far_namespace}")
         elif delete_far_resource(args.far_name, args.far_namespace, logger):
-            stats['far_deleted'] = 1
+            stats["far_deleted"] = 1
         else:
-            stats['errors'] += 1
+            stats["errors"] += 1
     else:
         logger.warning("No --far-name specified, skipping FAR resource deletion")
 
@@ -509,18 +537,18 @@ def run_cleanup_phase(args: argparse.Namespace, namespaces: List[str],
         if args.dry_run_cleanup:
             logger.info(f"[DRY RUN] Would remove FAR annotation from VM {args.vm_name} in {ns}")
         elif remove_far_annotation(args.vm_name, ns, logger):
-            stats['annotations_removed'] += 1
+            stats["annotations_removed"] += 1
         else:
-            stats['errors'] += 1
+            stats["errors"] += 1
 
     failed_node = args.failed_node or args.node
     if failed_node:
         if args.dry_run_cleanup:
             logger.info(f"[DRY RUN] Would uncordon node {failed_node}")
         elif uncordon_node(failed_node, logger):
-            stats['nodes_uncordoned'] = 1
+            stats["nodes_uncordoned"] = 1
         else:
-            stats['errors'] += 1
+            stats["errors"] += 1
     else:
         logger.warning("No --failed-node or --node specified, skipping node uncordon")
 
@@ -531,28 +559,35 @@ def run_cleanup_phase(args: argparse.Namespace, namespaces: List[str],
         if cleanup_start is not None and cleanup_end is not None:
             vm_stats = cleanup_test_namespaces(
                 namespace_prefix=args.namespace_prefix,
-                start=cleanup_start, end=cleanup_end, vm_name=args.vm_name,
-                delete_namespaces=True, dry_run=args.dry_run_cleanup,
-                batch_size=args.concurrency, logger=logger,
+                start=cleanup_start,
+                end=cleanup_end,
+                vm_name=args.vm_name,
+                delete_namespaces=True,
+                dry_run=args.dry_run_cleanup,
+                batch_size=args.concurrency,
+                logger=logger,
             )
-            stats.update({
-                'namespaces_deleted': vm_stats.get('namespaces_deleted', 0),
-                'vms_deleted': vm_stats.get('total_vms_deleted', 0),
-                'dvs_deleted': vm_stats.get('total_dvs_deleted', 0),
-                'pvcs_deleted': vm_stats.get('total_pvcs_deleted', 0),
-            })
-            stats['errors'] += vm_stats.get('total_errors', 0)
+            stats.update(
+                {
+                    "namespaces_deleted": vm_stats.get("namespaces_deleted", 0),
+                    "vms_deleted": vm_stats.get("total_vms_deleted", 0),
+                    "dvs_deleted": vm_stats.get("total_dvs_deleted", 0),
+                    "pvcs_deleted": vm_stats.get("total_pvcs_deleted", 0),
+                }
+            )
+            stats["errors"] += vm_stats.get("total_errors", 0)
 
     _log_cleanup_summary(stats, args.cleanup_vms, args.dry_run_cleanup, logger)
 
 
-def _resolve_cleanup_range(args: argparse.Namespace, namespaces: List[str],
-                           logger: logging.Logger) -> Tuple[Optional[int], Optional[int]]:
+def _resolve_cleanup_range(
+    args: argparse.Namespace, namespaces: List[str], logger: logging.Logger
+) -> Tuple[Optional[int], Optional[int]]:
     """Determine the start/end namespace indices for VM cleanup from discovered namespaces."""
     indices = []
     for ns in namespaces:
         try:
-            indices.append(int(ns.split('-')[-1]))
+            indices.append(int(ns.split("-")[-1]))
         except ValueError:
             continue
     if indices:
@@ -562,8 +597,7 @@ def _resolve_cleanup_range(args: argparse.Namespace, namespaces: List[str],
     return None, None
 
 
-def _log_cleanup_summary(stats: Dict, cleanup_vms: bool, dry_run: bool,
-                         logger: logging.Logger) -> None:
+def _log_cleanup_summary(stats: Dict, cleanup_vms: bool, dry_run: bool, logger: logging.Logger) -> None:
     """Log a summary of cleanup actions."""
     logger.info("")
     logger.info("=" * 80)
@@ -585,7 +619,7 @@ def _log_cleanup_summary(stats: Dict, cleanup_vms: bool, dry_run: bool,
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description='Node failure recovery test (manual, FAR-operator, or monitor-only)',
+        description="Node failure recovery test (manual, FAR-operator, or monitor-only)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -601,103 +635,130 @@ Examples:
 """,
     )
 
-    parser.add_argument('--mode', required=True,
-                        choices=['manual', 'far-operator', 'monitor'],
-                        help='Failure trigger mode (manual/far-operator trigger the '
-                             'failure; monitor only measures recovery)')
-    parser.add_argument('--node', required=True,
-                        help='Target node name (the node that will fail / has failed)')
-    parser.add_argument('--vm-name', default=DEFAULT_VM_NAME,
-                        help=f'VM/VMI name to monitor (default: {DEFAULT_VM_NAME})')
-    parser.add_argument('--vm-template', default=None,
-                        help='Path to VM template YAML (informational, not used by '
-                             'this script directly)')
-    parser.add_argument('--namespace-prefix', default=DEFAULT_NAMESPACE_PREFIX,
-                        help=f'Only consider namespaces starting with this prefix '
-                             f'(default: {DEFAULT_NAMESPACE_PREFIX})')
-    parser.add_argument('--storage-class', default=None,
-                        help='Storage class name (informational, not used by this '
-                             'script directly)')
-    parser.add_argument('--far-config', default=DEFAULT_FAR_CONFIG,
-                        help=f'FAR YAML manifest (far-operator mode only, '
-                             f'default: {DEFAULT_FAR_CONFIG})')
-    parser.add_argument('--remove-node-selector', action='store_true',
-                        help='Remove nodeSelector from VMs to allow rescheduling')
-    parser.add_argument('--ping', dest='ping', action='store_true', default=True,
-                        help='Measure ping recovery time (default: enabled)')
-    parser.add_argument('--skip-ping', dest='ping', action='store_false',
-                        help='Skip ping recovery checks')
-    parser.add_argument('--ssh-pod', default=DEFAULT_SSH_POD,
-                        help=f'SSH pod name for ping (default: {DEFAULT_SSH_POD})')
-    parser.add_argument('--ssh-pod-namespace', default=DEFAULT_SSH_POD_NS,
-                        help=f'SSH pod namespace (default: {DEFAULT_SSH_POD_NS})')
-    parser.add_argument('--poll-interval', type=int, default=DEFAULT_POLL_INTERVAL,
-                        help=f'Polling interval in seconds (default: {DEFAULT_POLL_INTERVAL})')
-    parser.add_argument('--concurrency', type=int, default=DEFAULT_CONCURRENCY,
-                        help=f'Maximum parallel workers (default: {DEFAULT_CONCURRENCY})')
-    parser.add_argument('--node-timeout', type=int, default=DEFAULT_NODE_TIMEOUT,
-                        help=f'Timeout for node to become NotReady '
-                             f'(default: {DEFAULT_NODE_TIMEOUT}s)')
-    parser.add_argument('--recovery-timeout', type=int, default=DEFAULT_RECOVERY_TIMEOUT,
-                        help=f'Timeout for VM recovery '
-                             f'(default: {DEFAULT_RECOVERY_TIMEOUT}s)')
+    parser.add_argument(
+        "--mode",
+        required=True,
+        choices=["manual", "far-operator", "monitor"],
+        help="Failure trigger mode (manual/far-operator trigger the " "failure; monitor only measures recovery)",
+    )
+    parser.add_argument("--node", required=True, help="Target node name (the node that will fail / has failed)")
+    parser.add_argument(
+        "--vm-name", default=DEFAULT_VM_NAME, help=f"VM/VMI name to monitor (default: {DEFAULT_VM_NAME})"
+    )
+    parser.add_argument(
+        "--vm-template",
+        default=None,
+        help="Path to VM template YAML (informational, not used by " "this script directly)",
+    )
+    parser.add_argument(
+        "--namespace-prefix",
+        default=DEFAULT_NAMESPACE_PREFIX,
+        help=f"Only consider namespaces starting with this prefix " f"(default: {DEFAULT_NAMESPACE_PREFIX})",
+    )
+    parser.add_argument(
+        "--storage-class", default=None, help="Storage class name (informational, not used by this " "script directly)"
+    )
+    parser.add_argument(
+        "--far-config",
+        default=DEFAULT_FAR_CONFIG,
+        help=f"FAR YAML manifest (far-operator mode only, " f"default: {DEFAULT_FAR_CONFIG})",
+    )
+    parser.add_argument(
+        "--remove-node-selector", action="store_true", help="Remove nodeSelector from VMs to allow rescheduling"
+    )
+    parser.add_argument(
+        "--ping", dest="ping", action="store_true", default=True, help="Measure ping recovery time (default: enabled)"
+    )
+    parser.add_argument("--skip-ping", dest="ping", action="store_false", help="Skip ping recovery checks")
+    parser.add_argument(
+        "--ssh-pod", default=DEFAULT_SSH_POD, help=f"SSH pod name for ping (default: {DEFAULT_SSH_POD})"
+    )
+    parser.add_argument(
+        "--ssh-pod-namespace", default=DEFAULT_SSH_POD_NS, help=f"SSH pod namespace (default: {DEFAULT_SSH_POD_NS})"
+    )
+    parser.add_argument(
+        "--poll-interval",
+        type=int,
+        default=DEFAULT_POLL_INTERVAL,
+        help=f"Polling interval in seconds (default: {DEFAULT_POLL_INTERVAL})",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=DEFAULT_CONCURRENCY,
+        help=f"Maximum parallel workers (default: {DEFAULT_CONCURRENCY})",
+    )
+    parser.add_argument(
+        "--node-timeout",
+        type=int,
+        default=DEFAULT_NODE_TIMEOUT,
+        help=f"Timeout for node to become NotReady " f"(default: {DEFAULT_NODE_TIMEOUT}s)",
+    )
+    parser.add_argument(
+        "--recovery-timeout",
+        type=int,
+        default=DEFAULT_RECOVERY_TIMEOUT,
+        help=f"Timeout for VM recovery " f"(default: {DEFAULT_RECOVERY_TIMEOUT}s)",
+    )
 
-    parser.add_argument('--cleanup', action='store_true',
-                        help='After the test, clean up FAR resources, annotations, '
-                             'and uncordon the node')
-    parser.add_argument('--cleanup-vms', action='store_true',
-                        help='Also delete VMs and namespaces during cleanup '
-                             '(requires --cleanup)')
-    parser.add_argument('--dry-run-cleanup', action='store_true',
-                        help='Show what cleanup would do without applying changes')
-    parser.add_argument('--far-name', default=None,
-                        help='Name of FAR resource to delete during cleanup')
-    parser.add_argument('--far-namespace', default='default',
-                        help='Namespace of FAR resource (default: default)')
-    parser.add_argument('--failed-node', default=None,
-                        help='Node to uncordon during cleanup (defaults to --node)')
-    parser.add_argument('-y', '--yes', action='store_true',
-                        help='Skip confirmation prompt for cleanup')
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="After the test, clean up FAR resources, annotations, " "and uncordon the node",
+    )
+    parser.add_argument(
+        "--cleanup-vms",
+        action="store_true",
+        help="Also delete VMs and namespaces during cleanup " "(requires --cleanup)",
+    )
+    parser.add_argument(
+        "--dry-run-cleanup", action="store_true", help="Show what cleanup would do without applying changes"
+    )
+    parser.add_argument("--far-name", default=None, help="Name of FAR resource to delete during cleanup")
+    parser.add_argument("--far-namespace", default="default", help="Namespace of FAR resource (default: default)")
+    parser.add_argument("--failed-node", default=None, help="Node to uncordon during cleanup (defaults to --node)")
+    parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompt for cleanup")
 
-    parser.add_argument('--save-results', action='store_true',
-                        help='Save detailed results to a results folder')
-    parser.add_argument('--results-folder', default='../results',
-                        help='Base directory for saved results (default: ../results)')
-    parser.add_argument('--storage-driver', default=None,
-                        help='Storage driver label included in results path (optional)')
+    parser.add_argument("--save-results", action="store_true", help="Save detailed results to a results folder")
+    parser.add_argument(
+        "--results-folder", default="../results", help="Base directory for saved results (default: ../results)"
+    )
+    parser.add_argument(
+        "--storage-driver", default=None, help="Storage driver label included in results path (optional)"
+    )
 
-    parser.add_argument('--log-file', help='Optional log file path')
-    parser.add_argument('--log-level', default='INFO',
-                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
-                        help='Logging level (default: INFO)')
+    parser.add_argument("--log-file", help="Optional log file path")
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Logging level (default: INFO)",
+    )
 
     args = parser.parse_args()
 
-    if args.mode == 'far-operator' and not args.far_config:
-        parser.error('--far-config is required when --mode far-operator')
+    if args.mode == "far-operator" and not args.far_config:
+        parser.error("--far-config is required when --mode far-operator")
 
     if args.cleanup_vms and not args.cleanup:
-        parser.error('--cleanup-vms requires --cleanup')
+        parser.error("--cleanup-vms requires --cleanup")
 
     return args
 
 
 def build_results_dir(args: argparse.Namespace, timestamp: Optional[str] = None) -> str:
     """Build the canonical failure-recovery results directory."""
-    timestamp = timestamp or datetime.now().strftime('%Y%m%d-%H%M%S')
+    timestamp = timestamp or datetime.now().strftime("%Y%m%d-%H%M%S")
     suffix = f"{args.namespace_prefix}_{args.node}"
 
     if args.storage_driver:
-        return os.path.join(args.results_folder, args.storage_driver,
-                            'failure-recovery', f"{timestamp}_{suffix}")
-    return os.path.join(args.results_folder, 'failure-recovery',
-                        f"{timestamp}_{suffix}")
+        return os.path.join(args.results_folder, args.storage_driver, "failure-recovery", f"{timestamp}_{suffix}")
+    return os.path.join(args.results_folder, "failure-recovery", f"{timestamp}_{suffix}")
 
 
-def save_test_results(args: argparse.Namespace, results: List[Dict],
-                      logger: logging.Logger) -> None:
+def save_test_results(args: argparse.Namespace, results: List[Dict], logger: logging.Logger) -> None:
     """Save results to disk using utils.common.save_results."""
-    out_dir = getattr(args, '_results_dir', None) or build_results_dir(args)
+    out_dir = getattr(args, "_results_dir", None) or build_results_dir(args)
     os.makedirs(out_dir, exist_ok=True)
     logger.info(f"Using results directory: {out_dir}")
 
@@ -705,7 +766,7 @@ def save_test_results(args: argparse.Namespace, results: List[Dict],
         args,
         results_to_tuples(results),
         base_dir=out_dir,
-        prefix='failure_recovery_results',
+        prefix="failure_recovery_results",
         logger=logger,
         skip_clone=True,
     )
@@ -720,7 +781,7 @@ def main() -> int:
         args._results_dir = build_results_dir(args)
         os.makedirs(args._results_dir, exist_ok=True)
         if not args.log_file:
-            args.log_file = os.path.join(args._results_dir, 'failure-recovery.log')
+            args.log_file = os.path.join(args._results_dir, "failure-recovery.log")
 
     logger = setup_logging(log_file=args.log_file, log_level=args.log_level)
 
@@ -730,15 +791,14 @@ def main() -> int:
     logger.info(f"Target node: {args.node}")
     logger.info(f"VM name: {args.vm_name}")
     logger.info(f"Namespace prefix: {args.namespace_prefix}")
-    if args.mode == 'far-operator':
+    if args.mode == "far-operator":
         logger.info(f"FAR config: {args.far_config}")
     logger.info(f"Remove nodeSelector: {args.remove_node_selector}")
     logger.info(f"Ping recovery check: {args.ping}")
 
     # 1. Detect VMIs to monitor on the target node
     logger.info(f"Detecting VMIs on node {args.node}...")
-    namespaces = get_vmis_on_node(args.node, args.vm_name,
-                                  args.namespace_prefix, logger)
+    namespaces = get_vmis_on_node(args.node, args.vm_name, args.namespace_prefix, logger)
     if not namespaces:
         logger.error(f"No VMIs named {args.vm_name} found on node {args.node}")
         return 1
@@ -750,7 +810,8 @@ def main() -> int:
 
     # 3. Trigger / wait for node failure (manual + far-operator only)
     far_applied = False
-    if args.mode == 'far-operator':
+    if args.mode == "far-operator":
+
         def cleanup_handler(signum, frame):
             logger.warning(f"Received signal {signum}, cleaning up FAR config...")
             if far_applied:
@@ -767,22 +828,26 @@ def main() -> int:
     rc = 0
     try:
         # 4. Determine the start timestamp for measurement
-        if args.mode == 'monitor':
+        if args.mode == "monitor":
             node_down_ts = datetime.utcnow()
-            logger.info(f"Monitor mode: using current time as start "
-                        f"({node_down_ts.isoformat()}Z)")
+            logger.info(f"Monitor mode: using current time as start " f"({node_down_ts.isoformat()}Z)")
         else:
-            node_down_ts = wait_for_node_down(args.node, args.node_timeout,
-                                              args.mode, logger)
+            node_down_ts = wait_for_node_down(args.node, args.node_timeout, args.mode, logger)
             if node_down_ts is None:
                 return 1
 
         # 5. Monitor VM recovery
         results = monitor_vm_recovery(
-            namespaces, args.vm_name, node_down_ts,
-            args.ssh_pod, args.ssh_pod_namespace,
-            args.poll_interval, args.recovery_timeout,
-            args.concurrency, args.ping, logger,
+            namespaces,
+            args.vm_name,
+            node_down_ts,
+            args.ssh_pod,
+            args.ssh_pod_namespace,
+            args.poll_interval,
+            args.recovery_timeout,
+            args.concurrency,
+            args.ping,
+            logger,
         )
 
         # 6. Summary
@@ -791,8 +856,7 @@ def main() -> int:
         if args.save_results:
             save_test_results(args, results, logger)
 
-        recovered = sum(1 for r in results
-                        if r['phase'] == 'Running' and r['recovery_seconds'] >= 0)
+        recovered = sum(1 for r in results if r["phase"] == "Running" and r["recovery_seconds"] >= 0)
         rc = 0 if recovered == len(results) else 2
 
     finally:
@@ -811,5 +875,5 @@ def main() -> int:
     return rc
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

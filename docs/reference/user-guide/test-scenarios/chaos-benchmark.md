@@ -127,4 +127,3 @@ virtbench chaos-benchmark --cleanup-only --concurrency 1
 - [Configuration Options](../configuration.md) - Detailed configuration reference
 - [Output and Results](../output-and-results.md) - Understanding test output
 - [Results Dashboard](../results-dashboard.md) - Visualize chaos benchmark results
-

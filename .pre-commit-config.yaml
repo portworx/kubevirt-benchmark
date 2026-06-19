@@ -1,0 +1,142 @@
+# Pre-commit hooks configuration for kubevirt-benchmark
+
+# Run manually: pre-commit run --all-files
+# Update hooks: pre-commit autoupdate
+
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+default_language_version:
+  python: python3
+
+repos:
+  # =============================================================================
+  # Standard pre-commit hooks
+  # =============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # Formatting fixes
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+        name: Fix end of files
+      - id: mixed-line-ending
+        name: Fix mixed line endings
+        args: [--fix=lf]
+
+      # File content checks
+      - id: check-yaml
+        name: Check YAML syntax
+        args: [--unsafe]  # Allow custom YAML tags (e.g., Kubernetes resources)
+        exclude: ^examples/vm-templates/  # Template files with placeholders
+      - id: check-json
+        name: Check JSON syntax
+      - id: check-toml
+        name: Check TOML syntax
+      - id: check-xml
+        name: Check XML syntax
+
+      # Python-specific checks
+      - id: check-ast
+        name: Check Python AST
+      - id: debug-statements
+        name: Check for debug statements
+      - id: check-docstring-first
+        name: Check docstring is first
+
+      # Security and safety
+      - id: detect-private-key
+        name: Detect private keys
+      - id: check-added-large-files
+        name: Check for large files
+        args: [--maxkb=1000]
+
+      # Git checks
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: check-case-conflict
+        name: Check for case conflicts
+
+      # Miscellaneous
+      - id: fix-byte-order-marker
+        name: Fix UTF-8 byte order marker
+      - id: check-executables-have-shebangs
+        name: Check executables have shebangs
+      - id: check-shebang-scripts-are-executable
+        name: Check shebang scripts are executable
+
+  # =============================================================================
+  # Ruff - Fast Python linter and formatter
+  # =============================================================================
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      # Linter
+      - id: ruff
+        name: Ruff linter
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+
+      # Formatter
+      - id: ruff-format
+        name: Ruff formatter
+        types_or: [python, pyi]
+
+  # =============================================================================
+  # MyPy - Static type checking
+  # =============================================================================
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        name: MyPy type checker
+        # Only check files that have been modified, not all files
+        pass_filenames: true
+        # Additional dependencies for type stubs
+        additional_dependencies:
+          - types-PyYAML>=6.0.0
+          - pandas-stubs>=2.0.0
+        # Exclude standalone scripts and test files (gradual type checking adoption)
+        exclude: ^(test_.*\.py|.*_test\.py|datasource-clone/|migration/|failure-recovery/|dashboard/|capacity-benchmark/|chaos-benchmark/|disk-ops-benchmark/|io-benchmark/|vm-ops/|hotplug/|utils/)
+        # Use args from pyproject.toml
+        args: [--config-file=pyproject.toml]
+
+  # =============================================================================
+  # Shell script linting (optional but recommended)
+  # =============================================================================
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        name: ShellCheck
+        # Exclude some common shell patterns that are intentional
+        args: [--severity=warning, "--exclude=SC1091,SC2086,SC2034"]
+
+  # =============================================================================
+  # YAML linting with yamllint
+  # =============================================================================
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        name: YAML lint
+        args: [-d, "{extends: relaxed, rules: {line-length: {max: 150}}}"]
+        # Exclude template YAML files with placeholders
+        exclude: ^examples/vm-templates/
+
+# =============================================================================
+# CI Configuration
+# =============================================================================
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: monthly
+  skip: [mypy]  # Skip mypy in CI as it requires dependencies
+  submodules: false

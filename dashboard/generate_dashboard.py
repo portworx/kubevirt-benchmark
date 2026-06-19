@@ -14,13 +14,14 @@ Usage:
   python3 generate_dashboard.py [--days N] [--base-dir PATH] [--output-html FILE]
 """
 
-import json
 import argparse
+import json
+from collections import defaultdict
+from datetime import datetime, timedelta
+from pathlib import Path
+
 import pandas as pd
 import yaml
-from pathlib import Path
-from datetime import datetime, timedelta
-from collections import defaultdict
 
 
 LABEL_MAP = {
@@ -43,16 +44,18 @@ FIO_LABEL_MAP = {
     "write_lat_p99_ms": "Write Latency P99 (ms)",
 }
 
+
 # ---------------- Utility Functions ----------------
 def load_json(path: Path):
     """Safely load JSON file; return None if not found or invalid."""
     try:
         if not path.exists():
             return None
-        with open(path, "r") as f:
+        with open(path) as f:
             return json.load(f)
     except Exception:
         return None
+
 
 def load_cluster_info(yaml_path: str):
     """Load cluster info YAML for a single cluster."""
@@ -62,12 +65,13 @@ def load_cluster_info(yaml_path: str):
         return None
 
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             data = yaml.safe_load(f)
         return data.get("cluster", {})
     except Exception as e:
         print(f"⚠️  Failed to parse {yaml_path}: {e}")
         return None
+
 
 def build_cluster_info_tab(cluster_info: dict) -> str:
     """Render the cluster info as an HTML table with auto-generated labels from keys."""
@@ -79,11 +83,14 @@ def build_cluster_info_tab(cluster_info: dict) -> str:
         label = key.replace("_", " ").upper()
 
         if isinstance(value, str) and "\n" in value:
-            rows += f"<tr><th>{label}</th><td><pre style='margin:0;white-space:pre-wrap'>{value.strip()}</pre></td></tr>"
+            rows += (
+                f"<tr><th>{label}</th><td><pre style='margin:0;white-space:pre-wrap'>{value.strip()}</pre></td></tr>"
+            )
         else:
             rows += f"<tr><th>{label}</th><td>{value}</td></tr>"
 
     return f"<table class='table table-bordered w-auto'><tbody>{rows}</tbody></table>"
+
 
 def load_manual_results(yaml_path: str):
     """Load manual results YAML."""
@@ -92,7 +99,7 @@ def load_manual_results(yaml_path: str):
         print(f"Manual results file not found: {yaml_path}")
         return None
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             data = yaml.safe_load(f)
         return data.get("results", [])
     except Exception as e:
@@ -113,12 +120,8 @@ def build_manual_results_tab(manual_results: list) -> str:
     numeric_cols = df.select_dtypes(include="number").columns
     df[numeric_cols] = df[numeric_cols].round(2)
 
-    return df.to_html(
-        classes="display compact nowrap",
-        table_id="table_manual_results",
-        index=False,
-        border=0
-    )
+    return df.to_html(classes="display compact nowrap", table_id="table_manual_results", index=False, border=0)
+
 
 def format_folder_name(folder_name: str) -> str:
     """Convert '20251014-165952_kubevirt-perf-test_1-50' → '2025-10-14 16:59:52 — 50 VMs'"""
@@ -160,19 +163,21 @@ def summary_to_df(summary_json):
             continue
 
         # Apply friendly names and rounding
-        rows.append({
-            "Metric": LABEL_MAP.get(metric, metric),
-            "Average (s)": round(m.get("avg", 0), 2) if m.get("avg") is not None else None,
-            "Max (s)": round(m.get("max", 0), 2) if m.get("max") is not None else None,
-            "Min (s)": round(m.get("min", 0), 2) if m.get("min") is not None else None,
-            "Count": m.get("count", ""),
-        })
+        rows.append(
+            {
+                "Metric": LABEL_MAP.get(metric, metric),
+                "Average (s)": round(m.get("avg", 0), 2) if m.get("avg") is not None else None,
+                "Max (s)": round(m.get("max", 0), 2) if m.get("max") is not None else None,
+                "Min (s)": round(m.get("min", 0), 2) if m.get("min") is not None else None,
+                "Count": m.get("count", ""),
+            }
+        )
 
     df = pd.DataFrame(rows)
     total_info = {
         "total_vms": summary_json.get("total_vms"),
         "successful": summary_json.get("successful"),
-        "failed": summary_json.get("failed")
+        "failed": summary_json.get("failed"),
     }
     return df, difference_row, total_info
 
@@ -208,12 +213,8 @@ def df_to_html_table(df: pd.DataFrame, table_id: str) -> str:
     if "Success" in df.columns:
         df["Success"] = df["Success"].map({True: "True", False: "False"})
 
-    return df.to_html(
-        classes="display compact nowrap",
-        table_id=table_id,
-        index=False,
-        border=0
-    )
+    return df.to_html(classes="display compact nowrap", table_id=table_id, index=False, border=0)
+
 
 def get_vm_count_from_folder(folder_name: str) -> int:
     """Extract VM count from folder suffix.
@@ -376,7 +377,11 @@ def build_migration_content(folder: Path, uid: str) -> str:
 
     migration_summary_df, migration_diff_row, migration_total_info = summary_to_df(migration_summary)
     migration_total_info = migration_total_info or {}
-    total_time = migration_summary.get("total_migration_duration_sec") or migration_summary.get("total_test_duration_sec") if migration_summary else None
+    total_time = (
+        migration_summary.get("total_migration_duration_sec") or migration_summary.get("total_test_duration_sec")
+        if migration_summary
+        else None
+    )
 
     header_html = (
         f'<h6><strong>Results Directory:</strong> {folder.name}</h6>'
@@ -388,8 +393,9 @@ def build_migration_content(folder: Path, uid: str) -> str:
     migration_html = df_to_html_table(migration_df, f"table_migration_{uid}")
 
     diff_line = (
-        f"<p><strong>Average Difference (Observed - VMIM):</strong> "
-        f"{migration_diff_row.get('avg', 'N/A')} s</p>" if migration_diff_row else ""
+        f"<p><strong>Average Difference (Observed - VMIM):</strong> " f"{migration_diff_row.get('avg', 'N/A')} s</p>"
+        if migration_diff_row
+        else ""
     )
 
     return f"""
@@ -546,14 +552,16 @@ def build_fio_multi_vm_content(folder: Path, uid: str, summary: dict, per_vm_res
     """
 
     # Config table
-    config_rows = "".join([
-        f"<tr><th>Block Size</th><td>{config.get('bs', 'N/A')}</td></tr>",
-        f"<tr><th>I/O Pattern</th><td>{config.get('rw', 'N/A')}</td></tr>",
-        f"<tr><th>I/O Depth</th><td>{config.get('iodepth', 'N/A')}</td></tr>",
-        f"<tr><th>Num Jobs</th><td>{config.get('numjobs', 'N/A')}</td></tr>",
-        f"<tr><th>Runtime</th><td>{config.get('runtime', 'N/A')} s</td></tr>",
-        f"<tr><th>File Size</th><td>{config.get('size', 'N/A')}</td></tr>",
-    ])
+    config_rows = "".join(
+        [
+            f"<tr><th>Block Size</th><td>{config.get('bs', 'N/A')}</td></tr>",
+            f"<tr><th>I/O Pattern</th><td>{config.get('rw', 'N/A')}</td></tr>",
+            f"<tr><th>I/O Depth</th><td>{config.get('iodepth', 'N/A')}</td></tr>",
+            f"<tr><th>Num Jobs</th><td>{config.get('numjobs', 'N/A')}</td></tr>",
+            f"<tr><th>Runtime</th><td>{config.get('runtime', 'N/A')} s</td></tr>",
+            f"<tr><th>File Size</th><td>{config.get('size', 'N/A')}</td></tr>",
+        ]
+    )
     config_table = f'<table class="table table-bordered w-auto"><tbody>{config_rows}</tbody></table>'
 
     # Format metric names properly
@@ -579,11 +587,17 @@ def build_fio_multi_vm_content(folder: Path, uid: str, summary: dict, per_vm_res
 
         # Format based on metric type
         if "iops" in metric_key:
-            metrics_rows += f"<tr><th>{metric_name}</th><td>{avg_val:,.0f}</td><td>{max_val:,.0f}</td><td>{min_val:,.0f}</td></tr>"
+            metrics_rows += (
+                f"<tr><th>{metric_name}</th><td>{avg_val:,.0f}</td><td>{max_val:,.0f}</td><td>{min_val:,.0f}</td></tr>"
+            )
         elif "bw" in metric_key:
-            metrics_rows += f"<tr><th>{metric_name}</th><td>{avg_val:,.2f}</td><td>{max_val:,.2f}</td><td>{min_val:,.2f}</td></tr>"
+            metrics_rows += (
+                f"<tr><th>{metric_name}</th><td>{avg_val:,.2f}</td><td>{max_val:,.2f}</td><td>{min_val:,.2f}</td></tr>"
+            )
         else:
-            metrics_rows += f"<tr><th>{metric_name}</th><td>{avg_val:,.3f}</td><td>{max_val:,.3f}</td><td>{min_val:,.3f}</td></tr>"
+            metrics_rows += (
+                f"<tr><th>{metric_name}</th><td>{avg_val:,.3f}</td><td>{max_val:,.3f}</td><td>{min_val:,.3f}</td></tr>"
+            )
 
     metrics_table = f"""
     <table class="table table-bordered table-striped w-auto">
@@ -599,18 +613,27 @@ def build_fio_multi_vm_content(folder: Path, uid: str, summary: dict, per_vm_res
         for idx, r in enumerate(per_vm_results):
             ns = r.get("namespace", "N/A")
             success = r.get("success", False)
-            status_badge = '<span class="badge bg-success">✓</span>' if success else '<span class="badge bg-danger">✗</span>'
-            read_iops = r.get('read_iops', 0)
-            write_iops = r.get('write_iops', 0)
-            read_bw = r.get('read_bw_mibps', 0)
-            write_bw = r.get('write_bw_mibps', 0)
-            read_lat = r.get('read_lat_ms', 0)
-            write_lat = r.get('write_lat_ms', 0)
+            status_badge = (
+                '<span class="badge bg-success">✓</span>' if success else '<span class="badge bg-danger">✗</span>'
+            )
+            read_iops = r.get("read_iops", 0)
+            write_iops = r.get("write_iops", 0)
+            read_bw = r.get("read_bw_mibps", 0)
+            write_bw = r.get("write_bw_mibps", 0)
+            read_lat = r.get("read_lat_ms", 0)
+            write_lat = r.get("write_lat_ms", 0)
 
-            per_vm_data_js.append({
-                "ns": ns, "read_iops": read_iops, "write_iops": write_iops,
-                "read_bw": read_bw, "write_bw": write_bw, "read_lat": read_lat, "write_lat": write_lat
-            })
+            per_vm_data_js.append(
+                {
+                    "ns": ns,
+                    "read_iops": read_iops,
+                    "write_iops": write_iops,
+                    "read_bw": read_bw,
+                    "write_bw": write_bw,
+                    "read_lat": read_lat,
+                    "write_lat": write_lat,
+                }
+            )
 
             per_vm_rows += f"""
             <tr class="vm-row-clickable" style="cursor: pointer;" onclick="showVmChart_{uid}({idx})">
@@ -625,6 +648,7 @@ def build_fio_multi_vm_content(folder: Path, uid: str, summary: dict, per_vm_res
             """
 
     import json
+
     per_vm_data_json = json.dumps(per_vm_data_js)
 
     per_vm_table = f"""
@@ -732,24 +756,32 @@ def build_fio_multi_vm_content(folder: Path, uid: str, summary: dict, per_vm_res
     for m in metrics:
         metric = m.get("metric", "")
         avg = m.get("avg", 0)
-        if metric == "read_iops": read_iops = avg
-        elif metric == "write_iops": write_iops = avg
-        elif metric == "read_bw_mibps": read_bw = avg
-        elif metric == "write_bw_mibps": write_bw = avg
-        elif metric == "read_lat_ms": read_lat = avg
-        elif metric == "write_lat_ms": write_lat = avg
+        if metric == "read_iops":
+            read_iops = avg
+        elif metric == "write_iops":
+            write_iops = avg
+        elif metric == "read_bw_mibps":
+            read_bw = avg
+        elif metric == "write_bw_mibps":
+            write_bw = avg
+        elif metric == "read_lat_ms":
+            read_lat = avg
+        elif metric == "write_lat_ms":
+            write_lat = avg
 
     total_iops = read_iops + write_iops
     total_bw = read_bw + write_bw
 
     # Config subtitle (fio-plot style)
-    io_pattern = config.get('rw', 'N/A')
-    block_size = config.get('bs', 'N/A')
-    io_depth = config.get('iodepth', 'N/A')
-    num_jobs = config.get('numjobs', 'N/A')
-    runtime = config.get('runtime', 'N/A')
+    io_pattern = config.get("rw", "N/A")
+    block_size = config.get("bs", "N/A")
+    io_depth = config.get("iodepth", "N/A")
+    num_jobs = config.get("numjobs", "N/A")
+    runtime = config.get("runtime", "N/A")
 
-    config_subtitle = f"| rw {io_pattern} | bs {block_size} | iodepth {io_depth} | numjobs {num_jobs} | runtime {runtime}s |"
+    config_subtitle = (
+        f"| rw {io_pattern} | bs {block_size} | iodepth {io_depth} | numjobs {num_jobs} | runtime {runtime}s |"
+    )
 
     chart_html = f"""
     <div class="text-center mb-4" style="font-family: monospace; font-size: 0.95rem; background: #f8f9fa; padding: 10px; border-radius: 6px;">
@@ -995,10 +1027,18 @@ def build_fio_single_vm_content(folder: Path, uid: str, data: dict) -> str:
             perf_rows += f"<tr><th>Write Bandwidth</th><td>{write_bw:,.2f} MiB/s</td></tr>"
             perf_rows += f"<tr><th>Write Latency</th><td>{write_lat:,.3f} ms</td></tr>"
 
-    perf_table = f'<table class="table table-bordered w-auto"><tbody>{perf_rows}</tbody></table>' if perf_rows else "<p>No metrics.</p>"
+    perf_table = (
+        f'<table class="table table-bordered w-auto"><tbody>{perf_rows}</tbody></table>'
+        if perf_rows
+        else "<p>No metrics.</p>"
+    )
 
     status = data.get("status", "completed")
-    status_html = '<span class="badge bg-success">Completed</span>' if status == "completed" else f'<span class="badge bg-info">{status}</span>'
+    status_html = (
+        '<span class="badge bg-success">Completed</span>'
+        if status == "completed"
+        else f'<span class="badge bg-info">{status}</span>'
+    )
 
     return f"""
     <div class="mb-4">
@@ -1237,7 +1277,7 @@ def build_elbencho_content(folder: Path, uid: str) -> str:
             error = r.get("error", "")
 
             if skipped:
-                status_badge = f'<span class="badge bg-warning">Skipped</span>'
+                status_badge = '<span class="badge bg-warning">Skipped</span>'
             elif error:
                 status_badge = f'<span class="badge bg-danger" title="{error}">Error</span>'
             else:
@@ -1326,14 +1366,16 @@ def build_disk_ops_content(folder: Path, uid: str) -> str:
 
     # Config table
     op_label = config.get("operation", "N/A").upper()
-    config_rows = "".join([
-        f"<tr><th>Operation</th><td>{op_label}</td></tr>",
-        f"<tr><th>Disks per VM</th><td>{config.get('disks_per_vm', 'N/A')}</td></tr>",
-        f"<tr><th>Disk Size</th><td>{config.get('disk_size', 'N/A')}</td></tr>",
-        f"<tr><th>Storage Class</th><td>{config.get('storage_class', 'N/A')}</td></tr>",
-        f"<tr><th>Test Unplug</th><td>{'Yes' if config.get('test_unplug') else 'No'}</td></tr>",
-        f"<tr><th>Skip Validation</th><td>{'Yes' if config.get('skip_validation') else 'No'}</td></tr>",
-    ])
+    config_rows = "".join(
+        [
+            f"<tr><th>Operation</th><td>{op_label}</td></tr>",
+            f"<tr><th>Disks per VM</th><td>{config.get('disks_per_vm', 'N/A')}</td></tr>",
+            f"<tr><th>Disk Size</th><td>{config.get('disk_size', 'N/A')}</td></tr>",
+            f"<tr><th>Storage Class</th><td>{config.get('storage_class', 'N/A')}</td></tr>",
+            f"<tr><th>Test Unplug</th><td>{'Yes' if config.get('test_unplug') else 'No'}</td></tr>",
+            f"<tr><th>Skip Validation</th><td>{'Yes' if config.get('skip_validation') else 'No'}</td></tr>",
+        ]
+    )
     config_table = f'<table class="table table-bordered w-auto"><tbody>{config_rows}</tbody></table>'
 
     # KPI cards — success rates for all three operations
@@ -1407,25 +1449,37 @@ def build_disk_ops_content(folder: Path, uid: str) -> str:
         </div>
         """
 
-    hp_extra = f"""
+    hp_extra = (
+        f"""
     <tr><th>Disks Attached</th><td>{hotplug.get('total_disks_attached', 0)}</td></tr>
     <tr><th>Disks Validated</th><td>{hotplug.get('total_disks_validated', 0)}</td></tr>
     <tr><th>Avg API Attach</th><td>{hotplug.get('avg_api_attach_time', 0):.3f} s</td></tr>
     <tr><th>Avg Volume Ready</th><td>{hotplug.get('avg_volume_ready_time', 0):.3f} s</td></tr>
     <tr><th>Avg Validation</th><td>{hotplug.get('avg_validation_time', 0):.3f} s</td></tr>
-    """ if hotplug else ""
+    """
+        if hotplug
+        else ""
+    )
 
-    cp_extra = f"""
+    cp_extra = (
+        f"""
     <tr><th>Disks Attached</th><td>{coldplug.get('total_disks_attached', 0)}</td></tr>
     <tr><th>Disks Validated</th><td>{coldplug.get('total_disks_validated', 0)}</td></tr>
     <tr><th>Avg API Attach</th><td>{coldplug.get('avg_api_attach_time', 0):.3f} s</td></tr>
     <tr><th>Avg VM Boot</th><td>{coldplug.get('avg_vm_boot_time', 0):.3f} s</td></tr>
     <tr><th>Avg Validation</th><td>{coldplug.get('avg_validation_time', 0):.3f} s</td></tr>
-    """ if coldplug else ""
+    """
+        if coldplug
+        else ""
+    )
 
-    up_extra = f"""
+    up_extra = (
+        f"""
     <tr><th>Disks Removed</th><td>{unplug.get('total_disks_removed', 0)}</td></tr>
-    """ if unplug else ""
+    """
+        if unplug
+        else ""
+    )
 
     ops_html = f"""
     <div class="row mb-4">
@@ -1499,28 +1553,29 @@ def build_disk_ops_content(folder: Path, uid: str) -> str:
         t_sec = r.get("total_time", 0)
         ok = r.get("success", False)
         errors = "; ".join(r.get("errors", [])) if r.get("errors") else ""
-        badge = '<span class="badge bg-success">✓</span>' if ok else f'<span class="badge bg-danger" title="{errors}">✗</span>'
+        badge = (
+            '<span class="badge bg-success">✓</span>'
+            if ok
+            else f'<span class="badge bg-danger" title="{errors}">✗</span>'
+        )
 
         # Build per-operation chart data depending on type
         if op == "hotplug":
             chart_labels_vm = ["API Attach", "Vol Ready", "Total"]
-            chart_vals_vm   = [r.get("api_attach_time", 0), r.get("volume_ready_time", 0), r.get("total_time", 0)]
-            bar_colors_vm   = ["#3498db", "#9b59b6", "#2980b9"]
+            chart_vals_vm = [r.get("api_attach_time", 0), r.get("volume_ready_time", 0), r.get("total_time", 0)]
+            bar_colors_vm = ["#3498db", "#9b59b6", "#2980b9"]
         elif op == "coldplug":
             chart_labels_vm = ["API Attach", "VM Boot", "Total"]
-            chart_vals_vm   = [r.get("api_attach_time", 0), r.get("vm_boot_time", 0), r.get("total_time", 0)]
-            bar_colors_vm   = ["#2ecc71", "#f39c12", "#27ae60"]
+            chart_vals_vm = [r.get("api_attach_time", 0), r.get("vm_boot_time", 0), r.get("total_time", 0)]
+            bar_colors_vm = ["#2ecc71", "#f39c12", "#27ae60"]
         else:  # unplug
             chart_labels_vm = ["Total"]
-            chart_vals_vm   = [r.get("total_time", 0)]
-            bar_colors_vm   = ["#e74c3c"]
+            chart_vals_vm = [r.get("total_time", 0)]
+            bar_colors_vm = ["#e74c3c"]
 
-        per_vm_js.append({
-            "ns": ns, "op": op,
-            "labels": chart_labels_vm,
-            "vals": chart_vals_vm,
-            "colors": bar_colors_vm
-        })
+        per_vm_js.append(
+            {"ns": ns, "op": op, "labels": chart_labels_vm, "vals": chart_vals_vm, "colors": bar_colors_vm}
+        )
 
         per_vm_rows += f"""
         <tr style="cursor:pointer;" onclick="showDiskOpsVmChart_{uid}({idx})">
@@ -1642,23 +1697,41 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
         msum = load_json(folder / "summary_migration_results.json")
         capsum = load_json(folder / "summary_chaos_benchmark.json")
         if csum and csum.get("total_test_duration_sec"):
-            creation_rec.append({"VMs": csum.get("total_vms", vms), "Seconds": csum["total_test_duration_sec"], "Folder": folder.name})
+            creation_rec.append(
+                {"VMs": csum.get("total_vms", vms), "Seconds": csum["total_test_duration_sec"], "Folder": folder.name}
+            )
         if bsum and bsum.get("total_test_duration_sec"):
-            boot_rec.append({"VMs": bsum.get("total_vms", vms), "Seconds": bsum["total_test_duration_sec"], "Folder": folder.name})
+            boot_rec.append(
+                {"VMs": bsum.get("total_vms", vms), "Seconds": bsum["total_test_duration_sec"], "Folder": folder.name}
+            )
         if msum and (msum.get("total_migration_duration_sec") or msum.get("total_test_duration_sec")):
             total = msum.get("total_migration_duration_sec") or msum.get("total_test_duration_sec")
             mig_rec.append({"VMs": msum.get("total_vms", vms), "Seconds": total, "Folder": folder.name})
         if capsum and capsum.get("total_test_duration_sec"):
-            cap_rec.append({"VMs": capsum.get("total_vms", vms), "Seconds": capsum["total_test_duration_sec"], "Folder": folder.name})
+            cap_rec.append(
+                {
+                    "VMs": capsum.get("total_vms", vms),
+                    "Seconds": capsum["total_test_duration_sec"],
+                    "Folder": folder.name,
+                }
+            )
 
     # Build charts - include capacity chart only if we have data
     chart_items = [
-        build_bar_chart_mmss(creation_rec, "Creation Duration", "rgb(26,118,255)", f"chart_{px_version}_{disk_name}_creation"),
+        build_bar_chart_mmss(
+            creation_rec, "Creation Duration", "rgb(26,118,255)", f"chart_{px_version}_{disk_name}_creation"
+        ),
         build_bar_chart_mmss(boot_rec, "Boot Storm Duration", "rgb(0,204,150)", f"chart_{px_version}_{disk_name}_boot"),
-        build_bar_chart_mmss(mig_rec, "Live Migration Duration", "rgb(255,99,71)", f"chart_{px_version}_{disk_name}_mig"),
+        build_bar_chart_mmss(
+            mig_rec, "Live Migration Duration", "rgb(255,99,71)", f"chart_{px_version}_{disk_name}_mig"
+        ),
     ]
     if cap_rec:
-        chart_items.append(build_bar_chart_mmss(cap_rec, "Chaos Benchmark Duration", "rgb(153,102,255)", f"chart_{px_version}_{disk_name}_cap"))
+        chart_items.append(
+            build_bar_chart_mmss(
+                cap_rec, "Chaos Benchmark Duration", "rgb(153,102,255)", f"chart_{px_version}_{disk_name}_cap"
+            )
+        )
 
     charts_html = f"""
     <div class="container-fluid mt-3">
@@ -1684,30 +1757,60 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
             f'data-bs-target="#tab_{vm_id}" type="button" role="tab">{vm_count} VMs</button></li>'
         )
 
-        cb_sections = "".join(
-            build_creation_boot_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "summary_vm_creation_results.json").exists()
-        ) or "<p>No Creation/Boot Storm data for this VM size.</p>"
+        cb_sections = (
+            "".join(
+                build_creation_boot_content(
+                    f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_")
+                )
+                for f in by_vms[vm_count]
+                if (f / "summary_vm_creation_results.json").exists()
+            )
+            or "<p>No Creation/Boot Storm data for this VM size.</p>"
+        )
 
-        mig_sections = "".join(
-            build_migration_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "summary_migration_results.json").exists()
-        ) or "<p>No Live Migration data for this VM size.</p>"
+        mig_sections = (
+            "".join(
+                build_migration_content(
+                    f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_")
+                )
+                for f in by_vms[vm_count]
+                if (f / "summary_migration_results.json").exists()
+            )
+            or "<p>No Live Migration data for this VM size.</p>"
+        )
 
-        cap_sections = "".join(
-            build_capacity_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "summary_chaos_benchmark.json").exists()
-        ) or "<p>No Chaos Benchmark data for this VM size.</p>"
+        cap_sections = (
+            "".join(
+                build_capacity_content(
+                    f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_")
+                )
+                for f in by_vms[vm_count]
+                if (f / "summary_chaos_benchmark.json").exists()
+            )
+            or "<p>No Chaos Benchmark data for this VM size.</p>"
+        )
 
-        fio_sections = "".join(
-            build_fio_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists()
-        ) or "<p>No FIO Benchmark data for this VM size.</p>"
+        fio_sections = (
+            "".join(
+                build_fio_content(
+                    f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_")
+                )
+                for f in by_vms[vm_count]
+                if (f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists()
+            )
+            or "<p>No FIO Benchmark data for this VM size.</p>"
+        )
 
-        elbencho_sections = "".join(
-            build_elbencho_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "aggregated_results.json").exists()
-        ) or "<p>No Elbencho Benchmark data for this VM size.</p>"
+        elbencho_sections = (
+            "".join(
+                build_elbencho_content(
+                    f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_")
+                )
+                for f in by_vms[vm_count]
+                if (f / "aggregated_results.json").exists()
+            )
+            or "<p>No Elbencho Benchmark data for this VM size.</p>"
+        )
 
         disk_ops_folders = [f for f in by_vms[vm_count] if (f / "disk_ops_results.json").exists()]
         if disk_ops_folders:
@@ -1736,7 +1839,10 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
 
         # Check if we have capacity/fio/elbencho data to show the tabs
         has_capacity_data = any((f / "summary_capacity_benchmark.json").exists() for f in by_vms[vm_count])
-        has_fio_data = any((f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists() for f in by_vms[vm_count])
+        has_fio_data = any(
+            (f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists()
+            for f in by_vms[vm_count]
+        )
         has_elbencho_data = any((f / "aggregated_results.json").exists() for f in by_vms[vm_count])
         has_disk_ops_data = any((f / "disk_ops_results.json").exists() for f in by_vms[vm_count])
         # Check if we have chaos data to show the tab
@@ -1806,7 +1912,7 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
 
 def build_px_tab(px_version: str, disk_map: dict) -> str:
     """Top-level PX version tab with disk subtabs."""
-    disk_names = sorted(disk_map.keys(), key=lambda d: (int(d.split('-')[0]) if d.split('-')[0].isdigit() else 0, d))
+    disk_names = sorted(disk_map.keys(), key=lambda d: (int(d.split("-")[0]) if d.split("-")[0].isdigit() else 0, d))
     if not disk_names:
         return "<p>No disk groups found for this PX version.</p>"
 
@@ -1815,8 +1921,12 @@ def build_px_tab(px_version: str, disk_map: dict) -> str:
         did = f"{px_version}_{dname}".replace(".", "_").replace("-", "_")
         active_cls = "active" if idx == 0 else ""
         show_cls = "show" if idx == 0 else ""
-        nav.append(f'<li class="nav-item"><button class="nav-link {active_cls}" id="tab-{did}-tab" data-bs-toggle="tab" data-bs-target="#tab_{did}" type="button" role="tab">{dname}</button></li>')
-        body.append(f'<div class="tab-pane fade {show_cls} {active_cls}" id="tab_{did}" role="tabpanel">{build_disk_tab(px_version, dname, disk_map[dname])}</div>')
+        nav.append(
+            f'<li class="nav-item"><button class="nav-link {active_cls}" id="tab-{did}-tab" data-bs-toggle="tab" data-bs-target="#tab_{did}" type="button" role="tab">{dname}</button></li>'
+        )
+        body.append(
+            f'<div class="tab-pane fade {show_cls} {active_cls}" id="tab_{did}" role="tabpanel">{build_disk_tab(px_version, dname, disk_map[dname])}</div>'
+        )
 
     return f"<ul class='nav nav-tabs mt-2' role='tablist'>{''.join(nav)}</ul><div class='tab-content mt-3'>{''.join(body)}</div>"
 
@@ -1883,7 +1993,9 @@ $(document).ready(function() {{
 
 # ---------------- Discover + Build ----------------
 def main():
-    parser = argparse.ArgumentParser(description="Generate KubeVirt Performance Dashboard (PX version → disk → Total VMs).")
+    parser = argparse.ArgumentParser(
+        description="Generate KubeVirt Performance Dashboard (PX version → disk → Total VMs)."
+    )
     parser.add_argument("--days", type=int, default=15)
     parser.add_argument("--base-dir", type=str, default="results")
     parser.add_argument("--output-html", type=str, default="results_dashboard.html")
@@ -1919,15 +2031,20 @@ def main():
         px_id = f"px_{px_version}".replace(".", "_").replace("-", "_")
         active_cls = "active" if idx == 0 else ""
         show_cls = "show" if idx == 0 else ""
-        px_nav.append(f'<li class="nav-item"><button class="nav-link {active_cls}" id="tab-{px_id}-tab" data-bs-toggle="tab" data-bs-target="#tab_{px_id}" type="button" role="tab">{px_version}</button></li>')
-        px_body.append(f'<div class="tab-pane fade {show_cls} {active_cls}" id="tab_{px_id}" role="tabpanel">{build_px_tab(px_version, disk_map)}</div>')
+        px_nav.append(
+            f'<li class="nav-item"><button class="nav-link {active_cls}" id="tab-{px_id}-tab" data-bs-toggle="tab" data-bs-target="#tab_{px_id}" type="button" role="tab">{px_version}</button></li>'
+        )
+        px_body.append(
+            f'<div class="tab-pane fade {show_cls} {active_cls}" id="tab_{px_id}" role="tabpanel">{build_px_tab(px_version, disk_map)}</div>'
+        )
 
     cluster_info = load_cluster_info(args.cluster_info) if args.cluster_info else None
 
     if cluster_info:
         cluster_html = build_cluster_info_tab(cluster_info)
         px_nav.append(
-            '<li class="nav-item"><button class="nav-link" id="tab-clusterinfo-tab" data-bs-toggle="tab" data-bs-target="#tab_clusterinfo" type="button" role="tab">Cluster Info</button></li>')
+            '<li class="nav-item"><button class="nav-link" id="tab-clusterinfo-tab" data-bs-toggle="tab" data-bs-target="#tab_clusterinfo" type="button" role="tab">Cluster Info</button></li>'
+        )
         px_body.append(f'<div class="tab-pane fade" id="tab_clusterinfo" role="tabpanel">{cluster_html}</div>')
 
     manual_results = load_manual_results(args.manual_results) if args.manual_results else None

@@ -220,7 +220,7 @@ spec:
 
 **Problem**: VM creation fails with "DataSource not found"
 
-**Solution**: 
+**Solution**:
 - Verify DataSource exists: `kubectl get datasource -n openshift-virtualization-os-images`
 - Check DataSource name and namespace in template
 
@@ -237,4 +237,3 @@ spec:
 - [DataSource Clone Testing](test-scenarios/datasource-clone.md) - Using templates in tests
 - [Configuration Options](configuration.md) - Template-related options
 - [Cluster Validation](test-scenarios/cluster-validation.md) - Verify DataSource availability
-

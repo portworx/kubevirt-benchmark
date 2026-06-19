@@ -1,0 +1,185 @@
+# pyproject.toml - Python project configuration for kubevirt-benchmark
+# This file configures linting, formatting, and type checking tools
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "virtbench"
+version = "2.0.0"
+description = "KubeVirt Benchmark Suite - Performance testing toolkit for KubeVirt VMs"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.8"
+dependencies = [
+    "click>=8.1.7",
+    "rich>=13.7.0",
+    "pyyaml>=6.0.3",
+    "pandas>=2.3.3",
+]
+
+[project.scripts]
+virtbench = "virtbench.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+    "types-PyYAML>=6.0.0",
+    "pandas-stubs>=2.0.0",
+]
+
+# =============================================================================
+# Ruff Configuration - Modern Python Linter and Formatter
+# =============================================================================
+[tool.ruff]
+# Target Python 3.8+ for compatibility
+target-version = "py38"
+
+# Line length limit
+line-length = 120
+
+# Exclude common directories that don't need linting
+exclude = [
+    ".git",
+    ".github",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    "*.egg-info",
+    "build",
+    "dist",
+    ".eggs",
+    "*.pyc",
+]
+
+[tool.ruff.lint]
+# Enable recommended rule sets
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort (import sorting)
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "PTH",    # flake8-use-pathlib (suggestions only)
+    "PL",     # Pylint
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore rules that are too strict for existing codebase
+ignore = [
+    "E501",     # Line too long - handled by formatter
+    "PLR0913",  # Too many arguments - common in CLI tools
+    "PLR0912",  # Too many branches - complex logic is sometimes needed
+    "PLR0915",  # Too many statements - complex functions exist
+    "PLR0911",  # Too many return statements - complex validation logic
+    "PLR2004",  # Magic value comparison - acceptable in scripts
+    "ARG001",   # Unused function argument - often needed for callbacks
+    "ARG002",   # Unused method argument - often needed for overrides
+    "B008",     # Function call in default argument - Click uses this pattern
+    "B007",     # Loop control variable not used - sometimes intentional
+    "B904",     # raise without from - Click patterns
+    "SIM102",   # Nested if statements - readability preference
+    "SIM105",   # Use contextlib.suppress - readability preference
+    "SIM108",   # Use ternary operator - readability preference
+    "SIM118",   # Use key in dict - gradual migration
+    "UP007",    # Use X | Y for Union - requires Python 3.10+
+    "PTH100",   # os.path.abspath - gradual pathlib migration
+    "PTH103",   # os.makedirs - gradual pathlib migration
+    "PTH109",   # os.getcwd - gradual pathlib migration
+    "PTH110",   # os.path.exists - gradual pathlib migration
+    "PTH117",   # os.path.isabs - gradual pathlib migration
+    "PTH118",   # os.path.join - gradual pathlib migration
+    "PTH119",   # os.path.basename - gradual pathlib migration
+    "PTH120",   # os.path.dirname - gradual pathlib migration
+    "PTH123",   # Path.open() - gradual pathlib migration
+    "RUF005",   # Consider iterable unpacking - style preference
+    "RUF013",   # Implicit Optional - gradual type hint migration
+]
+
+# Allow autofix for all enabled rules
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+# Test files can have more relaxed rules
+"test_*.py" = ["PLR2004", "S101", "ARG"]
+"*_test.py" = ["PLR2004", "S101", "ARG"]
+
+# Scripts may have complex logic
+"*/measure-*.py" = ["PLR0912", "PLR0915"]
+
+[tool.ruff.lint.isort]
+# isort configuration for import sorting
+known-first-party = ["virtbench", "utils"]
+force-single-line = false
+lines-after-imports = 2
+
+[tool.ruff.format]
+# Formatting configuration
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# =============================================================================
+# MyPy Configuration - Static Type Checking
+# =============================================================================
+[tool.mypy]
+python_version = "3.8"
+warn_unused_configs = true
+show_error_codes = true
+show_column_numbers = true
+
+# Relaxed settings for existing codebase - gradual type checking adoption
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+warn_return_any = false
+warn_redundant_casts = false
+warn_unused_ignores = false
+no_implicit_optional = false
+strict_optional = false
+
+# Exclude directories - include standalone script directories
+exclude = [
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+    "datasource-clone",
+    "migration",
+    "failure-recovery",
+    "dashboard",
+    "capacity-benchmark",
+    "chaos-benchmark",
+    "disk-ops-benchmark",
+    "io-benchmark",
+    "vm-ops",
+    "hotplug",
+]
+
+# Per-module overrides - relaxed checking for utils
+[[tool.mypy.overrides]]
+module = "utils.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "virtbench.*"
+check_untyped_defs = false
+ignore_errors = false

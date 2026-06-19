@@ -27,10 +27,11 @@ import logging
 import subprocess
 import sys
 import time
-import yaml
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import List, Tuple
+
+import yaml
 
 
 def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
@@ -41,10 +42,7 @@ def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
     # Clear any existing handlers
     logger.handlers = []
 
-    formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     # Console handler
     console_handler = logging.StreamHandler()
@@ -54,11 +52,12 @@ def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
     # File handler (if log_file specified)
     if log_file:
         import os
+
         log_dir = os.path.dirname(log_file)
         if log_dir:
             os.makedirs(log_dir, exist_ok=True)
 
-        file_handler = logging.FileHandler(log_file, mode='a')
+        file_handler = logging.FileHandler(log_file, mode="a")
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
         logger.info(f"Logging to file: {log_file}")
@@ -69,12 +68,7 @@ def setup_logging(level: str = "INFO", log_file: str = None) -> logging.Logger:
 def run_kubectl(args: List[str], timeout: int = 60) -> Tuple[int, str, str]:
     """Run kubectl command and return (returncode, stdout, stderr)."""
     try:
-        result = subprocess.run(
-            ["kubectl"] + args,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
+        result = subprocess.run(["kubectl"] + args, capture_output=True, text=True, timeout=timeout, check=False)
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return -1, "", "Command timed out"
@@ -87,31 +81,17 @@ def create_snapshot_yaml(namespace: str, vm_name: str, snapshot_name: str) -> di
     return {
         "apiVersion": "snapshot.kubevirt.io/v1beta1",
         "kind": "VirtualMachineSnapshot",
-        "metadata": {
-            "name": snapshot_name,
-            "namespace": namespace
-        },
-        "spec": {
-            "source": {
-                "apiGroup": "kubevirt.io",
-                "kind": "VirtualMachine",
-                "name": vm_name
-            }
-        }
+        "metadata": {"name": snapshot_name, "namespace": namespace},
+        "spec": {"source": {"apiGroup": "kubevirt.io", "kind": "VirtualMachine", "name": vm_name}},
     }
 
 
-def create_vm_snapshot(namespace: str, vm_name: str, snapshot_prefix: str,
-                       logger: logging.Logger, dry_run: bool = False) -> dict:
+def create_vm_snapshot(
+    namespace: str, vm_name: str, snapshot_prefix: str, logger: logging.Logger, dry_run: bool = False
+) -> dict:
     """Create a snapshot for a VM."""
     log_prefix = f"[{namespace}/{vm_name}]"
-    result = {
-        "namespace": namespace,
-        "vm_name": vm_name,
-        "snapshot_name": None,
-        "success": False,
-        "error": None
-    }
+    result = {"namespace": namespace, "vm_name": vm_name, "snapshot_name": None, "success": False, "error": None}
 
     # Generate snapshot name with timestamp
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -130,21 +110,14 @@ def create_vm_snapshot(namespace: str, vm_name: str, snapshot_prefix: str,
     logger.debug(f"{log_prefix} Creating snapshot '{snapshot_name}'")
 
     # Apply the snapshot using kubectl
-    rc, stdout, stderr = run_kubectl(
-        ["apply", "-f", "-"],
-        timeout=30
-    )
+    rc, stdout, stderr = run_kubectl(["apply", "-f", "-"], timeout=30)
 
     # Pass YAML via stdin
     try:
         result_apply = subprocess.run(
-            ["kubectl", "apply", "-f", "-"],
-            input=yaml_str,
-            capture_output=True,
-            text=True,
-            timeout=30
+            ["kubectl", "apply", "-f", "-"], input=yaml_str, capture_output=True, text=True, timeout=30, check=False
         )
-        rc, stdout, stderr = result_apply.returncode, result_apply.stdout, result_apply.stderr
+        rc, _stdout, stderr = result_apply.returncode, result_apply.stdout, result_apply.stderr
     except Exception as e:
         result["error"] = str(e)
         logger.error(f"{log_prefix} Failed to create snapshot: {e}")
@@ -161,43 +134,37 @@ def create_vm_snapshot(namespace: str, vm_name: str, snapshot_prefix: str,
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Create VM snapshots in batches with time intervals"
-    )
-    parser.add_argument("--namespace-prefix", required=True,
-                        help="Namespace prefix (e.g., perf-test)")
-    parser.add_argument("--start", type=int, required=True,
-                        help="Start namespace index")
-    parser.add_argument("--end", type=int, required=True,
-                        help="End namespace index")
-    parser.add_argument("--vm-name", required=True,
-                        help="VM name in each namespace")
+    parser = argparse.ArgumentParser(description="Create VM snapshots in batches with time intervals")
+    parser.add_argument("--namespace-prefix", required=True, help="Namespace prefix (e.g., perf-test)")
+    parser.add_argument("--start", type=int, required=True, help="Start namespace index")
+    parser.add_argument("--end", type=int, required=True, help="End namespace index")
+    parser.add_argument("--vm-name", required=True, help="VM name in each namespace")
 
     # Batch options
-    parser.add_argument("--batch-size", type=int, default=50,
-                        help="Number of VMs to snapshot in each batch (default: 50)")
-    parser.add_argument("--interval", type=int, default=900,
-                        help="Time interval between batches in seconds (default: 900 = 15 min)")
-    parser.add_argument("--concurrency", type=int, default=50,
-                        help="Max concurrent snapshot operations within a batch (default: 50)")
+    parser.add_argument(
+        "--batch-size", type=int, default=50, help="Number of VMs to snapshot in each batch (default: 50)"
+    )
+    parser.add_argument(
+        "--interval", type=int, default=900, help="Time interval between batches in seconds (default: 900 = 15 min)"
+    )
+    parser.add_argument(
+        "--concurrency", type=int, default=50, help="Max concurrent snapshot operations within a batch (default: 50)"
+    )
 
     # Snapshot options
-    parser.add_argument("--snapshot-prefix", default="vm-snap",
-                        help="Snapshot name prefix (default: vm-snap)")
+    parser.add_argument("--snapshot-prefix", default="vm-snap", help="Snapshot name prefix (default: vm-snap)")
 
     # Other options
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be done without doing it")
-    parser.add_argument("--log-level", default="INFO",
-                        choices=["DEBUG", "INFO", "WARNING", "ERROR"])
-    parser.add_argument("--log-file", default=None,
-                        help="Path to log file. If not specified, uses default.")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without doing it")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument("--log-file", default=None, help="Path to log file. If not specified, uses default.")
 
     args = parser.parse_args()
 
     # Setup logging
     import os
     from datetime import datetime as dt
+
     log_file = args.log_file
     if not log_file:
         os.makedirs("logs", exist_ok=True)
@@ -213,7 +180,7 @@ def main():
     # Split into batches
     batches = []
     for i in range(0, total_vms, args.batch_size):
-        batch = all_namespaces[i:i + args.batch_size]
+        batch = all_namespaces[i : i + args.batch_size]
         batches.append(batch)
 
     logger.info("=" * 80)
@@ -243,11 +210,7 @@ def main():
     # Process each batch
     for batch_num, batch_namespaces in enumerate(batches, 1):
         batch_start = datetime.now()
-        batch_times.append({
-            "batch_num": batch_num,
-            "start_time": batch_start,
-            "num_vms": len(batch_namespaces)
-        })
+        batch_times.append({"batch_num": batch_num, "start_time": batch_start, "num_vms": len(batch_namespaces)})
 
         logger.info("")
         logger.info(f"{'=' * 80}")
@@ -259,10 +222,7 @@ def main():
         # Create snapshots in parallel within the batch
         with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
             futures = {
-                executor.submit(
-                    create_vm_snapshot, ns, args.vm_name, args.snapshot_prefix,
-                    logger, args.dry_run
-                ): ns
+                executor.submit(create_vm_snapshot, ns, args.vm_name, args.snapshot_prefix, logger, args.dry_run): ns
                 for ns in batch_namespaces
             }
 
@@ -279,7 +239,7 @@ def main():
                         "vm_name": args.vm_name,
                         "snapshot_name": None,
                         "success": False,
-                        "error": str(e)
+                        "error": str(e),
                     }
                     batch_results.append(error_result)
                     all_results.append(error_result)
@@ -288,8 +248,10 @@ def main():
         batch_success = sum(1 for r in batch_results if r["success"])
         batch_failed = len(batch_results) - batch_success
 
-        logger.info(f"Batch {batch_num} completed: {batch_success} success, {batch_failed} failed, "
-                    f"time: {batch_elapsed:.2f}s")
+        logger.info(
+            f"Batch {batch_num} completed: {batch_success} success, {batch_failed} failed, "
+            f"time: {batch_elapsed:.2f}s"
+        )
 
         # Wait before next batch (except for the last batch)
         if batch_num < len(batches):
@@ -314,7 +276,9 @@ def main():
     logger.info("")
     logger.info("BATCH START TIMES:")
     for bt in batch_times:
-        logger.info(f"  Batch {bt['batch_num']}: {bt['start_time'].strftime('%Y-%m-%d %H:%M:%S')} ({bt['num_vms']} VMs)")
+        logger.info(
+            f"  Batch {bt['batch_num']}: {bt['start_time'].strftime('%Y-%m-%d %H:%M:%S')} ({bt['num_vms']} VMs)"
+        )
     logger.info("=" * 80)
 
     # Print failures if any

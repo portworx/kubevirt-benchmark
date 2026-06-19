@@ -142,7 +142,7 @@ replace_in_file() {
 
     # Get current storage class
     current_sc=$(grep "storageClassName:" "$file" | head -1 | sed 's/.*storageClassName: *//' | tr -d '"' | tr -d "'")
-    
+
     if [ "$current_sc" = "$storage_class" ]; then
         print_info "Already using '$storage_class' in: $(basename $file)"
         return 0
@@ -191,7 +191,7 @@ else
     # Process all YAML files in templates directory
     print_info "Processing all VM templates in: $TEMPLATES_DIR"
     echo ""
-    
+
     file_count=0
     for file in "$TEMPLATES_DIR"/*.yaml; do
         if [ -f "$file" ]; then
@@ -199,7 +199,7 @@ else
             ((file_count++))
         fi
     done
-    
+
     echo ""
     print_success "Processed $file_count template file(s)"
 fi
@@ -215,4 +215,3 @@ fi
 echo ""
 print_success "Done!"
 echo ""
-

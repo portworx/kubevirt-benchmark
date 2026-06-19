@@ -136,4 +136,3 @@ spec:
                   # Run FIO
                   fio /tmp/fio.job --output-format=json --output=/tmp/fio_results.json
                   echo "completed" > /tmp/fio_complete
-

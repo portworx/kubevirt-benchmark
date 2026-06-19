@@ -49,4 +49,3 @@ git commit --signoff --message "feat: add support for x
   Ref: #123"
 git push origin feat/add-x
 ```
-

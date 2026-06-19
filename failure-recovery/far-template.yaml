@@ -6,16 +6,16 @@ metadata:
 spec:
   # Fence agent type (fence_ipmilan for IPMI-based fencing)
   agent: fence_ipmilan
-  
+
   # Number of retry attempts
   retrycount: 3
-  
+
   # Interval between retries
   retryinterval: "5s"
-  
+
   # Timeout for fence operation
   timeout: "60s"
-  
+
   # Shared parameters for all nodes
   sharedparameters:
     # IPMI username (update with your credentials)
@@ -27,7 +27,7 @@ spec:
     --lanplus: ""
     # Action to perform (reboot, off, on)
     --action: reboot
-  
+
   # Node-specific parameters
   nodeparameters:
     # BMC IP address for each node
@@ -64,4 +64,3 @@ spec:
 #       worker-node-1: "623"
 #       worker-node-2: "623"
 #       worker-node-3: "623"
-
