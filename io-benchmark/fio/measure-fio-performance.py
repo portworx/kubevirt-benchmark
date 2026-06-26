@@ -58,6 +58,7 @@ DEFAULT_FIO_RW = 'randwrite'
 DEFAULT_FIO_IODEPTH = 64
 DEFAULT_FIO_NUMJOBS = 4
 DEFAULT_FIO_SIZE = '10G'
+DEFAULT_FIO_DIRECTORY = '/scratch'
 
 
 def parse_args():
@@ -112,6 +113,8 @@ Examples:
     parser.add_argument('--fio-iodepth', type=int, default=DEFAULT_FIO_IODEPTH)
     parser.add_argument('--fio-numjobs', type=int, default=DEFAULT_FIO_NUMJOBS)
     parser.add_argument('--fio-size', type=str, default=DEFAULT_FIO_SIZE, help='Test file size')
+    parser.add_argument('--fio-directory', type=str, default=DEFAULT_FIO_DIRECTORY,
+                        help='Directory inside the VM to run FIO against (default: /scratch)')
 
     # Output
     parser.add_argument('--results-dir', type=str, default='results', help='Base results directory')
@@ -163,6 +166,7 @@ def prepare_vm_yaml(template_path: str, vm_name: str, storage_class: str,
         '{{FIO_IODEPTH}}': str(fio_config['iodepth']),
         '{{FIO_NUMJOBS}}': str(fio_config['numjobs']),
         '{{FIO_SIZE}}': fio_config['size'],
+        '{{FIO_DIRECTORY}}': fio_config['directory'],
     }
 
     for placeholder, value in replacements.items():
@@ -266,6 +270,7 @@ def wait_for_fio_complete(namespace: str, vm_name: str, ssh_config: Dict,
 
     logger.info(f"[{namespace}] VM running with IP {vm_ip}, waiting for FIO...")
 
+    ssh_consecutive_failures = 0
     # Wait for FIO to complete
     while time.time() - start < timeout:
         output = run_ssh_command(
@@ -276,6 +281,21 @@ def wait_for_fio_complete(namespace: str, vm_name: str, ssh_config: Dict,
         )
         if output and 'completed' in output:
             return True
+        if not output:
+            ssh_consecutive_failures += 1
+            if ssh_consecutive_failures == 1:
+                logger.warning(
+                    f"[{namespace}] SSH to {vm_ip} returned no output — "
+                    f"check that pod '{ssh_config['pod']}' exists in namespace "
+                    f"'{ssh_config['pod_ns']}' and has sshpass installed"
+                )
+            elif ssh_consecutive_failures % 5 == 0:
+                logger.warning(
+                    f"[{namespace}] SSH still failing after {ssh_consecutive_failures} attempts "
+                    f"(pod={ssh_config['pod']}, vm={vm_ip})"
+                )
+        else:
+            ssh_consecutive_failures = 0
         time.sleep(30)
 
     logger.warning(f"[{namespace}] FIO did not complete within timeout")
@@ -685,6 +705,19 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
 
     test_start = time.time()
 
+    # Verify SSH pod exists before doing expensive work
+    rc, _, _ = run_kubectl_command(
+        ['get', 'pod', ssh_config['pod'], '-n', ssh_config['pod_ns']],
+        check=False, logger=logger
+    )
+    if rc != 0:
+        logger.error(
+            f"SSH helper pod '{ssh_config['pod']}' not found in namespace "
+            f"'{ssh_config['pod_ns']}'. Deploy it first:\n"
+            f"  kubectl apply -f examples/utilities/ssh-pod.yaml"
+        )
+        sys.exit(1)
+
     # Step 1: Create namespaces
     print("[1/4] Creating namespaces...")
     create_namespaces_parallel(namespaces, batch_size=20, logger=logger)
@@ -795,7 +828,8 @@ def main():
         'rw': args.fio_rw,
         'iodepth': args.fio_iodepth,
         'numjobs': args.fio_numjobs,
-        'size': args.fio_size
+        'size': args.fio_size,
+        'directory': args.fio_directory,
     }
 
     ssh_config = {
