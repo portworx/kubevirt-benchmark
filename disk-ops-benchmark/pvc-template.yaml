@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: DISK_NAME
+  namespace: NAMESPACE
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: DISK_SIZE
+  storageClassName: STORAGE_CLASS
+  volumeMode: Block
