@@ -8,6 +8,7 @@ kubectl command execution, and common helper functions.
 
 import json
 import logging
+import math
 import shlex
 import subprocess
 import sys
@@ -1911,6 +1912,20 @@ def print_summary_table(
     output("=" * 95)
 
 
+def percentile(values, p):
+    """Nearest-rank percentile of values (0<=p<=100).
+
+    The 1-based rank is ceil(p/100 * n), clamped to [1, n], so p0 gives the
+    minimum and p100 the maximum. Returns None for an empty series.
+    """
+    if not values:
+        return None
+    s = sorted(values)
+    n = len(s)
+    rank = max(1, min(math.ceil(p / 100 * n), n))
+    return round(s[rank - 1], 2)
+
+
 def save_results(args, results, base_dir="results", prefix="vm_creation_results",
                  logger=None, skip_clone=False, total_time=None):
     """
@@ -1988,6 +2003,10 @@ def save_results(args, results, base_dir="results", prefix="vm_creation_results"
             "avg": round(sum(values) / len(values), 2) if values else None,
             "max": round(max(values), 2) if values else None,
             "min": round(min(values), 2) if values else None,
+            "p50": percentile(values, 50),
+            "p90": percentile(values, 90),
+            "p95": percentile(values, 95),
+            "p99": percentile(values, 99),
             "count": len(values),
         }
 
@@ -2015,7 +2034,7 @@ def save_results(args, results, base_dir="results", prefix="vm_creation_results"
 
     # --- Save summary CSV ---
     with open(summary_csv_path, "w", newline="") as cf:
-        writer = csv.DictWriter(cf, fieldnames=["metric", "avg", "max", "min", "count"])
+        writer = csv.DictWriter(cf, fieldnames=["metric", "avg", "max", "min", "p50", "p90", "p95", "p99", "count"])
         writer.writeheader()
         for m in summary["metrics"]:
             writer.writerow(m)
