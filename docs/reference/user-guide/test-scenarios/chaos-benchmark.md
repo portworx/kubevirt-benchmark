@@ -52,6 +52,30 @@ virtbench chaos-benchmark \
 
 > **Note**: Volume sizes must include units (e.g., `40Gi`, `100Mi`). Using just `40` without a unit will fail.
 
+## Data Volume Access and Volume Mode
+
+The benchmark adds the extra data volumes itself, so their settings come from these options rather than from `--vm-yaml`:
+
+| Option | Default | Meaning |
+|--------|---------|---------|
+| `--data-volume-access-mode` | `RWX` | `RWX` (ReadWriteMany) or `RWO` (ReadWriteOnce) |
+| `--data-volume-mode` | storage class default | `Filesystem` or `Block` |
+
+Data volumes are `RWX` by default so the VMs stay live-migratable. KubeVirt refuses to migrate a VM that has a ReadWriteOnce disk, and reports `PVC ... is not shared, live migration requires that all PVCs must be shared` when something asks it to. The chaos phases themselves (create, resize, clone, restart, snapshot) do not live-migrate VMs, so RWO would also work for them.
+
+If the storage class cannot provision RWX volumes, the data volumes stay Pending and the run times out. Use `--data-volume-access-mode RWO` for those classes:
+
+```bash
+virtbench chaos-benchmark \
+  --storage-class YOUR-RWO-ONLY-STORAGE-CLASS \
+  --concurrency 2 \
+  --data-volume-access-mode RWO
+```
+
+For a block storage class, add `--data-volume-mode Block` if the class's default volume mode is not what you want for RWX.
+
+> **Note**: These options only affect the data volumes the benchmark adds. The root disk comes from the `dataVolumeTemplates` entry in `--vm-yaml` and takes its access mode from the storage class's CDI StorageProfile. Cloned volumes keep the access mode of the volume they are cloned from.
+
 ## Skip Specific Phases
 
 ```bash
@@ -113,6 +137,21 @@ virtbench chaos-benchmark --cleanup-only --concurrency 1
 
 **Solution**:
 - Use `--skip-clone` to skip this phase
+
+### "PVC ... is not shared" warning on a VM
+
+**Cause**: A data volume is ReadWriteOnce, so KubeVirt cannot live-migrate that VM. This is only a warning for chaos runs, which never migrate VMs.
+
+**Solution**:
+- Use the default `--data-volume-access-mode RWX` (add `--data-volume-mode Block` for a block storage class if needed), or ignore the warning for chaos runs
+
+### Data volumes stay Pending
+
+**Cause**: The default data volume access mode is RWX and the storage class cannot provide it.
+
+**Solution**:
+- Check `kubectl describe pvc` on a pending data volume
+- Re-run with `--data-volume-access-mode RWO`
 
 ### Snapshot Failures
 

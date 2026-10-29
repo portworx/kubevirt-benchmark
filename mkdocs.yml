@@ -34,6 +34,8 @@ nav:
   - User Guide:
       - Test Scenarios:
           - Overview: reference/user-guide/test-scenarios/overview.md
+          - CDI Root-Disk Strategies: reference/user-guide/test-scenarios/cdi-root-disk.md
+          - VirtualMachinePool: reference/user-guide/test-scenarios/vm-pool.md
           - VM Creation (DataSource Clone): reference/user-guide/test-scenarios/datasource-clone.md
           - Boot Storm: reference/user-guide/test-scenarios/boot-storm.md
           - Live Migration: reference/user-guide/test-scenarios/migration.md

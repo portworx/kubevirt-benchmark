@@ -1,0 +1,63 @@
+# VirtualMachine specification for `virtbench vm-pool` (and `cdi-root-disk`).
+#
+# The root DataVolume below is only a placeholder: virtbench replaces it at run
+# time with a unique CDI clone of the DataSource (--datasource-name) for every pool replica, using
+# the clone strategy under test. Everything else (CPU, memory, networks,
+# cloud-init) is used exactly as written.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: pool-vm
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        name: rootdisk
+      spec:
+        sourceRef:
+          kind: DataSource
+          name: fedora
+          namespace: openshift-virtualization-os-images
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+          volumeMode: Block
+  runStrategy: Always
+  template:
+    spec:
+      domain:
+        cpu:
+          cores: 2
+        devices:
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+        memory:
+          guest: 2Gi
+        resources:
+          requests:
+            cpu: "1"
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: rootdisk
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              user: fedora
+              password: changeme
+              chpasswd:
+                expire: false
+              ssh_pwauth: true

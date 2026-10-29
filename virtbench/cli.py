@@ -12,6 +12,8 @@ from pathlib import Path
 
 from virtbench.common import find_repo_root
 from virtbench.commands import (
+    cdi_root_disk,
+    dashboard,
     datasource_clone,
     migration,
     chaos,
@@ -22,6 +24,7 @@ from virtbench.commands import (
     validate,
     version,
     vm_ops,
+    vm_pool,
 )
 
 
@@ -72,6 +75,8 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
     
     \b
     Available Commands:
+      cdi-root-disk       Compare CDI root-disk clone strategies
+      vm-pool             Benchmark VirtualMachinePool scale and recovery
       datasource-clone     Run DataSource clone benchmark
       migration            Run VM migration benchmark
       chaos-benchmark      Run chaos benchmark (concurrent VM/volume operations)
@@ -90,6 +95,16 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
 
       # Run datasource clone test
       virtbench datasource-clone --start 1 --end 10 --storage-class YOUR-STORAGE-CLASS
+
+      # Compare CDI root-disk provisioning strategies
+      virtbench cdi-root-disk --datasource-name rhel9 --vm-spec vm.yaml
+
+      # Scale a pool with uniquely cloned root disks
+      virtbench vm-pool --datasource-name rhel9 --vm-spec vm.yaml --replicas 50
+
+
+      # Build the results dashboard from everything under results/
+      virtbench dashboard
 
       # Run migration test
       virtbench migration --start 1 --end 5 --source-node worker-1
@@ -123,11 +138,14 @@ def cli(ctx, log_level, log_file, kubeconfig, timeout, uuid):
 
 
 # Register subcommands
+cli.add_command(cdi_root_disk.cdi_root_disk)
+cli.add_command(vm_pool.vm_pool)
 cli.add_command(datasource_clone.datasource_clone)
 cli.add_command(migration.migration)
 cli.add_command(chaos.chaos_benchmark)
 cli.add_command(failure_recovery.failure_recovery)
 cli.add_command(fio.fio)
+cli.add_command(dashboard.dashboard)
 cli.add_command(elbencho.elbencho)
 cli.add_command(disk_ops.disk_ops)
 cli.add_command(vm_ops.vm_ops)

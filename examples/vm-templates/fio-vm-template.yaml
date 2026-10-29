@@ -10,6 +10,8 @@
 #   {{FIO_IODEPTH}}        - I/O depth
 #   {{FIO_NUMJOBS}}        - Number of parallel jobs
 #   {{FIO_SIZE}}           - Test file size
+#   {{FIO_RAMP_TIME}}      - Warm-up time excluded from measurements
+#   {{FIO_RWMIXREAD}}      - Read percentage for mixed workloads
 #
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
@@ -110,11 +112,14 @@ spec:
                 - systemctl enable --now qemu-guest-agent
                 - |
                   # Mount scratch disk
-                  SCRATCH=$(lsblk -dnbo NAME,SIZE | awk '$2 > 40000000000 {print $1}' | head -1)
-                  if [ -n "$SCRATCH" ]; then
-                    mkfs.xfs -f /dev/$SCRATCH
+                  SCRATCH=$(readlink -f /dev/disk/by-id/virtio-virtbenchfio 2>/dev/null)
+                  if [ -z "$SCRATCH" ]; then
+                    SCRATCH=/dev/$(lsblk -dnbo NAME,SIZE | awk '$2 > 40000000000 {print $1}' | head -1)
+                  fi
+                  if [ -b "$SCRATCH" ]; then
+                    mkfs.xfs -f "$SCRATCH"
                     mkdir -p /scratch
-                    mount /dev/$SCRATCH /scratch
+                    mount "$SCRATCH" /scratch
                   fi
                   # Create FIO job file
                   cat > /tmp/fio.job << 'FIOJOB'
@@ -122,6 +127,7 @@ spec:
                   name=fio-benchmark
                   directory=/scratch/
                   rw={{FIO_RW}}
+                  rwmixread={{FIO_RWMIXREAD}}
                   bs={{FIO_BS}}
                   direct=1
                   ioengine=libaio
@@ -130,10 +136,10 @@ spec:
                   group_reporting=1
                   time_based=1
                   runtime={{FIO_RUNTIME}}
+                  ramp_time={{FIO_RAMP_TIME}}
                   size={{FIO_SIZE}}
                   [test]
                   FIOJOB
                   # Run FIO
                   fio /tmp/fio.job --output-format=json --output=/tmp/fio_results.json
                   echo "completed" > /tmp/fio_complete
-

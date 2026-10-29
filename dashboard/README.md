@@ -7,7 +7,8 @@
 ## Features
 
 - **Multi-level Organization**: Results organized by PX Version → Disk Count → VM Size
-- **Interactive Charts**: Plotly-based bar charts showing duration metrics in mm:ss format
+- **Interactive Charts**: Plotly duration charts (mm:ss) and Chart.js read/write charts, in a soft palette with light and dark themes
+- **Only what ran**: each VM size shows tabs for the benchmark types it has results for (creation/boot storm, migration, chaos, FIO, Elbencho, disk ops), and empty charts are not drawn
 - **Detailed Tables**: DataTables-powered interactive tables with sorting and filtering
 - **Cluster Information**: Display cluster metadata and configuration details
 - **Manual Results**: Include manually collected test results alongside automated ones
@@ -29,66 +30,46 @@ pip install pandas pyyaml
 
 ### Basic Usage
 
-From the repository root directory (`/Users/bnagar/Documents/GitHub/kubevirt-benchmark-suite/`):
+From anywhere in the repository:
+
+```bash
+virtbench dashboard          # build it
+```
+
+One command builds everything under `results/`: `results_dashboard.html` (FIO, VM pool,
+creation, migration, chaos, ...) and, when profile comparisons exist,
+`profile_comparison_dashboard.html`.
+
+or, without the CLI:
 
 ```bash
 python3 dashboard/generate_dashboard.py
 ```
 
-This will use default parameters:
-- Look for results in the `results/` directory
-- Include results from the last 15 days
-- Generate `results_dashboard.html` in the current directory
+With no options it reads every run under `results/` and writes `results_dashboard.html` in the repository root.
 
-### Full Usage with All Parameters
+### Options (all optional)
 
-```bash
-python3 dashboard/generate_dashboard.py \
-  --days 50 \
-  --base-dir results \
-  --cluster-info dashboard/cluster_info.yaml \
-  --manual-results dashboard/manual_results.yaml \
-  --output-html results_dashboard.html
-```
-
-### Command-Line Arguments
-
-| Argument | Type | Default | Description |
-|----------|------|---------|-------------|
-| `--days` | int | 15 | Number of days to look back for results. Only folders with timestamps within this range will be included. |
-| `--base-dir` | str | `results` | Base directory containing test result folders. |
-| `--output-html` | str | `results_dashboard.html` | Output HTML file path. |
-| `--cluster-info` | str | None | Path to cluster information YAML file (optional). |
-| `--manual-results` | str | None | Path to manual results YAML file (optional). |
+| Option | Description |
+|--------|-------------|
+| `--days N` | Only include runs from the last N days. Default: all runs. |
+| `--output` / `--output-html` | Where to write the page. Default: `results_dashboard.html` in the repo root. |
+| `--base-dir` | Results folder. Default: `results/` in the repo root. (script only) |
+| `--cluster-info` | Add a Cluster Info tab from a YAML file such as `dashboard/cluster_info.yaml`. (script only) |
+| `--manual-results` | Add a Manual Results tab from a YAML file such as `dashboard/manual_results.yaml`. (script only) |
 
 ### Examples
 
-**Example 1: Generate dashboard for last 30 days**
 ```bash
-python3 dashboard/generate_dashboard.py --days 30
-```
-
-**Example 2: Custom output location**
-```bash
+virtbench dashboard --days 30                                   # last 30 days only
+virtbench dashboard --output /path/to/dashboard.html            # custom location
+python3 dashboard/generate_dashboard.py --base-dir /path/to/results
 python3 dashboard/generate_dashboard.py \
-  --output-html /path/to/custom_dashboard.html
-```
-
-**Example 3: Different results directory**
-```bash
-python3 dashboard/generate_dashboard.py \
-  --base-dir /path/to/test/results \
-  --days 60
-```
-
-**Example 4: Your typical usage**
-```bash
-python3 dashboard/generate_dashboard.py \
-  --days 50 \
-  --base-dir results \
   --cluster-info dashboard/cluster_info.yaml \
-  --manual-results dashboard/manual_results.yaml
+  --manual-results dashboard/manual_results.yaml                # add the optional tabs
 ```
+
+Runs that left no result files behind (for example an interrupted run) are skipped, so every tab you see has data.
 
 ## Input Data Structure
 

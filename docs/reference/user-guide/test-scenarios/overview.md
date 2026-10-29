@@ -4,14 +4,32 @@
 
 The benchmark suite supports the following testing scenarios:
 
-### 1. VM Creation (DataSource Clone)
+### 1. CDI Root-Disk Strategy Benchmark
+
+Provisions the same VM root disk with CSI clone, snapshot, and host-assisted
+copy, then verifies which strategy CDI actually used.
+
+**Use Case**: Compare golden-image provisioning and VM readiness across CDI strategies.
+
+[Learn more →](cdi-root-disk.md)
+
+### 2. VirtualMachinePool Scale and Recovery
+
+Scales a VM pool from zero to the requested replica count using unique cloned
+root disks, with optional deletion and self-healing measurement.
+
+**Use Case**: Measure fleet provisioning, controller scalability, storage concurrency, and pool recovery.
+
+[Learn more →](vm-pool.md)
+
+### 3. VM Creation (DataSource Clone)
 Tests VM creation using KubeVirt DataSource cloning for efficient VM provisioning.
 
 **Use Case**: Measure VM provisioning performance with your storage backend.
 
 [Learn more →](datasource-clone.md)
 
-### 2. Boot Storm Testing
+### 4. Boot Storm Testing
 Mass simultaneous VM startup test to validate concurrent startup performance,
 storage/network/compute bottlenecks, and disaster recovery RTO.
 
@@ -20,42 +38,42 @@ cold starts, or any scenario where many VMs start at once.
 
 [Learn more →](boot-storm.md)
 
-### 3. Live Migration Testing
+### 5. Live Migration Testing
 Tests VM live migration with existing VMs or by creating new VMs across different scenarios.
 
 **Use Case**: Validates migration performance for node maintenance, load balancing, and disaster recovery scenarios.
 
 [Learn more →](migration.md)
 
-### 4. Chaos Benchmark Testing
+### 6. Chaos Benchmark Testing
 Tests cluster resilience by running concurrent chaos operations including VM creation, volume resize, volume clone, VM restart, and snapshots.
 
 **Use Case**: Stress-test the cluster with concurrent operations, validate volume cloning, and measure performance under load.
 
 [Learn more →](chaos-benchmark.md)
 
-### 5. Failure and Recovery Testing
+### 7. Failure and Recovery Testing
 Tests VM recovery time after simulated node failures using Fence Agents Remediation (FAR).
 
 **Use Case**: Validates high availability and disaster recovery capabilities.
 
 [Learn more →](failure-recovery.md)
 
-### 6. Cluster Validation (Openshift Only)
+### 8. Cluster Validation (Openshift Only)
 Validates that your OpenShift cluster is properly configured and ready to run KubeVirt performance tests.
 
 **Use Case**: Pre-flight checks before running benchmarks.
 
 [Learn more →](cluster-validation.md)
 
-### 7. FIO Storage I/O Benchmark
+### 9. FIO Storage I/O Benchmark
 Tests storage I/O performance by running FIO benchmarks across multiple VMs in parallel.
 
 **Use Case**: Measure storage IOPS, bandwidth, and latency under various workload patterns.
 
 [Learn more →](fio-benchmark.md)
 
-### 8. Elbencho Storage Benchmark
+### 10. Elbencho Storage Benchmark
 Runs the elbencho storage micro-benchmark across multiple VMs to measure
 file-system level throughput and latency.
 
@@ -63,7 +81,7 @@ file-system level throughput and latency.
 
 [Learn more →](elbencho-benchmark.md)
 
-### 9. VM Operations (Day-2)
+### 11. VM Operations (Day-2)
 Day-2 lifecycle operations for benchmarking and validation: drain nodes,
 rebalance VMs, snapshot in batches, run `blkdiscard`, and power VMs on/off.
 
@@ -72,7 +90,7 @@ for larger test plans.
 
 [Learn more →](vm-ops/overview.md)
 
-### 10. Disk Operations (Hotplug/Coldplug)
+### 12. Disk Operations (Hotplug/Coldplug)
 Tests disk hotplug (attach to running VM) and coldplug (attach to stopped VM,
 then boot) performance, with optional in-VM validation that the disk appears.
 

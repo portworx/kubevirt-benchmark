@@ -1,0 +1,161 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  annotations:
+    kubevirt.io/latest-observed-api-version: v1
+    kubevirt.io/storage-observed-api-version: v1
+  name: rhel-9-vm
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        creationTimestamp: null
+        name: rhel-9-vm-volume
+      spec:
+        sourceRef:
+          kind: DataSource
+          name: rhel9
+          namespace: openshift-virtualization-os-images
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+          storageClassName: {{STORAGE_CLASS_NAME}}
+          volumeMode: Block
+  runStrategy: Always
+  template:
+    spec: 
+      
+      domain:
+        cpu:
+          cores: 1
+        devices:
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            - name: data-disk-1
+              disk:
+                bus: virtio
+            - name: data-disk-2
+              disk:
+                bus: virtio
+            - name: data-disk-3
+              disk:
+                bus: virtio
+            - name: data-disk-4
+              disk:
+                bus: virtio
+          
+
+          interfaces:
+            - masquerade: {}
+              name: default
+        features:
+          acpi: {}
+          smm:
+            enabled: true
+        resources:
+          requests:
+            cpu: 1
+            memory: 2048M
+      networks:
+        - name: default
+          pod: {}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      volumes:
+        - dataVolume:
+            name: rhel-9-vm-volume
+          name: rootdisk
+        - name: data-disk-1
+          persistentVolumeClaim:
+            claimName: data-disk-1
+        - name: data-disk-2
+          persistentVolumeClaim:
+            claimName: data-disk-2
+        - name: data-disk-3
+          persistentVolumeClaim:
+            claimName: data-disk-3
+        - name: data-disk-4
+          persistentVolumeClaim:
+            claimName: data-disk-4
+      
+        
+        - cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              chpasswd:
+                expire: false
+              password: Password1
+              user: rhel
+          name: cloudinitdisk
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-disk-1
+  labels:
+    portworx.io/kubevirt: "true"
+spec:
+  storageClassName: {{STORAGE_CLASS_NAME}}
+  volumeMode: Block
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-disk-2
+  labels:
+    portworx.io/kubevirt: "true"
+spec:
+  storageClassName: {{STORAGE_CLASS_NAME}}
+  volumeMode: Block
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-disk-3
+  labels:
+    portworx.io/kubevirt: "true"
+spec:
+  storageClassName: {{STORAGE_CLASS_NAME}}
+  volumeMode: Block
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-disk-4
+  labels:
+    portworx.io/kubevirt: "true"
+spec:
+  storageClassName: {{STORAGE_CLASS_NAME}}
+  volumeMode: Block
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+

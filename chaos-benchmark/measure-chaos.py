@@ -46,6 +46,20 @@ DEFAULT_MIN_VOL_SIZE = '30Gi'
 DEFAULT_MIN_VOL_INC_SIZE = '10Gi'
 DEFAULT_CONCURRENCY = 2
 
+# Extra data volumes are created by this script, so their access mode is chosen here rather than in --vm-yaml.
+ACCESS_MODES = {'rwo': 'ReadWriteOnce', 'readwriteonce': 'ReadWriteOnce',
+                'rwx': 'ReadWriteMany', 'readwritemany': 'ReadWriteMany'}
+VOLUME_MODES = {'filesystem': 'Filesystem', 'block': 'Block'}
+
+
+def _choice(table, label, hint):
+    def parse(value):
+        try:
+            return table[value.strip().lower()]
+        except KeyError:
+            raise argparse.ArgumentTypeError(f"invalid {label} '{value}' (use {hint})")
+    return parse
+
 
 def parse_args():
     """Parse command line arguments."""
@@ -86,6 +100,12 @@ Examples:
                         help=f'Number of VMs per iteration (default: {DEFAULT_VMS_PER_ITERATION})')
     parser.add_argument('--data-volume-count', type=int, default=DEFAULT_DATA_VOLUME_COUNT,
                         help=f'Number of data volumes per VM (default: {DEFAULT_DATA_VOLUME_COUNT})')
+    parser.add_argument('--data-volume-access-mode', type=_choice(ACCESS_MODES, 'access mode', 'RWO or RWX'), default='ReadWriteMany',
+                        help='Access mode of the data volumes: RWX (ReadWriteMany) or RWO (ReadWriteOnce). '
+                             'RWX keeps the VMs live-migratable; use RWO for storage classes without RWX (default: RWX)')
+    parser.add_argument('--data-volume-mode', type=_choice(VOLUME_MODES, 'volume mode', 'Filesystem or Block'), default=None,
+                        help='Volume mode of the data volumes: Filesystem or Block '
+                             '(default: whatever the storage class / CDI StorageProfile picks)')
     parser.add_argument('--min-vol-size', type=str, default=DEFAULT_MIN_VOL_SIZE,
                         help=f'Minimum volume size, e.g., 30Gi, 100Mi (default: {DEFAULT_MIN_VOL_SIZE})')
     parser.add_argument('--min-vol-inc-size', type=str, default=DEFAULT_MIN_VOL_INC_SIZE,
@@ -322,12 +342,14 @@ def create_vm_with_data_volumes(vm_name: str, namespace: str, vm_yaml: str,
                     "spec": {
                         "storage": {
                             "storageClassName": storage_class,
-                            "accessModes": ["ReadWriteOnce"],
+                            "accessModes": [getattr(args, 'data_volume_access_mode', None) or "ReadWriteMany"],
                             "resources": {"requests": {"storage": volume_size}}
                         },
                         "source": {"blank": {}}
                     }
                 }
+                if getattr(args, 'data_volume_mode', None):
+                    dv_template["spec"]["storage"]["volumeMode"] = args.data_volume_mode
                 dv_templates.append(dv_template)
                 volumes.append({"dataVolume": {"name": dv_name}, "name": f"data-vol-{i}"})
                 disks.append({"disk": {"bus": "virtio"}, "name": f"data-vol-{i}"})
@@ -809,6 +831,8 @@ def main():
         'storage_classes': ', '.join(storage_classes),
         'vms_per_iteration': args.vms,
         'data_volumes_per_vm': args.data_volume_count,
+        'data_volume_access_mode': args.data_volume_access_mode,
+        'data_volume_mode': args.data_volume_mode or 'storage-class default',
         'volume_size': args.min_vol_size,
         'vm_memory': args.vm_memory,
         'vm_cpu_cores': args.vm_cpu_cores,

@@ -13,6 +13,8 @@ This suite provides automated performance testing tools to measure and validate 
 
 - **Unified CLI Interface**: Professional kubectl-like CLI (`virtbench`) with shell completion
 - **VM Creation Performance Testing**: Measure VM provisioning and boot times at scale
+- **CDI Clone Strategy Comparison**: Compare CSI clone, snapshot, and host-assisted root-disk provisioning
+- **VirtualMachinePool Benchmarking**: Measure fleet scale-out and optional pool self-healing
 - **Boot Storm Testing**: Test VM startup performance when powering on multiple VMs simultaneously
 - **Live Migration Testing**: Measure VM live migration performance across different scenarios
 - **Chaos Benchmark Testing**: Stress-test the cluster with concurrent chaos operations (VM creation, volume resize, volume clone, VM restart, snapshots)
@@ -45,4 +47,3 @@ Get started in minutes:
 ## License
 
 This project is licensed under the Apache License 2.0. See [LICENSE](license.md) for details.
-

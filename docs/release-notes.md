@@ -1,5 +1,78 @@
 # Release Notes
 
+## Unreleased
+
+### KubeVirt FIO Storage-Profile Comparison
+
+Added `virtbench fio --action compare-profiles`. It measures baseline,
+IOThreads policies, per-disk dedicated IOThreads, virtio block multiqueue, and
+a combined profile against the same VM, PVC, worker node, CPU allocation, and
+FIO workload. Results include repeated-run medians, tail latency, baseline
+deltas, and an IOPS-per-thread efficiency view.
+
+`--workloads` runs several named I/O patterns (`randread-4k`, `randwrite-4k`,
+`randrw-4k`, `seqread-128k`, `seqwrite-128k`) per profile, and `--recommend`
+prints a ranked table per workload plus an overall recommendation with a
+"Best for" label for each profile.
+
+Each run also writes `profile_comparison_dashboard.html`: per-workload charts and
+a table showing every profile's change against baseline, the settings actually
+applied, and data-quality notes. `python3 -m virtbench.profile_dashboard` combines
+several runs into one page. The dashboard reports measurements only and does not
+rank or recommend profiles.
+
+Profiles follow the KubeVirt "High-performance features" guide. Each profile is
+verified against the running libvirt domain, so a setting KubeVirt silently
+ignored is reported as failed. Dedicated IOThreads and block multiqueue are
+refused on non-virtio (for example SCSI) benchmark disks, and the
+IOPS-per-thread figure uses the IOThread count actually observed.
+
+### CDI Root-Disk Strategy Benchmark
+
+Added `virtbench cdi-root-disk`. It takes a golden PVC or PVC-backed
+DataSource and a VM specification, provisions the root disk through
+`csi-clone`, `snapshot`, and `copy`, and reports root-disk, VMI, and readiness
+timings. Requested and observed CDI strategies are recorded separately so
+fallbacks cannot be misreported as optimized clones.
+
+### VirtualMachinePool Benchmark
+
+Added `virtbench vm-pool`. It scales a pool from zero to a requested replica
+count with a unique cloned root disk per VM and measures VM creation, root-disk
+completion, 50%/90%/100% readiness, failures, and peak replica counts. An
+optional `--recovery-delete` phase measures reconciliation after managed VMs
+are deleted.
+
+### Chaos Benchmark Data Volume Options
+
+`virtbench chaos-benchmark` gains `--data-volume-access-mode` (`RWX` or `RWO`) and
+`--data-volume-mode` (`Filesystem` or `Block`). The extra data volumes used to be
+created ReadWriteOnce whatever `--vm-yaml` said, which left those VMs unable to
+live-migrate. **The data volumes are now ReadWriteMany by default.** Storage classes
+that cannot provision RWX volumes need `--data-volume-access-mode RWO` to keep the
+previous behavior.
+
+### FIO Result Collection
+
+`virtbench fio` (`gather-results` and `run-all`) now collects results in rounds: every
+VM is tried once per round and the batch waits `--collect-retry-delay` between rounds.
+Previously each worker held its slot through all retries, so with more VMs than
+`--collect-concurrency` the first VMs could use up every retry before the rest started
+and fail while later VMs succeeded. A VM that is `Running` but has no IP yet is now
+retried instead of failing at once, and the saved summary reports the FIO settings the
+VMs actually ran (read from their output) rather than the command-line defaults.
+
+### Results Dashboard
+
+`virtbench dashboard` builds the results dashboard with no options: it reads
+`results/` and writes `results_dashboard.html` in the repository root (`--days N`
+limits the window). The page was redesigned with the virtbench
+logo, light and dark themes, a run summary card, read/write split cards for FIO and
+Elbencho, and per-operation cards for disk operations. Runs that saved no result
+files are no longer listed. The same command also adds a **VM Pool** tab
+(`virtbench vm-pool` runs) and writes `profile_comparison_dashboard.html` when
+FIO profile comparisons exist.
+
 ## v2.0.0
 
 This is a major release that introduces a unified `virtbench` CLI, three new

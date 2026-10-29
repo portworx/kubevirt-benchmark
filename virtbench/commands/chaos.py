@@ -20,6 +20,12 @@ console = Console()
 @click.option('--vms', default=5, type=int, help='Number of VMs to create per iteration')
 @click.option('--max-iterations', default=0, type=int, help='Maximum number of iterations (0 for unlimited)')
 @click.option('--data-volume-count', default=1, type=int, help='Number of data volumes per VM (default: 1)')
+@click.option('--data-volume-access-mode', type=click.Choice(['RWO', 'RWX'], case_sensitive=False), default='RWX',
+              show_default=True,
+              help='Access mode of the data volumes. RWX keeps the VMs live-migratable; '
+                   'use RWO for storage classes that do not offer RWX.')
+@click.option('--data-volume-mode', type=click.Choice(['Filesystem', 'Block'], case_sensitive=False), default=None,
+              help='Volume mode of the data volumes (default: the storage class / CDI StorageProfile default)')
 @click.option('--min-vol-size', default='30Gi', help='Minimum volume size (e.g., 30Gi, 100Mi)')
 @click.option('--min-vol-inc-size', default='10Gi', help='Volume size increment for resize (e.g., 10Gi, 50Mi)')
 @click.option('--vm-yaml', default='examples/vm-templates/vm-template.yaml', help='Path to VM YAML template')
@@ -58,12 +64,20 @@ def chaos_benchmark(ctx, **kwargs):
       # Run chaos test with 5 VMs per iteration
       virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 2 --vms 5
 
+    \b
       # Run with custom max iterations
       virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 5 --max-iterations 20
 
+    \b
+      # Storage class without RWX support: use ReadWriteOnce data volumes
+      virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 2 \\
+        --data-volume-access-mode RWO
+
+    \b
       # Skip specific phases
       virtbench chaos-benchmark --storage-class YOUR-STORAGE-CLASS --concurrency 2 --skip-clone
 
+    \b
       # Cleanup only mode
       virtbench chaos-benchmark --cleanup-only --concurrency 1
     """
@@ -131,6 +145,7 @@ def chaos_benchmark(ctx, **kwargs):
         'vms': kwargs['vms'],
         'max-iterations': kwargs['max_iterations'],
         'data-volume-count': kwargs['data_volume_count'],
+        'data-volume-access-mode': kwargs['data_volume_access_mode'],
         'min-vol-size': kwargs['min_vol_size'],
         'min-vol-inc-size': kwargs['min_vol_inc_size'],
         'vm-yaml': str(template_path),
@@ -144,6 +159,9 @@ def chaos_benchmark(ctx, **kwargs):
         'max-create-retries': kwargs['max_create_retries'],
         'log-level': kwargs['log_level'],
     }
+
+    if kwargs.get('data_volume_mode'):
+        python_args['data-volume-mode'] = kwargs['data_volume_mode']
 
     # Add skip flags
     if kwargs['skip_resize']:
