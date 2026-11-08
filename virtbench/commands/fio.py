@@ -25,6 +25,15 @@ console = Console()
               help='Path to VM template YAML')
 @click.option('--namespace-prefix', default='fio-benchmark', help='Namespace prefix')
 @click.option('--concurrency', '-c', default=20, type=int, help='Max parallel threads')
+@click.option('--vm-cpus', default=4, type=int, help='Guest vCPUs per FIO VM (CPU request matches)')
+@click.option('--exclude-nodes', default='',
+              help='Comma-separated worker nodes to keep FIO VMs off (tainted/cordoned nodes are skipped automatically)')
+@click.option('--exclude-node-label', default='virtbench.io/no-fio',
+              help='Node label (key or key=value) marking nodes FIO VMs must not use; empty disables')
+@click.option('--no-balance', is_flag=True,
+              help='Do not spread VMs evenly across worker nodes; let the scheduler place them')
+@click.option('--placement-timeout', default=600, type=int,
+              help='Seconds to wait for VMIs to be scheduled before checking placement')
 @click.option('--fio-runtime', default=300, type=int, help='FIO runtime in seconds')
 @click.option('--fio-bs', default='4k', help='Block size (e.g., 4k, 8k, 64k)')
 @click.option('--fio-rw', default='randwrite',
@@ -63,6 +72,14 @@ def fio(ctx, **kwargs):
       gather-results Collect FIO results from VMs (requires SSH pod)
       cleanup        Delete VMs and namespaces
       run-all        Full workflow: deploy, wait, gather (default)
+
+    \b
+    Placement:
+      VMs are spread evenly across Ready, schedulable worker nodes (each VM is
+      pinned to one node, round-robin). To keep FIO off a node, label it:
+        kubectl label node <node> virtbench.io/no-fio=true
+      or pass --exclude-nodes <node1>,<node2>. Tainted and cordoned nodes are
+      skipped automatically. Use --no-balance to disable.
 
     \b
     Notes:
@@ -124,6 +141,13 @@ def fio(ctx, **kwargs):
     cmd.extend(['--vm-template', str(vm_template_path)])
     cmd.extend(['--namespace-prefix', kwargs['namespace_prefix']])
     cmd.extend(['--concurrency', str(kwargs['concurrency'])])
+    cmd.extend(['--vm-cpus', str(kwargs['vm_cpus'])])
+    if kwargs['exclude_nodes']:
+        cmd.extend(['--exclude-nodes', kwargs['exclude_nodes']])
+    cmd.extend(['--exclude-node-label', kwargs['exclude_node_label']])
+    if kwargs['no_balance']:
+        cmd.append('--no-balance')
+    cmd.extend(['--placement-timeout', str(kwargs['placement_timeout'])])
     cmd.extend(['--fio-runtime', str(kwargs['fio_runtime'])])
     cmd.extend(['--fio-bs', kwargs['fio_bs']])
     cmd.extend(['--fio-rw', kwargs['fio_rw']])

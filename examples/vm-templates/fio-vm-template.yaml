@@ -51,7 +51,7 @@ spec:
     spec:
       domain:
         cpu:
-          cores: 2
+          cores: 4
         devices:
           disks:
             - name: rootdisk
@@ -75,7 +75,7 @@ spec:
           guest: 2Gi
         resources:
           requests:
-            cpu: "1"
+            cpu: "4"
       networks:
         - name: default
           pod: {}

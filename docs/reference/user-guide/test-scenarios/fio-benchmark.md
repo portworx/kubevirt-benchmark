@@ -15,6 +15,35 @@ FIO is baked into the VM template and runs on boot. The benchmark workflow has f
 
 `run-all` (default) chains all four with a wait between deploy and gather.
 
+## VM Size
+
+Each FIO VM gets **4 guest vCPUs** by default (`--vm-cpus`), with a matching CPU request, so the four FIO jobs, guest I/O completion and virtio device processing are not squeezed onto fewer CPUs. Memory and FIO parameters come from the template unchanged. The value used is recorded as `vm_cpus` in `summary_fio_benchmark.json`; use `--vm-cpus 2` to reproduce the earlier 2-vCPU configuration.
+
+## VM Placement
+
+By default the FIO VMs are spread **evenly across the worker nodes**. Each VM is pinned to one node (round-robin, via `nodeSelector` on `kubernetes.io/hostname`), so with 10 VMs and 5 worker nodes every node runs 2 VMs. If the VM count does not divide evenly, per-node counts differ by at most one.
+
+To keep FIO VMs off particular nodes, label them:
+
+```bash
+kubectl label node worker-3 virtbench.io/no-fio=true
+# remove afterwards
+kubectl label node worker-3 virtbench.io/no-fio-
+```
+
+Any node carrying the `virtbench.io/no-fio` label (any value) is skipped. To use a label you already have, pass `--exclude-node-label`, e.g. `--exclude-node-label pool=database` (`key` alone matches any value; `""` disables label exclusion).
+
+Nodes that are not `Ready`, are cordoned, or have a `NoSchedule`/`NoExecute` taint the VM template does not tolerate are skipped automatically. You can also list nodes on the command line:
+
+```bash
+virtbench fio -a run-all -s 1 -e 10 --storage-class YOUR-STORAGE-CLASS \
+  --exclude-nodes worker-3,worker-4 --save-results
+```
+
+The selected nodes and planned VM count per node are printed before deployment. After deployment the harness reads each VMI's node, prints the per-node counts, and warns if a VM is not scheduled (for example, the node lacks CPU/memory) or the spread is uneven. With `--save-results`, the VM-to-node map is saved to `vm_node_placement.json`, under `placement` in the summary, and as a `node` column in the CSV.
+
+Use `--no-balance` to skip pinning and let the Kubernetes scheduler place the VMs.
+
 ## Basic Usage
 
 ### virtbench CLI
@@ -55,8 +84,13 @@ virtbench fio --action cleanup -s 1 -e 10
 | `--storage-class` | (required for `deploy`/`run-all`) | Storage class name |
 | `--namespace-prefix` | `fio-benchmark` | Namespace prefix (creates `fio-benchmark-1`, ...) |
 | `--vm-name` | `fio-vm` | VM resource name in each namespace |
-| `--vm-template` | `../examples/vm-templates/fio-vm-template.yaml` | Path to VM template YAML |
+| `--vm-template` | `examples/vm-templates/fio-vm-template.yaml` | Path to VM template YAML |
 | `--concurrency`, `-c` | `20` | Max parallel threads for deploy/status/cleanup |
+| `--vm-cpus` | `4` | Guest vCPUs per FIO VM. The VM's CPU request is set to the same value so each vCPU has real CPU reserved; memory and FIO settings are unchanged |
+| `--exclude-node-label` | `virtbench.io/no-fio` | Node label (`key` or `key=value`) marking nodes FIO VMs must not use |
+| `--exclude-nodes` | (none) | Comma-separated worker nodes to keep FIO VMs off |
+| `--no-balance` | off | Don't spread VMs evenly; let the scheduler place them |
+| `--placement-timeout` | `600` | Seconds to wait for VMIs to be scheduled before checking placement |
 
 ### FIO Parameters
 
@@ -138,7 +172,8 @@ Results include per-VM and aggregated metrics:
 {results-dir}/{storage-driver}/{disks-per-vm}/{timestamp}_fio_benchmark_{N}vms/
 ├── summary_fio_benchmark.json     # Aggregated summary across all VMs
 ├── fio_benchmark_results.json     # Per-VM results (JSON array)
-├── fio_benchmark_results.csv      # Per-VM results (CSV)
+├── fio_benchmark_results.csv      # Per-VM results (CSV, includes node)
+├── vm_node_placement.json         # VM-to-node map and per-node counts
 └── per-vm-results/                # Raw FIO output per VM
     ├── fio-benchmark-1/
     │   └── fio_raw.json

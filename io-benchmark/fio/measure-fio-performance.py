@@ -46,10 +46,15 @@ from utils.common import (
     print_cleanup_summary, get_vm_disk_count, get_vmi_ip, get_pvc_status,
     ssh_exec_command,
 )
+from utils.vm_placement import (
+    get_eligible_worker_nodes, get_vm_tolerations, plan_balanced_placement,
+    pin_vm_to_node, get_vmi_node_map, verify_placement, count_per_node,
+    DEFAULT_EXCLUDE_LABEL, set_vm_cpus,
+)
 
 # Defaults
 DEFAULT_VM_NAME = 'fio-vm'
-DEFAULT_VM_TEMPLATE = '../examples/vm-templates/fio-vm-template.yaml'
+DEFAULT_VM_TEMPLATE = '../../examples/vm-templates/fio-vm-template.yaml'
 DEFAULT_NAMESPACE_PREFIX = 'fio-benchmark'
 DEFAULT_CONCURRENCY = 20
 DEFAULT_FIO_RUNTIME = 300
@@ -58,6 +63,8 @@ DEFAULT_FIO_RW = 'randwrite'
 DEFAULT_FIO_IODEPTH = 64
 DEFAULT_FIO_NUMJOBS = 4
 DEFAULT_FIO_SIZE = '10G'
+DEFAULT_VM_CPUS = 4
+DEFAULT_PLACEMENT_TIMEOUT = 600
 
 
 def parse_args():
@@ -82,6 +89,12 @@ Examples:
   %(prog)s --action gather-results --start 1 --end 10 --storage-driver portworx-3.6
   %(prog)s --action cleanup --start 1 --end 10
 
+  # VMs are spread evenly over Ready, untainted worker nodes by default.
+  # Keep FIO off specific nodes by labeling them (or with --exclude-nodes):
+  #   kubectl label node worker-3 virtbench.io/no-fio=true
+  %(prog)s --action run-all --start 1 --end 10 --storage-class px-csi \\
+      --exclude-nodes worker-3,worker-4
+
   # Custom FIO parameters (for deploy or run-all)
   %(prog)s --action deploy --start 1 --end 50 --storage-class px-csi \\
       --fio-runtime 600 --fio-rw randrw --fio-bs 8k
@@ -103,6 +116,20 @@ Examples:
     parser.add_argument('--vm-template', type=str, default=DEFAULT_VM_TEMPLATE)
     parser.add_argument('--namespace-prefix', type=str, default=DEFAULT_NAMESPACE_PREFIX)
     parser.add_argument('--concurrency', type=int, default=DEFAULT_CONCURRENCY)
+    parser.add_argument('--vm-cpus', type=int, default=DEFAULT_VM_CPUS,
+                        help=f'Guest vCPUs per FIO VM; CPU request is set to match (default: {DEFAULT_VM_CPUS})')
+
+    # Placement
+    parser.add_argument('--exclude-nodes', type=str, default='',
+                        help='Comma-separated worker nodes to keep FIO VMs off. Tainted '
+                             '(NoSchedule/NoExecute) and cordoned nodes are skipped automatically.')
+    parser.add_argument('--exclude-node-label', type=str, default=DEFAULT_EXCLUDE_LABEL,
+                        help='Node label (key or key=value) marking nodes FIO VMs must not use '
+                             f'(default: {DEFAULT_EXCLUDE_LABEL}, any value). Empty string disables.')
+    parser.add_argument('--no-balance', action='store_true',
+                        help='Do not pin VMs to nodes; let the scheduler place them')
+    parser.add_argument('--placement-timeout', type=int, default=DEFAULT_PLACEMENT_TIMEOUT,
+                        help='Seconds to wait for all VMIs to be scheduled before checking placement')
 
     # FIO config
     parser.add_argument('--fio-runtime', type=int, default=DEFAULT_FIO_RUNTIME, help='FIO runtime (seconds)')
@@ -406,6 +433,16 @@ def aggregate_results(results: List[Dict], fio_config: Dict,
     }
 
 
+def attach_placement(summary: Dict, all_results: List[Dict], placement: Optional[Dict]):
+    """Record the VM-to-node map in the summary and on each per-VM result."""
+    if not placement:
+        return
+    summary['placement'] = placement
+    node_map = placement.get('vm_node_map', {})
+    for r in all_results:
+        r['node'] = node_map.get(r.get('namespace'))
+
+
 def save_results_to_files(output_dir: str, summary: Dict, all_results: List[Dict], logger):
     """Save results to JSON and CSV files."""
     # Save summary
@@ -421,11 +458,17 @@ def save_results_to_files(output_dir: str, summary: Dict, all_results: List[Dict
     # Save CSV
     csv_path = os.path.join(output_dir, "fio_benchmark_results.csv")
     with open(csv_path, 'w') as f:
-        headers = ["namespace", "read_iops", "write_iops", "read_bw_mibps",
+        headers = ["namespace", "node", "read_iops", "write_iops", "read_bw_mibps",
                    "write_bw_mibps", "read_lat_ms", "write_lat_ms", "success"]
         f.write(",".join(headers) + "\n")
         for r in all_results:
             f.write(",".join(str(r.get(h, "")) for h in headers) + "\n")
+
+    # Save VM-to-node placement
+    if summary.get('placement'):
+        placement_path = os.path.join(output_dir, "vm_node_placement.json")
+        with open(placement_path, 'w') as f:
+            json.dump(summary['placement'], f, indent=2)
 
     logger.info(f"Results saved to {output_dir}")
 
@@ -482,6 +525,108 @@ def get_output_dir(args, namespaces, logger) -> str:
     return output_dir
 
 
+def build_placement_plan(args, namespaces, vm_yaml, logger) -> Optional[Dict[str, Dict]]:
+    """Pick eligible worker nodes and assign VMs evenly. Returns None if balancing is disabled."""
+    if args.no_balance:
+        print("Placement: scheduler default (--no-balance)")
+        return None
+
+    exclude = [n.strip() for n in args.exclude_nodes.split(',') if n.strip()]
+    try:
+        nodes, skipped = get_eligible_worker_nodes(
+            get_vm_tolerations(vm_yaml), exclude, args.exclude_node_label, logger)
+    except Exception as e:
+        print(f"ERROR: could not determine eligible worker nodes: {e}")
+        sys.exit(1)
+
+    if skipped:
+        print("Skipped worker nodes:")
+        for name, reason in sorted(skipped.items()):
+            print(f"  - {name}: {reason}")
+    if not nodes:
+        print("ERROR: no eligible worker nodes for FIO VMs (all NotReady, cordoned, tainted, labeled or excluded).")
+        sys.exit(1)
+
+    plan = plan_balanced_placement(namespaces, nodes)
+    counts = count_per_node({ns: n['name'] for ns, n in plan.items()})
+    print(f"Placement: balanced across {len(nodes)} worker nodes")
+    for node, count in counts.items():
+        print(f"  {node:<40} {count} VM(s)")
+    if len(namespaces) % len(nodes):
+        print(f"  Note: {len(namespaces)} VMs do not divide evenly over {len(nodes)} nodes; "
+              f"counts differ by at most 1.")
+    return plan
+
+
+def deploy_vms(args, namespaces, fio_config, vm_password, logger) -> Optional[Dict[str, Dict]]:
+    """Render the VM manifest, pin each VM to its planned node and apply. Returns the plan."""
+    template_path = os.path.join(os.path.dirname(__file__), args.vm_template)
+    vm_yaml = prepare_vm_yaml(
+        template_path, args.vm_name, args.storage_class,
+        fio_config, vm_password, logger
+    )
+    vm_yaml = set_vm_cpus(vm_yaml, args.vm_cpus)
+    print(f"VM size: {args.vm_cpus} vCPU (CPU request {args.vm_cpus}), memory from template")
+
+    plan = build_placement_plan(args, namespaces, vm_yaml, logger)
+    manifests = {
+        ns: pin_vm_to_node(vm_yaml, plan[ns]['hostname']) if plan else vm_yaml
+        for ns in namespaces
+    }
+
+    with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
+        futures = {
+            executor.submit(deploy_vm, ns, manifests[ns], logger): ns
+            for ns in namespaces
+        }
+        for future in as_completed(futures):
+            ns = futures[future]
+            try:
+                ok = future.result()
+                target = f" -> {plan[ns]['name']}" if plan else ""
+                print(f"  {'✓' if ok else '✗'} {ns}{target}")
+            except Exception as e:
+                print(f"  ✗ {ns}: {e}")
+    return plan
+
+
+def check_placement(args, namespaces, plan: Optional[Dict[str, Dict]], logger,
+                    wait: bool = True) -> Dict:
+    """
+    Read where each VMI landed (waiting up to --placement-timeout for scheduling),
+    print per-node counts and return the verification report.
+    """
+    planned = {ns: n['name'] for ns, n in plan.items()} if plan else {}
+    deadline = time.time() + (args.placement_timeout if wait else 0)
+    while True:
+        actual = get_vmi_node_map(namespaces, args.vm_name, logger)
+        if all(actual.values()) or time.time() >= deadline:
+            break
+        time.sleep(10)
+
+    report = verify_placement(planned, actual)
+    report['policy'] = 'balanced' if plan else 'scheduler'
+    report['vm_node_map'] = actual
+    if planned:
+        report['planned'] = planned
+
+    print("VM distribution per node:")
+    for node, count in report['per_node_counts'].items():
+        print(f"  {node:<40} {count} VM(s)")
+    for ns in report['unscheduled']:
+        print(f"  ! {ns}: VMI not scheduled (check `kubectl get vmi,pods -n {ns}` for capacity/taint/volume reasons)")
+    for ns, m in report['mismatches'].items():
+        print(f"  ! {ns}: planned {m['planned']} but running on {m['actual']}")
+    if not plan:
+        print("  (scheduler placement; not enforced or verified)")
+    elif report['balanced']:
+        print("  Placement verified: every VM is on its planned node and the spread is even.")
+    else:
+        print("  WARNING: VMs are NOT on their planned nodes or not evenly distributed; "
+              "results may not be comparable.")
+    return report
+
+
 def action_deploy(args, namespaces, fio_config, logger):
     """Deploy VMs with FIO pre-configured."""
     print("\n" + "=" * 60)
@@ -498,24 +643,7 @@ def action_deploy(args, namespaces, fio_config, logger):
 
     # Deploy VMs
     print("[2/2] Deploying FIO VMs...")
-    template_path = os.path.join(os.path.dirname(__file__), args.vm_template)
-    vm_yaml = prepare_vm_yaml(
-        template_path, args.vm_name, args.storage_class,
-        fio_config, args.vm_password, logger
-    )
-
-    with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
-        futures = {
-            executor.submit(deploy_vm, ns, vm_yaml, logger): ns
-            for ns in namespaces
-        }
-        for future in as_completed(futures):
-            ns = futures[future]
-            try:
-                future.result()
-                print(f"  ✓ {ns}")
-            except Exception as e:
-                print(f"  ✗ {ns}: {e}")
+    deploy_vms(args, namespaces, fio_config, args.vm_password, logger)
 
     print(f"\nDeployment complete.")
     print("VMs will start FIO automatically on boot.")
@@ -642,6 +770,9 @@ def action_gather_results(args, namespaces, fio_config, ssh_config, logger):
     # Aggregate and save
     test_duration = time.time() - test_start
     summary = aggregate_results(all_results, fio_config, test_duration)
+    summary['vm_cpus'] = args.vm_cpus
+    placement = check_placement(args, namespaces, None, logger, wait=False)
+    attach_placement(summary, all_results, placement)
 
     if args.save_results:
         save_results_to_files(output_dir, summary, all_results, logger)
@@ -691,24 +822,9 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
 
     # Step 2: Deploy VMs
     print("[2/4] Deploying FIO VMs...")
-    template_path = os.path.join(os.path.dirname(__file__), args.vm_template)
-    vm_yaml = prepare_vm_yaml(
-        template_path, args.vm_name, args.storage_class,
-        fio_config, ssh_config['password'], logger
-    )
-
-    with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
-        futures = {
-            executor.submit(deploy_vm, ns, vm_yaml, logger): ns
-            for ns in namespaces
-        }
-        for future in as_completed(futures):
-            ns = futures[future]
-            try:
-                future.result()
-                print(f"  ✓ {ns}")
-            except Exception as e:
-                print(f"  ✗ {ns}: {e}")
+    plan = deploy_vms(args, namespaces, fio_config, ssh_config['password'], logger)
+    print("Checking VM placement...")
+    check_placement(args, namespaces, plan, logger)
 
     # Step 3: Wait for VMs and FIO to complete
     print(f"[3/4] Waiting for VMs to boot and FIO to complete (polling every 30s)...")
@@ -727,6 +843,9 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
             status = "✓" if success else "✗"
             print(f"  {status} {ns}")
             completed.append((ns, success))
+
+    # Record final placement (all VMs have had the chance to start by now)
+    placement = check_placement(args, namespaces, plan, logger, wait=False)
 
     # Step 4: Collect results
     print("[4/4] Collecting results...")
@@ -755,6 +874,8 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
     # Aggregate and save
     test_duration = time.time() - test_start
     summary = aggregate_results(all_results, fio_config, test_duration)
+    summary['vm_cpus'] = args.vm_cpus
+    attach_placement(summary, all_results, placement)
 
     if args.save_results:
         save_results_to_files(output_dir, summary, all_results, logger)
