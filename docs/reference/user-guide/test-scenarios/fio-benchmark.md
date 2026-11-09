@@ -15,6 +15,20 @@ FIO is baked into the VM template and runs on boot. The benchmark workflow has f
 
 `run-all` (default) chains all four with a wait between deploy and gather.
 
+## Result Validation
+
+Results are successful only when the VM records a zero FIO command exit status
+and every raw FIO job has `error: 0`. The bundled VM template writes the command
+status to `/tmp/fio_exit_code` before writing the completion marker. Missing or
+invalid job error fields and nonzero command or job errors fail the result.
+
+Older VMs and custom templates that do not record `/tmp/fio_exit_code` are
+reported as **unverified**. Their metrics are omitted, and `status`,
+`gather-results`, and `run-all` return a nonzero exit status when any result is
+unverified. Update custom templates to save the FIO command exit status before
+the completion marker, then redeploy those VMs before collecting certification
+results.
+
 ## Basic Usage
 
 ### virtbench CLI
