@@ -1,0 +1,128 @@
+# FIO Benchmark VM Template - ContainerDisk Variant
+#
+# Uses quay.io/ebattat/fedora37-container-disk:latest which has FIO pre-installed.
+# Suitable for airgapped environments: mirror the image to an internal registry
+# and update the containerDisk image field below.
+#
+# Template Variables (replaced at runtime by benchmark script):
+#   {{VM_NAME}}            - VM name
+#   {{STORAGE_CLASS_NAME}} - Storage class name
+#   {{VM_PASSWORD}}        - VM password for SSH access
+#   {{FIO_RUNTIME}}        - FIO runtime in seconds
+#   {{FIO_BS}}             - Block size (e.g., 4k)
+#   {{FIO_RW}}             - I/O pattern (randread, randwrite, randrw)
+#   {{FIO_IODEPTH}}        - I/O depth
+#   {{FIO_NUMJOBS}}        - Number of parallel jobs
+#   {{FIO_SIZE}}           - Test file size
+#
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: {{VM_NAME}}
+  labels:
+    app: fio-benchmark
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        name: {{VM_NAME}}-scratch
+      spec:
+        source:
+          blank: {}
+        storage:
+          resources:
+            requests:
+              storage: 50Gi
+          storageClassName: {{STORAGE_CLASS_NAME}}
+          volumeMode: Block
+  runStrategy: Always
+  template:
+    metadata:
+      labels:
+        app: fio-benchmark
+    spec:
+      domain:
+        cpu:
+          cores: 4
+        devices:
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: scratchdisk
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+        features:
+          acpi: {}
+          smm:
+            enabled: true
+        memory:
+          guest: 2Gi
+        resources:
+          requests:
+            cpu: "4"
+      networks:
+        - name: default
+          pod: {}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      volumes:
+        - name: rootdisk
+          containerDisk:
+            # For airgapped: mirror this to your internal registry and update the image field.
+            # Mirror command: skopeo copy docker://quay.io/ebattat/fedora37-container-disk:latest \
+            #   docker://INTERNAL-REGISTRY/ebattat/fedora37-container-disk:latest
+            image: quay.io/ebattat/fedora37-container-disk:latest
+        - name: scratchdisk
+          dataVolume:
+            name: {{VM_NAME}}-scratch
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              user: cloud-user
+              password: {{VM_PASSWORD}}
+              chpasswd:
+                expire: false
+              ssh_pwauth: true
+              runcmd:
+                - systemctl enable --now qemu-guest-agent || true
+                - |
+                  # Mount scratch disk
+                  SCRATCH=$(lsblk -dnbo NAME,SIZE | awk '$2 > 40000000000 {print $1}' | head -1)
+                  if [ -n "$SCRATCH" ]; then
+                    mkfs.xfs -f /dev/$SCRATCH
+                    mkdir -p /scratch
+                    mount /dev/$SCRATCH /scratch
+                  fi
+                  # Create FIO job file
+                  cat > /tmp/fio.job << 'FIOJOB'
+                  [global]
+                  name=fio-benchmark
+                  directory=/scratch/
+                  rw={{FIO_RW}}
+                  bs={{FIO_BS}}
+                  direct=1
+                  ioengine=libaio
+                  iodepth={{FIO_IODEPTH}}
+                  numjobs={{FIO_NUMJOBS}}
+                  group_reporting=1
+                  time_based=1
+                  runtime={{FIO_RUNTIME}}
+                  size={{FIO_SIZE}}
+                  [test]
+                  FIOJOB
+                  # Run FIO (pre-installed in this image, no dnf install needed)
+                  fio /tmp/fio.job --output-format=json --output=/tmp/fio_results.json
+                  echo "completed" > /tmp/fio_complete

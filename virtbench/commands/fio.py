@@ -25,13 +25,20 @@ console = Console()
               help='Path to VM template YAML')
 @click.option('--namespace-prefix', default='fio-benchmark', help='Namespace prefix')
 @click.option('--concurrency', '-c', default=20, type=int, help='Max parallel threads')
-@click.option('--vm-cpus', default=4, type=int, help='Guest vCPUs per FIO VM (CPU request matches)')
+@click.option('--vm-cpus', default=None, type=click.IntRange(min=1),
+              help='Override guest vCPUs per FIO VM (default: keep template value; shipped FIO templates use 4)')
+@click.option('--vm-cpu-request', default=None,
+              help='CPU request per VM when --vm-cpus is set (default: equal to --vm-cpus)')
+@click.option('--node-selector', default='',
+              help='Label selector (key or key=value, comma-separated) choosing candidate nodes')
 @click.option('--exclude-nodes', default='',
-              help='Comma-separated worker nodes to keep FIO VMs off (tainted/cordoned nodes are skipped automatically)')
+              help='Comma-separated node names to keep FIO VMs off')
 @click.option('--exclude-node-label', default='virtbench.io/no-fio',
               help='Node label (key or key=value) marking nodes FIO VMs must not use; empty disables')
 @click.option('--no-balance', is_flag=True,
-              help='Do not spread VMs evenly across worker nodes; let the scheduler place them')
+              help='Do not spread VMs evenly across nodes; let the scheduler place them')
+@click.option('--skip-capacity-check', is_flag=True,
+              help="Deploy even if planned VMs exceed a node's free CPU/memory")
 @click.option('--placement-timeout', default=600, type=int,
               help='Seconds to wait for VMIs to be scheduled before checking placement')
 @click.option('--fio-runtime', default=300, type=int, help='FIO runtime in seconds')
@@ -75,11 +82,13 @@ def fio(ctx, **kwargs):
 
     \b
     Placement:
-      VMs are spread evenly across Ready, schedulable worker nodes (each VM is
-      pinned to one node, round-robin). To keep FIO off a node, label it:
+      VMs are spread evenly across the eligible nodes (each VM is pinned to
+      one node, round-robin). Candidates are --node-selector matches, else
+      nodes with node-role.kubernetes.io/worker, else non-control-plane nodes.
+      NotReady, cordoned, KubeVirt-unschedulable nodes and nodes with a taint
+      the VM does not tolerate are skipped. To keep FIO off a node, label it:
         kubectl label node <node> virtbench.io/no-fio=true
-      or pass --exclude-nodes <node1>,<node2>. Tainted and cordoned nodes are
-      skipped automatically. Use --no-balance to disable.
+      or pass --exclude-nodes <node1>,<node2>. Use --no-balance to disable.
 
     \b
     Notes:
@@ -141,7 +150,14 @@ def fio(ctx, **kwargs):
     cmd.extend(['--vm-template', str(vm_template_path)])
     cmd.extend(['--namespace-prefix', kwargs['namespace_prefix']])
     cmd.extend(['--concurrency', str(kwargs['concurrency'])])
-    cmd.extend(['--vm-cpus', str(kwargs['vm_cpus'])])
+    if kwargs['vm_cpus'] is not None:
+        cmd.extend(['--vm-cpus', str(kwargs['vm_cpus'])])
+    if kwargs['vm_cpu_request'] is not None:
+        cmd.extend(['--vm-cpu-request', kwargs['vm_cpu_request']])
+    if kwargs['node_selector']:
+        cmd.extend(['--node-selector', kwargs['node_selector']])
+    if kwargs['skip_capacity_check']:
+        cmd.append('--skip-capacity-check')
     if kwargs['exclude_nodes']:
         cmd.extend(['--exclude-nodes', kwargs['exclude_nodes']])
     cmd.extend(['--exclude-node-label', kwargs['exclude_node_label']])

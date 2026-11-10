@@ -36,7 +36,7 @@ import json
 import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Tuple, List, Optional, Dict
+from typing import Tuple, List, Optional, Dict, Iterable
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -47,9 +47,9 @@ from utils.common import (
     ssh_exec_command,
 )
 from utils.vm_placement import (
-    get_eligible_worker_nodes, get_vm_tolerations, plan_balanced_placement,
-    pin_vm_to_node, get_vmi_node_map, verify_placement, count_per_node,
-    DEFAULT_EXCLUDE_LABEL, set_vm_cpus,
+    DEFAULT_EXCLUDE_LABEL, get_vm_template_info, get_eligible_nodes, plan_balanced_placement,
+    count_per_node, get_pod_requests_by_node, check_capacity, get_storage_class,
+    storage_topology_warning, set_vm_cpus, pin_vm_to_node, get_deployed_state, verify_placement,
 )
 
 # Defaults
@@ -63,7 +63,6 @@ DEFAULT_FIO_RW = 'randwrite'
 DEFAULT_FIO_IODEPTH = 64
 DEFAULT_FIO_NUMJOBS = 4
 DEFAULT_FIO_SIZE = '10G'
-DEFAULT_VM_CPUS = 4
 DEFAULT_PLACEMENT_TIMEOUT = 600
 
 
@@ -89,9 +88,10 @@ Examples:
   %(prog)s --action gather-results --start 1 --end 10 --storage-driver portworx-3.6
   %(prog)s --action cleanup --start 1 --end 10
 
-  # VMs are spread evenly over Ready, untainted worker nodes by default.
-  # Keep FIO off specific nodes by labeling them (or with --exclude-nodes):
+  # VMs are spread evenly over the eligible nodes by default (see --help for
+  # how nodes are chosen). Keep FIO off specific nodes by labeling them:
   #   kubectl label node worker-3 virtbench.io/no-fio=true
+  # or list them with --exclude-nodes:
   %(prog)s --action run-all --start 1 --end 10 --storage-class px-csi \\
       --exclude-nodes worker-3,worker-4
 
@@ -116,18 +116,30 @@ Examples:
     parser.add_argument('--vm-template', type=str, default=DEFAULT_VM_TEMPLATE)
     parser.add_argument('--namespace-prefix', type=str, default=DEFAULT_NAMESPACE_PREFIX)
     parser.add_argument('--concurrency', type=int, default=DEFAULT_CONCURRENCY)
-    parser.add_argument('--vm-cpus', type=int, default=DEFAULT_VM_CPUS,
-                        help=f'Guest vCPUs per FIO VM; CPU request is set to match (default: {DEFAULT_VM_CPUS})')
+    parser.add_argument('--vm-cpus', type=positive_int, default=None,
+                        help='Override guest vCPUs per FIO VM (sets cores, 1 socket/1 thread). '
+                             'Default: keep the template value (the shipped FIO templates use 4). '
+                             'Not allowed with templates that use spec.instancetype.')
+    parser.add_argument('--vm-cpu-request', type=str, default=None,
+                        help='CPU request per VM when --vm-cpus is set (default: equal to --vm-cpus), '
+                             'e.g. "1" to reproduce the older 2-vCPU/1-CPU-request setup')
 
     # Placement
+    parser.add_argument('--node-selector', type=str, default='',
+                        help='Label selector (key or key=value, comma-separated) choosing candidate '
+                             'nodes. Default: nodes with node-role.kubernetes.io/worker, else all '
+                             'non-control-plane nodes, else all nodes.')
     parser.add_argument('--exclude-nodes', type=str, default='',
-                        help='Comma-separated worker nodes to keep FIO VMs off. Tainted '
-                             '(NoSchedule/NoExecute) and cordoned nodes are skipped automatically.')
+                        help='Comma-separated node names to keep FIO VMs off. NotReady, cordoned and '
+                             'KubeVirt-unschedulable nodes, and nodes with a NoSchedule/NoExecute '
+                             'taint the VM template does not tolerate, are skipped automatically.')
     parser.add_argument('--exclude-node-label', type=str, default=DEFAULT_EXCLUDE_LABEL,
                         help='Node label (key or key=value) marking nodes FIO VMs must not use '
                              f'(default: {DEFAULT_EXCLUDE_LABEL}, any value). Empty string disables.')
     parser.add_argument('--no-balance', action='store_true',
                         help='Do not pin VMs to nodes; let the scheduler place them')
+    parser.add_argument('--skip-capacity-check', action='store_true',
+                        help='Do not refuse to deploy when planned VMs exceed a node\'s free CPU/memory')
     parser.add_argument('--placement-timeout', type=int, default=DEFAULT_PLACEMENT_TIMEOUT,
                         help='Seconds to wait for all VMIs to be scheduled before checking placement')
 
@@ -172,6 +184,17 @@ Examples:
         parser.error(f"--storage-class is required for action '{args.action}'")
 
     return args
+
+
+def positive_int(value: str) -> int:
+    """argparse type: integer >= 1."""
+    try:
+        n = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid integer: {value!r}")
+    if n < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return n
 
 
 def prepare_vm_yaml(template_path: str, vm_name: str, storage_class: str,
@@ -458,11 +481,12 @@ def save_results_to_files(output_dir: str, summary: Dict, all_results: List[Dict
     # Save CSV
     csv_path = os.path.join(output_dir, "fio_benchmark_results.csv")
     with open(csv_path, 'w') as f:
-        headers = ["namespace", "node", "read_iops", "write_iops", "read_bw_mibps",
-                   "write_bw_mibps", "read_lat_ms", "write_lat_ms", "success"]
+        # 'node' is appended last so positional readers of the older columns keep working.
+        headers = ["namespace", "read_iops", "write_iops", "read_bw_mibps",
+                   "write_bw_mibps", "read_lat_ms", "write_lat_ms", "success", "node"]
         f.write(",".join(headers) + "\n")
         for r in all_results:
-            f.write(",".join(str(r.get(h, "")) for h in headers) + "\n")
+            f.write(",".join("" if r.get(h) is None else str(r.get(h)) for h in headers) + "\n")
 
     # Save VM-to-node placement
     if summary.get('placement'):
@@ -525,110 +549,200 @@ def get_output_dir(args, namespaces, logger) -> str:
     return output_dir
 
 
-def build_placement_plan(args, namespaces, vm_yaml, logger) -> Optional[Dict[str, Dict]]:
-    """Pick eligible worker nodes and assign VMs evenly. Returns None if balancing is disabled."""
+class DeploymentError(Exception):
+    """Raised when the deployment cannot be prepared; nothing has been created yet."""
+
+
+def prepare_deployment(args, namespaces, fio_config, vm_password, logger) -> Tuple[Dict[str, str], Optional[Dict]]:
+    """
+    Render the manifest, apply the vCPU override, plan placement and run the
+    capacity/topology checks -- all before anything is created on the cluster.
+
+    Returns (manifests per namespace, plan or None). Raises DeploymentError.
+    """
+    template_path = os.path.join(os.path.dirname(__file__), args.vm_template)
+    if not os.path.exists(template_path):
+        raise DeploymentError(f"VM template not found: {template_path}")
+    vm_yaml = prepare_vm_yaml(template_path, args.vm_name, args.storage_class,
+                              fio_config, vm_password, logger)
+    try:
+        if args.vm_cpus is not None:
+            vm_yaml = set_vm_cpus(vm_yaml, args.vm_cpus, args.vm_cpu_request)
+        elif args.vm_cpu_request is not None:
+            raise ValueError("--vm-cpu-request needs --vm-cpus")
+        info = get_vm_template_info(vm_yaml)
+    except ValueError as e:
+        raise DeploymentError(str(e))
+
+    if info['instancetype']:
+        print(f"VM size: from instancetype {info['instancetype']}")
+    else:
+        print(f"VM size: {info['vcpus'] or 'default'} vCPU, CPU request {info['cpu_request']:g}"
+              f"{' (from --vm-cpus)' if args.vm_cpus is not None else ' (from template)'}")
+
+    plan = build_placement_plan(args, namespaces, info, logger)
+    manifests = {
+        ns: pin_vm_to_node(vm_yaml, plan[ns]['hostname']) if plan else vm_yaml
+        for ns in namespaces
+    }
+    return manifests, plan
+
+
+def build_placement_plan(args, namespaces, info: Dict, logger) -> Optional[Dict[str, Dict]]:
+    """Pick eligible nodes and assign VMs evenly. Returns None if balancing is disabled."""
     if args.no_balance:
         print("Placement: scheduler default (--no-balance)")
         return None
 
+    if info['constraints']:
+        print(f"  WARNING: the VM template has {', '.join(info['constraints'])}; nodes are not "
+              f"checked against it, so pinned VMs may stay Pending. Consider --no-balance.")
+
     exclude = [n.strip() for n in args.exclude_nodes.split(',') if n.strip()]
     try:
-        nodes, skipped = get_eligible_worker_nodes(
-            get_vm_tolerations(vm_yaml), exclude, args.exclude_node_label, logger)
+        result = get_eligible_nodes(info['tolerations'], exclude, args.exclude_node_label,
+                                    info['node_selector'], args.node_selector, logger)
     except Exception as e:
-        print(f"ERROR: could not determine eligible worker nodes: {e}")
-        sys.exit(1)
+        raise DeploymentError(f"could not determine eligible nodes: {e}. "
+                              f"Use --no-balance to let the scheduler place VMs.")
 
+    nodes, skipped = result['eligible'], result['skipped']
+    print(f"Candidate nodes: {result['pool']}")
+    for name in result['unknown_excludes']:
+        print(f"  WARNING: --exclude-nodes name '{name}' matches no node")
     if skipped:
-        print("Skipped worker nodes:")
+        print("Skipped nodes:")
         for name, reason in sorted(skipped.items()):
             print(f"  - {name}: {reason}")
     if not nodes:
-        print("ERROR: no eligible worker nodes for FIO VMs (all NotReady, cordoned, tainted, labeled or excluded).")
-        sys.exit(1)
+        raise DeploymentError(
+            "no eligible nodes for FIO VMs (see the skipped nodes above). Adjust --node-selector, "
+            "--exclude-node-label or --exclude-nodes, or re-run with --no-balance to let the "
+            "scheduler place VMs.")
 
-    plan = plan_balanced_placement(namespaces, nodes)
+    start_index = max(args.start - 1, 0)
+    plan = plan_balanced_placement(namespaces, nodes, start_index)
     counts = count_per_node({ns: n['name'] for ns, n in plan.items()})
-    print(f"Placement: balanced across {len(nodes)} worker nodes")
+    print(f"Placement: balanced across {len(nodes)} nodes")
     for node, count in counts.items():
         print(f"  {node:<40} {count} VM(s)")
     if len(namespaces) % len(nodes):
         print(f"  Note: {len(namespaces)} VMs do not divide evenly over {len(nodes)} nodes; "
               f"counts differ by at most 1.")
+
+    # Storage topology
+    warning = storage_topology_warning(get_storage_class(args.storage_class, logger), nodes)
+    if warning:
+        print(f"  WARNING: {warning}")
+
+    # Capacity
+    if info['instancetype']:
+        print("  Capacity check skipped: VM size comes from an instancetype.")
+    else:
+        used, err = get_pod_requests_by_node(logger)
+        if used is None:
+            print(f"  Capacity check skipped: cannot list pods ({err}).")
+        else:
+            problems = check_capacity(plan, nodes, used, info['cpu_request'], info['memory_request'])
+            if problems:
+                print("Capacity: some nodes cannot fit their planned VMs:")
+                for p in problems:
+                    print(f"  - {p}")
+                if not args.skip_capacity_check:
+                    raise DeploymentError(
+                        "not enough free capacity for balanced placement. Use fewer VMs, a smaller "
+                        "--vm-cpus/--vm-cpu-request, --exclude-nodes for full nodes, --no-balance, "
+                        "or --skip-capacity-check to deploy anyway.")
+                print("  Continuing (--skip-capacity-check); affected VMs may stay Pending.")
     return plan
 
 
-def deploy_vms(args, namespaces, fio_config, vm_password, logger) -> Optional[Dict[str, Dict]]:
-    """Render the VM manifest, pin each VM to its planned node and apply. Returns the plan."""
-    template_path = os.path.join(os.path.dirname(__file__), args.vm_template)
-    vm_yaml = prepare_vm_yaml(
-        template_path, args.vm_name, args.storage_class,
-        fio_config, vm_password, logger
-    )
-    vm_yaml = set_vm_cpus(vm_yaml, args.vm_cpus)
-    print(f"VM size: {args.vm_cpus} vCPU (CPU request {args.vm_cpus}), memory from template")
+def warn_existing_vms(namespaces, vm_name, logger):
+    """Warn when VMs already exist: kubectl apply will not move or resize running VMs."""
+    existing = [ns for ns, s in get_deployed_state(namespaces, vm_name, logger)['state'].items()
+                if s['exists']]
+    if existing:
+        print(f"  WARNING: {len(existing)} VM(s) already exist (e.g. {existing[0]}). Running VMs keep "
+              f"their current node and CPU until restarted, and old FIO results may be collected. "
+              f"Run --action cleanup first for a clean run.")
 
-    plan = build_placement_plan(args, namespaces, vm_yaml, logger)
-    manifests = {
-        ns: pin_vm_to_node(vm_yaml, plan[ns]['hostname']) if plan else vm_yaml
-        for ns in namespaces
-    }
 
+def apply_manifests(args, namespaces, manifests: Dict[str, str], plan, logger) -> List[str]:
+    """Apply each namespace's manifest. Returns the namespaces that failed."""
+    failed = []
     with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
-        futures = {
-            executor.submit(deploy_vm, ns, manifests[ns], logger): ns
-            for ns in namespaces
-        }
+        futures = {executor.submit(deploy_vm, ns, manifests[ns], logger): ns for ns in namespaces}
         for future in as_completed(futures):
             ns = futures[future]
             try:
                 ok = future.result()
-                target = f" -> {plan[ns]['name']}" if plan else ""
-                print(f"  {'✓' if ok else '✗'} {ns}{target}")
             except Exception as e:
-                print(f"  ✗ {ns}: {e}")
-    return plan
+                ok = False
+                logger.error(f"[{ns}] {e}")
+            target = f" -> {plan[ns]['name']}" if plan and ns in plan else ""
+            print(f"  {'✓' if ok else '✗'} {ns}{target}")
+            if not ok:
+                failed.append(ns)
+    return sorted(failed)
 
 
 def check_placement(args, namespaces, plan: Optional[Dict[str, Dict]], logger,
-                    wait: bool = True) -> Dict:
+                    wait: bool = True, failed_to_apply: Iterable[str] = ()) -> Dict:
     """
-    Read where each VMI landed (waiting up to --placement-timeout for scheduling),
-    print per-node counts and return the verification report.
+    Read where each VMI landed and what it runs with (waiting up to
+    --placement-timeout for scheduling when a plan exists), print per-node
+    counts and return the verification report.
     """
-    planned = {ns: n['name'] for ns, n in plan.items()} if plan else {}
-    deadline = time.time() + (args.placement_timeout if wait else 0)
+    failed = set(failed_to_apply)
+    planned = {ns: n['name'] for ns, n in plan.items() if ns not in failed} if plan else {}
+    waiting_for = [ns for ns in namespaces if ns not in failed]
+    deadline = time.time() + (args.placement_timeout if (wait and plan) else 0)
     while True:
-        actual = get_vmi_node_map(namespaces, args.vm_name, logger)
-        if all(actual.values()) or time.time() >= deadline:
+        deployed = get_deployed_state(namespaces, args.vm_name, logger)
+        state = deployed['state']
+        if all(state[ns]['node'] for ns in waiting_for) or time.time() >= deadline:
             break
         time.sleep(10)
 
-    report = verify_placement(planned, actual)
+    report = verify_placement(planned, state, failed)
     report['policy'] = 'balanced' if plan else 'scheduler'
-    report['vm_node_map'] = actual
+    report['vm_node_map'] = {ns: s['node'] for ns, s in state.items()}
+    report['vm_cpus'] = deployed['vm_cpus']
+    report['vm_cpu_request'] = deployed['vm_cpu_request']
     if planned:
         report['planned'] = planned
+    if deployed['errors']:
+        report['read_errors'] = deployed['errors']
 
     print("VM distribution per node:")
     for node, count in report['per_node_counts'].items():
         print(f"  {node:<40} {count} VM(s)")
+    for ns in report['not_created']:
+        print(f"  ! {ns}: VM/VMI not created (apply failed or still provisioning)")
     for ns in report['unscheduled']:
-        print(f"  ! {ns}: VMI not scheduled (check `kubectl get vmi,pods -n {ns}` for capacity/taint/volume reasons)")
+        print(f"  ! {ns}: VMI not scheduled (check `kubectl get vmi,pods -n {ns}` and events for "
+              f"capacity, taint or volume-topology reasons)")
+    for ns in report['terminal']:
+        print(f"  ! {ns}: VMI is {state[ns]['phase']}")
     for ns, m in report['mismatches'].items():
         print(f"  ! {ns}: planned {m['planned']} but running on {m['actual']}")
+    if report['restart_required']:
+        print(f"  ! {len(report['restart_required'])} VM(s) have RestartRequired: the running VMI "
+              f"does not match the applied spec (e.g. {report['restart_required'][0]})")
+    for e in deployed['errors']:
+        print(f"  ! could not read cluster state: {e}")
     if not plan:
         print("  (scheduler placement; not enforced or verified)")
     elif report['balanced']:
         print("  Placement verified: every VM is on its planned node and the spread is even.")
     else:
-        print("  WARNING: VMs are NOT on their planned nodes or not evenly distributed; "
+        print("  WARNING: VMs are NOT all on their planned nodes or not evenly distributed; "
               "results may not be comparable.")
     return report
 
 
-def action_deploy(args, namespaces, fio_config, logger):
-    """Deploy VMs with FIO pre-configured."""
+def action_deploy(args, namespaces, fio_config, logger) -> int:
+    """Deploy VMs with FIO pre-configured. Returns the exit code."""
     print("\n" + "=" * 60)
     print("FIO BENCHMARK - DEPLOY")
     print("=" * 60)
@@ -637,18 +751,33 @@ def action_deploy(args, namespaces, fio_config, logger):
     print(f"FIO Config: {fio_config['rw']} | bs={fio_config['bs']} | iodepth={fio_config['iodepth']}")
     print("=" * 60 + "\n")
 
-    # Create namespaces
-    print("[1/2] Creating namespaces...")
+    print("[1/3] Preparing deployment...")
+    try:
+        manifests, plan = prepare_deployment(args, namespaces, fio_config, args.vm_password, logger)
+    except DeploymentError as e:
+        print(f"ERROR: {e}")
+        return 1
+    warn_existing_vms(namespaces, args.vm_name, logger)
+
+    print("[2/3] Creating namespaces...")
     create_namespaces_parallel(namespaces, batch_size=20, logger=logger)
 
-    # Deploy VMs
-    print("[2/2] Deploying FIO VMs...")
-    deploy_vms(args, namespaces, fio_config, args.vm_password, logger)
+    print("[3/3] Deploying FIO VMs...")
+    failed = apply_manifests(args, namespaces, manifests, plan, logger)
+
+    print("Checking VM placement...")
+    report = check_placement(args, namespaces, plan, logger, failed_to_apply=failed)
 
     print(f"\nDeployment complete.")
     print("VMs will start FIO automatically on boot.")
     print(f"Use --action status to check progress.")
     print(f"Use --action gather-results to collect results when complete.")
+    if failed:
+        print(f"ERROR: {len(failed)} VM(s) failed to apply: {', '.join(failed)}")
+        return 1
+    if report['balanced'] is False:
+        return 1
+    return 0
 
 
 def check_fio_status_in_vm(vm_ip: str, ssh_config: Dict, logger) -> str:
@@ -770,8 +899,16 @@ def action_gather_results(args, namespaces, fio_config, ssh_config, logger):
     # Aggregate and save
     test_duration = time.time() - test_start
     summary = aggregate_results(all_results, fio_config, test_duration)
-    summary['vm_cpus'] = args.vm_cpus
-    placement = check_placement(args, namespaces, None, logger, wait=False)
+    # Describe what is actually deployed and running, not this command's flags.
+    # Never let this lose the results collected above.
+    try:
+        plan = get_deployed_state(namespaces, args.vm_name, logger)['plan']
+        placement = check_placement(args, namespaces, plan, logger, wait=False)
+    except Exception as e:
+        logger.error(f"Could not read placement: {e}")
+        placement = None
+    summary['vm_cpus'] = placement.get('vm_cpus') if placement else None
+    summary['vm_cpu_request'] = placement.get('vm_cpu_request') if placement else None
     attach_placement(summary, all_results, placement)
 
     if args.save_results:
@@ -816,15 +953,22 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
 
     test_start = time.time()
 
-    # Step 1: Create namespaces
-    print("[1/4] Creating namespaces...")
+    # Step 1: Prepare (render, plan, check) before creating anything, then create namespaces
+    print("[1/4] Preparing deployment and creating namespaces...")
+    try:
+        manifests, plan = prepare_deployment(args, namespaces, fio_config, ssh_config['password'], logger)
+    except DeploymentError as e:
+        print(f"ERROR: {e}")
+        return 1
+    warn_existing_vms(namespaces, args.vm_name, logger)
     create_namespaces_parallel(namespaces, batch_size=20, logger=logger)
 
     # Step 2: Deploy VMs
     print("[2/4] Deploying FIO VMs...")
-    plan = deploy_vms(args, namespaces, fio_config, ssh_config['password'], logger)
-    print("Checking VM placement...")
-    check_placement(args, namespaces, plan, logger)
+    failed = apply_manifests(args, namespaces, manifests, plan, logger)
+    if plan:
+        print("Checking VM placement...")
+        check_placement(args, namespaces, plan, logger, failed_to_apply=failed)
 
     # Step 3: Wait for VMs and FIO to complete
     print(f"[3/4] Waiting for VMs to boot and FIO to complete (polling every 30s)...")
@@ -845,7 +989,11 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
             completed.append((ns, success))
 
     # Record final placement (all VMs have had the chance to start by now)
-    placement = check_placement(args, namespaces, plan, logger, wait=False)
+    try:
+        placement = check_placement(args, namespaces, plan, logger, wait=False, failed_to_apply=failed)
+    except Exception as e:
+        logger.error(f"Could not read placement: {e}")
+        placement = None
 
     # Step 4: Collect results
     print("[4/4] Collecting results...")
@@ -874,7 +1022,8 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
     # Aggregate and save
     test_duration = time.time() - test_start
     summary = aggregate_results(all_results, fio_config, test_duration)
-    summary['vm_cpus'] = args.vm_cpus
+    summary['vm_cpus'] = placement.get('vm_cpus') if placement else None
+    summary['vm_cpu_request'] = placement.get('vm_cpu_request') if placement else None
     attach_placement(summary, all_results, placement)
 
     if args.save_results:
@@ -898,6 +1047,14 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
                 logger=logger
             )
             print(f"Cleaned up {len(namespaces)} namespaces")
+
+    if failed:
+        print(f"ERROR: {len(failed)} VM(s) failed to apply: {', '.join(failed)}")
+        return 1
+    if placement and placement.get('balanced') is False:
+        print("ERROR: balanced placement was not achieved; see the placement report above.")
+        return 1
+    return 0
 
 
 def main():
@@ -926,8 +1083,9 @@ def main():
         'password': args.vm_password
     }
 
+    rc = 0
     if args.action == 'deploy':
-        action_deploy(args, namespaces, fio_config, logger)
+        rc = action_deploy(args, namespaces, fio_config, logger)
     elif args.action == 'status':
         action_status(args, namespaces, ssh_config, logger)
     elif args.action == 'gather-results':
@@ -935,10 +1093,11 @@ def main():
     elif args.action == 'cleanup':
         action_cleanup(args, namespaces, logger)
     elif args.action == 'run-all':
-        action_run_all(args, namespaces, fio_config, ssh_config, logger)
+        rc = action_run_all(args, namespaces, fio_config, ssh_config, logger)
     else:
         print(f"Unknown action: {args.action}")
-        sys.exit(1)
+        rc = 1
+    sys.exit(rc or 0)
 
 
 if __name__ == '__main__':

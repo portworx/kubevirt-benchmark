@@ -17,13 +17,50 @@ FIO is baked into the VM template and runs on boot. The benchmark workflow has f
 
 ## VM Size
 
-Each FIO VM gets **4 guest vCPUs** by default (`--vm-cpus`), with a matching CPU request, so the four FIO jobs, guest I/O completion and virtio device processing are not squeezed onto fewer CPUs. Memory and FIO parameters come from the template unchanged. The value used is recorded as `vm_cpus` in `summary_fio_benchmark.json`; use `--vm-cpus 2` to reproduce the earlier 2-vCPU configuration.
+The shipped FIO templates (`fio-vm-template.yaml`, `fio-vm-template-containerdisk.yaml`) give each VM **4 guest vCPUs** with a **CPU request of 4**, so the four FIO jobs, guest I/O completion and virtio device processing are not squeezed onto fewer CPUs. Memory and FIO parameters are unchanged.
+
+By default the harness uses whatever the template says. To override it:
+
+```bash
+# 2 vCPUs, CPU request 2
+virtbench fio -a run-all -s 1 -e 10 --storage-class YOUR-STORAGE-CLASS --vm-cpus 2
+# Reproduce the older template (2 vCPUs, CPU request 1)
+virtbench fio -a run-all -s 1 -e 10 --storage-class YOUR-STORAGE-CLASS --vm-cpus 2 --vm-cpu-request 1
+```
+
+`--vm-cpus` sets `domain.cpu.cores` (1 socket, 1 thread) and the CPU request (default: equal to `--vm-cpus`; set it separately with `--vm-cpu-request`). An existing CPU limit in the template is kept consistent. It cannot be used with templates that size the VM through `spec.instancetype`; choose a different instancetype instead.
+
+The vCPU count and CPU request of the **running** VMs are recorded as `vm_cpus` and `vm_cpu_request` in `summary_fio_benchmark.json` and shown in the dashboard. Results from before this change have no `vm_cpus` (those VMs had 2 vCPUs and a CPU request of 1).
+
+!!! warning "Capacity"
+    A CPU request of 4 per VM needs real CPU: each node needs about `ceil(VMs / nodes) x CPU request` free allocatable CPU (plus memory for the guest and launcher overhead). With balanced placement the harness checks this before deploying and stops if a node cannot fit its share. Use fewer VMs, a smaller `--vm-cpus`/`--vm-cpu-request`, `--exclude-nodes` for busy nodes, `--no-balance`, or `--skip-capacity-check` to deploy anyway. A namespace `LimitRange` with a default CPU limit below the request will also reject the VMs.
 
 ## VM Placement
 
-By default the FIO VMs are spread **evenly across the worker nodes**. Each VM is pinned to one node (round-robin, via `nodeSelector` on `kubernetes.io/hostname`), so with 10 VMs and 5 worker nodes every node runs 2 VMs. If the VM count does not divide evenly, per-node counts differ by at most one.
+By default the FIO VMs are spread **evenly across the eligible nodes**. Each VM is pinned to one node (round-robin, via `nodeSelector` on `kubernetes.io/hostname`), so with 10 VMs and 5 nodes every node runs 2 VMs. If the VM count does not divide evenly, per-node counts differ by at most one. Assignment follows the namespace index, so deploying `-s 1 -e 10` and then `-s 11 -e 20` gives the same spread as `-s 1 -e 20`.
 
-To keep FIO VMs off particular nodes, label them:
+### Which nodes are used
+
+Candidate nodes are, in order of preference:
+
+1. nodes matching `--node-selector` (e.g. `--node-selector pool=fio` or `--node-selector disktype=nvme,zone-group=a`), if given;
+2. otherwise nodes with the `node-role.kubernetes.io/worker` label, any value (OpenShift and some installers set this);
+3. otherwise nodes without a `control-plane`/`master` role label (kubeadm, kind, k3s, RKE2, EKS, GKE, AKS usually do not label workers);
+4. otherwise all nodes (single-node and compact clusters).
+
+A candidate is skipped when it:
+
+- is not `Ready` or is cordoned;
+- is not schedulable for KubeVirt (`kubevirt.io/schedulable` is not `true`, e.g. virt-handler is not running there);
+- does not match the VM template's own `nodeSelector`;
+- carries the exclude label (default `virtbench.io/no-fio`) or is listed in `--exclude-nodes`;
+- has a `NoSchedule`/`NoExecute` taint the VM template does not tolerate (a `NoExecute` toleration with `tolerationSeconds` counts as not tolerated, since the VM would be evicted mid-run). The shipped templates tolerate the `master`/`control-plane` `NoSchedule` taints.
+
+The candidate pool, every skipped node with its reason, and the planned VMs per node are printed before anything is created. Names in `--exclude-nodes` that match no node are reported.
+
+### Keeping FIO off nodes
+
+Label them:
 
 ```bash
 kubectl label node worker-3 virtbench.io/no-fio=true
@@ -31,16 +68,26 @@ kubectl label node worker-3 virtbench.io/no-fio=true
 kubectl label node worker-3 virtbench.io/no-fio-
 ```
 
-Any node carrying the `virtbench.io/no-fio` label (any value) is skipped. To use a label you already have, pass `--exclude-node-label`, e.g. `--exclude-node-label pool=database` (`key` alone matches any value; `""` disables label exclusion).
-
-Nodes that are not `Ready`, are cordoned, or have a `NoSchedule`/`NoExecute` taint the VM template does not tolerate are skipped automatically. You can also list nodes on the command line:
+Any node carrying the `virtbench.io/no-fio` label (any value) is skipped. To use a label you already have, pass `--exclude-node-label`, e.g. `--exclude-node-label pool=database` (`key` alone matches any value; `""` disables label exclusion). You can also list nodes by name:
 
 ```bash
 virtbench fio -a run-all -s 1 -e 10 --storage-class YOUR-STORAGE-CLASS \
   --exclude-nodes worker-3,worker-4 --save-results
 ```
 
-The selected nodes and planned VM count per node are printed before deployment. After deployment the harness reads each VMI's node, prints the per-node counts, and warns if a VM is not scheduled (for example, the node lacks CPU/memory) or the spread is uneven. With `--save-results`, the VM-to-node map is saved to `vm_node_placement.json`, under `placement` in the summary, and as a `node` column in the CSV.
+### Verification and results
+
+After `deploy` and `run-all`, the harness waits up to `--placement-timeout` seconds (default 600) for every VMI to be scheduled, then prints the VMs per node and reports VMs that were not created, are not scheduled, have failed, run on a different node than planned, or need a restart (`RestartRequired`: the running VM does not match the applied spec). If balanced placement is not achieved, the command exits with status 1 (the run still collects and saves results). A failed `kubectl apply` also exits with status 1.
+
+`gather-results` reads the placement and vCPUs from the running VMs, so a separate `deploy` and `gather-results` record what was actually deployed, not the flags of the gather command. With `--save-results`, the VM-to-node map is saved to `vm_node_placement.json`, under `placement` in the summary (`balanced` is `true`/`false` for balanced placement and `null` when the scheduler placed the VMs), and as a `node` column at the end of the CSV.
+
+Reading the cluster state lists nodes, pods, VMs and VMIs cluster-wide when allowed, and falls back to per-namespace reads for users without cluster-wide list rights (the capacity check is then skipped).
+
+### Limitations
+
+- **Existing VMs:** `kubectl apply` over running VMs does not move or resize them, and old FIO results may be collected. The harness warns when VMs already exist; run `--action cleanup` first.
+- **Storage topology:** pinning decides the node before the volume exists. With a `WaitForFirstConsumer` StorageClass the volume follows the VM. With an `Immediate` StorageClass and zonal storage (EBS, GCE PD, Azure Disk, local volumes), a volume can be created where the pinned node cannot reach it, leaving the VM Pending. The harness warns when an `Immediate` StorageClass is used with nodes in more than one zone. Use a `WaitForFirstConsumer` class, `--node-selector topology.kubernetes.io/zone=<zone>`, or `--no-balance`.
+- **Template placement rules:** required node affinity, pod anti-affinity or topology spread constraints in the template are not evaluated when choosing nodes; the harness warns when they are present.
 
 Use `--no-balance` to skip pinning and let the Kubernetes scheduler place the VMs.
 
@@ -86,10 +133,13 @@ virtbench fio --action cleanup -s 1 -e 10
 | `--vm-name` | `fio-vm` | VM resource name in each namespace |
 | `--vm-template` | `examples/vm-templates/fio-vm-template.yaml` | Path to VM template YAML |
 | `--concurrency`, `-c` | `20` | Max parallel threads for deploy/status/cleanup |
-| `--vm-cpus` | `4` | Guest vCPUs per FIO VM. The VM's CPU request is set to the same value so each vCPU has real CPU reserved; memory and FIO settings are unchanged |
-| `--exclude-node-label` | `virtbench.io/no-fio` | Node label (`key` or `key=value`) marking nodes FIO VMs must not use |
-| `--exclude-nodes` | (none) | Comma-separated worker nodes to keep FIO VMs off |
+| `--vm-cpus` | (template) | Override guest vCPUs per FIO VM; the CPU request matches unless `--vm-cpu-request` is set. Not allowed with `spec.instancetype` templates |
+| `--vm-cpu-request` | (= `--vm-cpus`) | CPU request per VM when `--vm-cpus` is set |
+| `--node-selector` | (none) | Label selector (`key` or `key=value`, comma-separated) choosing candidate nodes |
+| `--exclude-node-label` | `virtbench.io/no-fio` | Node label (`key` or `key=value`) marking nodes FIO VMs must not use; `""` disables |
+| `--exclude-nodes` | (none) | Comma-separated node names to keep FIO VMs off |
 | `--no-balance` | off | Don't spread VMs evenly; let the scheduler place them |
+| `--skip-capacity-check` | off | Deploy even if planned VMs exceed a node's free CPU/memory |
 | `--placement-timeout` | `600` | Seconds to wait for VMIs to be scheduled before checking placement |
 
 ### FIO Parameters
@@ -172,7 +222,7 @@ Results include per-VM and aggregated metrics:
 {results-dir}/{storage-driver}/{disks-per-vm}/{timestamp}_fio_benchmark_{N}vms/
 ├── summary_fio_benchmark.json     # Aggregated summary across all VMs
 ├── fio_benchmark_results.json     # Per-VM results (JSON array)
-├── fio_benchmark_results.csv      # Per-VM results (CSV, includes node)
+├── fio_benchmark_results.csv      # Per-VM results (CSV, node as last column)
 ├── vm_node_placement.json         # VM-to-node map and per-node counts
 └── per-vm-results/                # Raw FIO output per VM
     ├── fio-benchmark-1/
