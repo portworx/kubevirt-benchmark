@@ -134,6 +134,12 @@ spec:
                   [test]
                   FIOJOB
                   # Run FIO
-                  fio /tmp/fio.job --output-format=json --output=/tmp/fio_results.json
+                  if fio /tmp/fio.job --output-format=json --output=/tmp/fio_results.json; then
+                    fio_exit_code=0
+                  else
+                    fio_exit_code=$?
+                  fi
+                  printf '%s\n' "$fio_exit_code" > /tmp/fio_exit_code
                   echo "completed" > /tmp/fio_complete
+                  exit "$fio_exit_code"
 
