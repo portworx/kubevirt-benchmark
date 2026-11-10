@@ -463,7 +463,10 @@ def parse_run_all_result(namespace: str, collected: Optional[Dict],
                          completion_code: Optional[int]) -> Dict:
     """Validate collected output against the completion status observed by run-all."""
     if not collected:
-        return failed_fio_result(namespace, "FIO results could not be collected")
+        error = "FIO results could not be collected"
+        if completion_code is not None:
+            error = f"FIO command exited with status {completion_code}; results could not be collected"
+        return failed_fio_result(namespace, error, completion_code)
     if (completion_code is not None
             and collected.get("exit_code") != completion_code):
         return failed_fio_result(

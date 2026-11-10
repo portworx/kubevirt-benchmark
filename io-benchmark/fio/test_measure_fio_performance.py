@@ -76,6 +76,15 @@ class ParseFioResultsTests(unittest.TestCase):
         self.assertTrue(result["unverified"])
         self.assertFalse(result["success"])
 
+    def test_run_all_preserves_nonzero_status_when_results_are_missing(self):
+        result = fio.parse_run_all_result("fio-vm-1", None, 1)
+        summary = fio.aggregate_results([result], {"rw": "write"}, 1.0)
+
+        self.assertFalse(result["success"])
+        self.assertEqual(result["exit_code"], 1)
+        self.assertIn("exited with status 1", result["error"])
+        self.assertEqual(summary["failures"][0]["exit_code"], 1)
+
     def test_job_error_without_command_status_remains_a_failure(self):
         result = fio.parse_fio_results(
             "fio-vm-1", {"jobs": [{"error": 5, "read": {}, "write": {}}]}, None
