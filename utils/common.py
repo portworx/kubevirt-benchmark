@@ -816,7 +816,8 @@ CLEANUP SUMMARY
         print(message)
 
 
-def get_vm_status(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> Optional[str]:
+def get_vm_status(vm_name: str, namespace: str, logger: Optional[logging.Logger] = None,
+                  timeout: Optional[float] = None) -> Optional[str]:
     """
     Get the status of a VM.
 
@@ -824,6 +825,7 @@ def get_vm_status(vm_name: str, namespace: str, logger: Optional[logging.Logger]
         vm_name: VM name
         namespace: Namespace
         logger: Logger instance
+        timeout: Maximum duration of the kubectl command in seconds
 
     Returns:
         VM status string or None if not found
@@ -832,7 +834,8 @@ def get_vm_status(vm_name: str, namespace: str, logger: Optional[logging.Logger]
         returncode, stdout, _ = run_kubectl_command(
             ['get', 'vm', vm_name, '-n', namespace, '-o', 'jsonpath={.status.printableStatus}'],
             check=False,
-            logger=logger
+            logger=logger,
+            timeout=timeout
         )
         if returncode == 0 and stdout:
             return stdout.strip()
@@ -843,7 +846,8 @@ def get_vm_status(vm_name: str, namespace: str, logger: Optional[logging.Logger]
         return None
 
 
-def get_vmi_ip(vmi_name: str, namespace: str, logger: Optional[logging.Logger] = None) -> Optional[str]:
+def get_vmi_ip(vmi_name: str, namespace: str, logger: Optional[logging.Logger] = None,
+               timeout: Optional[float] = None) -> Optional[str]:
     """
     Get the IP address of a VMI.
 
@@ -851,6 +855,7 @@ def get_vmi_ip(vmi_name: str, namespace: str, logger: Optional[logging.Logger] =
         vmi_name: VMI name
         namespace: Namespace
         logger: Logger instance
+        timeout: Maximum duration of the kubectl command in seconds
 
     Returns:
         IP address or None if not available
@@ -859,7 +864,8 @@ def get_vmi_ip(vmi_name: str, namespace: str, logger: Optional[logging.Logger] =
         returncode, stdout, _ = run_kubectl_command(
             ['get', 'vmi', vmi_name, '-n', namespace, '-o', 'jsonpath={.status.interfaces[0].ipAddress}'],
             check=False,
-            logger=logger
+            logger=logger,
+            timeout=timeout
         )
         if returncode == 0 and stdout and stdout != '<none>':
             return stdout.strip()
@@ -1876,14 +1882,15 @@ def print_summary_table(
 
         output(line)
 
+        if not skip_clone and clone_t is not None:
+            clone_times.append(clone_t)
+
         if ok:
             successful += 1
             if run_t is not None:
                 running_times.append(run_t)
             if ping_t is not None:
                 ping_times.append(ping_t)
-            if not skip_clone and clone_t is not None:
-                clone_times.append(clone_t)
         else:
             failed += 1
 
@@ -1948,7 +1955,8 @@ def save_results(args, results, base_dir="results", prefix="vm_creation_results"
 
     # Convert tuples to dicts
     data = []
-    for ns, run_t, ping_t, clone_t, success in results:
+    for result in results:
+        ns, run_t, ping_t, clone_t, success = result[:5]
         entry = {
             "namespace": ns,
             "running_time_sec": round(run_t, 2) if run_t is not None else None,
@@ -1978,8 +1986,8 @@ def save_results(args, results, base_dir="results", prefix="vm_creation_results"
     successful = sum(1 for r in results if r[4])
     failed = total - successful
 
-    running_times = [r[1] for r in results if r[1] is not None]
-    ping_times = [r[2] for r in results if r[2] is not None]
+    running_times = [r[1] for r in results if r[4] and r[1] is not None]
+    ping_times = [r[2] for r in results if r[4] and r[2] is not None]
     clone_times = [r[3] for r in results if r[3] is not None] if not skip_clone else []
 
     def calc_stats(name, values):
