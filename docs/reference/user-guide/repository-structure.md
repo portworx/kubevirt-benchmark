@@ -22,12 +22,15 @@ kubevirt-benchmark/
 │   │   └── vm_ops.py             # vm-ops command group
 │   └── utils/                    # Shared utilities (logger, k8s helpers, results)
 │
+├── adaptive/                     # Planner and run analysis for the optional AI-assisted workflow
+│   ├── planner.py
+│   └── analysis.py
 ├── chaos-benchmark/              # Chaos benchmark Python script
 │   └── measure-chaos.py
 ├── datasource-clone/             # DataSource-clone benchmark Python script
 │   └── measure-vm-creation-time.py
 ├── disk-ops-benchmark/           # Disk hotplug/coldplug benchmark
-│   ├── measure-disk-ops.py
+│   └── measure-disk-ops.py
 ├── migration/                    # Migration benchmark Python script
 │   └── measure-vm-migration-time.py
 ├── failure-recovery/             # Failure-recovery Python script and FAR template
@@ -73,9 +76,10 @@ kubevirt-benchmark/
 │   └── community/                # Community docs
 │
 ├── results/                      # Test results (auto-generated)
-│   └── {storage-driver}/
-│       └── {num-disks}-disk/
-│           └── {timestamp}_{test}_{vms}vms/
+│   ├── {storage-driver}/
+│   │   └── {num-disks}-disk/
+│   │       └── {timestamp}_{test}_{vms}vms/
+│   └── ai-runs/                  # AI-assisted workflow rounds and analysis
 │
 ├── setup.py                      # Python package setup
 ├── requirements.txt              # Python dependencies
@@ -94,6 +98,13 @@ The `virtbench/` directory contains the main CLI application:
 - **cli.py**: Main entry point using Click framework
 - **commands/**: Individual benchmark command implementations
 - **utils/**: Shared utility functions for Kubernetes operations, logging, and results processing
+
+### Adaptive Planner
+
+The `adaptive/` directory contains the deterministic planner (`python -m adaptive.planner`)
+and run analysis used by the optional [AI-assisted workflow](ai-workflow.md). The planner
+estimates VM capacity, runs existing `virtbench` commands round by round, and writes its
+decisions and analysis under `results/ai-runs/`.
 
 ### Templates
 

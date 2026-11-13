@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="docs/virtbench-transparent.png" alt="virtbench logo" width="400"/>
+  <img src="docs/virtbench_transparent.gif" alt="virtbench logo" width="400"/>
 </p>
 
 # KubeVirt Performance Benchmarking Suite
 
 [![Documentation](https://img.shields.io/badge/Read-documentation-blue?logo=readthedocs)][docs-module]
-[![Changelog](https://img.shields.io/badge/Changelog-Read-blue)](CHANGELOG.md)
+[![Changelog](https://img.shields.io/badge/Changelog-Read-blue)](docs/release-notes.md)
 
-A comprehensive, vendor-neutral performance testing toolkit for KubeVirt virtual machines running on OpenShift Container Platform (OCP) or any Kubernetes distribution with KubeVirt.
+A comprehensive, vendor-neutral performance testing toolkit for KubeVirt virtual machines running on any Kubernetes distribution with KubeVirt, including Red Hat OpenShift Virtualization.
 
 ## Documentation
 
@@ -28,6 +28,9 @@ This suite provides automated performance testing tools to measure and validate 
 - **Chaos Benchmark Testing**: Run concurrent chaos operations (VM creation, volume resize, volume clone, VM restart, snapshots) with mandatory concurrency
 - **Single Node Testing**: Pin all VMs to a single node for node-level capacity testing
 - **Failure and Recovery Testing**: Validate VM recovery times after node failures
+- **Storage I/O Benchmarking**: Measure in-VM storage performance with FIO and Elbencho across multiple VMs
+- **Disk Operations Testing**: Measure disk hotplug and coldplug attach times for running and stopped VMs
+- **Day 2 VM Operations**: Drain nodes, rebalance VMs, snapshot in batches, run `blkdiscard`, and power VMs on or off with `virtbench vm-ops`
 - **VM Snapshot Testing**: Test VM snapshot creation and readiness
 - **Volume Resize Testing**: Test PVC expansion capabilities
 - **Parallel Execution**: Support for testing hundreds of VMs concurrently
@@ -36,6 +39,7 @@ This suite provides automated performance testing tools to measure and validate 
 - **Comprehensive Logging**: Detailed logs with timestamps and error tracking
 - **Flexible Configuration**: Command-line arguments for easy customization
 - **Interactive Results Dashboard**: Auto-generate rich HTML dashboards for all test results
+- **Optional AI-Assisted Workflow**: Plan and run adaptive validation rounds from natural-language prompts in Codex or Claude Code (see [Optional AI-Assisted Workflow](docs/reference/user-guide/ai-workflow.md))
 
 
 

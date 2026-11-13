@@ -10,7 +10,9 @@ repo_url: https://github.com/portworx/kubevirt-benchmark
 theme:
   name: material
   favicon: favicon.png
-  logo: virtbench-transparent.png
+  logo: virtbench_transparent.gif
+  features:
+    - content.code.copy
   palette:
     - scheme: default
       primary: custom
@@ -32,6 +34,7 @@ nav:
 - Reference:
   - Repository Structure: reference/user-guide/repository-structure.md
   - User Guide:
+      - Optional AI-Assisted Workflow: reference/user-guide/ai-workflow.md
       - Test Scenarios:
           - Overview: reference/user-guide/test-scenarios/overview.md
           - VM Creation (DataSource Clone): reference/user-guide/test-scenarios/datasource-clone.md

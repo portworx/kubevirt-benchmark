@@ -20,20 +20,31 @@
   color: #cccccc !important;
 }
 
-/* Increase logo size */
-.md-header__button.md-logo img,
-.md-header__button.md-logo svg {
-  height: 4rem !important;
-  width: auto !important;
-}
-
-/* Adjust header height to accommodate larger logo */
+/* Keep the header compact while showing a larger cropped logo. */
 .md-header {
-  height: 4rem !important;
+  height: 3rem !important;
 }
 
 .md-header__inner {
-  padding: 0.2rem 0.4rem !important;
+  align-items: center !important;
+  height: 3rem !important;
+  min-height: 3rem !important;
+  padding: 0 0.4rem !important;
+}
+
+.md-header__button.md-logo {
+  align-items: center !important;
+  display: flex !important;
+  height: 3rem !important;
+  margin: 0 0.75rem 0 0 !important;
+  padding: 0 !important;
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  display: block !important;
+  height: 2.8rem !important;
+  width: auto !important;
 }
 
 /* Fix search icon color */
@@ -45,4 +56,3 @@
 .md-nav__icon {
   color: #ffffff !important;
 }
-

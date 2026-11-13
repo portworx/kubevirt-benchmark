@@ -35,6 +35,13 @@ virtbench vm-ops rebalance-vms \
 virtbench vm-ops rebalance-vms \
   --vm-name rhel-elbencho-1
 
+# Rebalance only one benchmark namespace range
+virtbench vm-ops rebalance-vms \
+  --vm-name rhel-9-vm \
+  --namespace-prefix ai-bootstorm \
+  --start 1 \
+  --end 80
+
 # Custom targets for a smaller cluster
 virtbench vm-ops rebalance-vms \
   --vm-name rhel-elbencho-1 \
@@ -53,6 +60,8 @@ virtbench vm-ops rebalance-vms \
 | Option | Description |
 | --- | --- |
 | `--vm-name` | VM name to rebalance (default: `rhel-elbencho-1`). |
+| `--namespace-prefix` | Only rebalance VMIs in namespaces named `<prefix>-N`. |
+| `--start` / `--end` | Optional namespace index range when `--namespace-prefix` is set. |
 | `--target-min` | Minimum VMs per target node (default: auto). |
 | `--target-max` | Maximum VMs per target node (default: auto). |
 | `--include-master-nodes` | Include master/control-plane nodes as rebalance targets. Worker nodes are used by default. |
@@ -70,8 +79,9 @@ When the run completes, it shows a final per-node count.
 
 ## Notes
 
-* The script targets a single VM name across all namespaces. Run it once
-  per VM name if you have multiple workloads to rebalance.
+* Without `--namespace-prefix`, the script targets a single VM name across
+  all namespaces. Run it once per VM name or namespace range if you have
+  multiple workloads to rebalance.
 * Master/control-plane nodes are never used as targets unless
   `--include-master-nodes` is provided.
 * For small runs, the default target range is computed automatically. For

@@ -28,9 +28,11 @@
 
 ## v2.0.0
 
-This is a major release that introduces a unified `virtbench` CLI, three new
-test scenarios (Chaos, FIO, Elbencho), a `vm-ops` day-2 operations command
-group, a rewritten failure-recovery test, and a full documentation site.
+This is a major release that introduces a unified `virtbench` CLI, four new
+test scenarios (Chaos, FIO, Elbencho, Disk Operations), a `vm-ops` day-2
+operations command group, a rewritten failure-recovery test, an optional
+AI-assisted workflow for adaptive validation runs, and a full documentation
+site.
 
 ### New Features
 
@@ -45,6 +47,7 @@ in the suite. Subcommands:
 - `virtbench failure-recovery` — node-failure recovery with FAR
 - `virtbench fio` — FIO storage I/O benchmark
 - `virtbench elbencho` — Elbencho storage benchmark
+- `virtbench disk-ops` — disk hotplug/coldplug benchmark
 - `virtbench validate-cluster` — pre-flight cluster validation
 - `virtbench vm-ops <op>` — day-2 VM operations group
 - `virtbench version` — version information
@@ -62,11 +65,27 @@ script execution.
 resize, volume clone, VM restart, and snapshots — to stress-test cluster
 resilience under mixed concurrent load.
 
+#### New: FIO Storage Benchmark
+
+`virtbench fio` runs FIO inside multiple VMs in parallel to measure storage
+IOPS, bandwidth, and latency, with configurable block size, I/O pattern,
+I/O depth, job count, and runtime. The workflow stages (`deploy`, `status`,
+`gather-results`, `cleanup`) can run individually or together with `run-all`.
+See the [FIO](reference/user-guide/test-scenarios/fio-benchmark.md) guide.
+
 #### New: Elbencho Storage Benchmark
 
 `virtbench elbencho` runs the elbencho storage micro-benchmark across
 multiple VMs to measure file-system level throughput and latency, paired
-with the existing FIO scenario.
+with the FIO scenario.
+
+#### New: Disk Operations Benchmark
+
+`virtbench disk-ops` measures disk hotplug (attach to a running VM) and
+coldplug (attach to a stopped VM, then start it) times, with optional in-VM
+validation that the new disks are visible. See the
+[Disk Operations](reference/user-guide/test-scenarios/disk-ops-benchmark.md)
+guide.
 
 #### New: `vm-ops` Day-2 Operations Group
 
@@ -133,6 +152,33 @@ The public result grouping option is standardized as `--storage-driver`
 across documented workflows. The previous `--storage-version` spelling is
 removed from the user documentation.
 
+#### New: Optional AI-Assisted Workflow
+
+An optional VirtBench skill for Codex or Claude Code turns natural-language
+prompts, such as
+`@virtbench vm-create, bootstorm and migrate 4 rounds max VMs 120`,
+into adaptive validation runs. The skill file and its installer are not
+shipped in the repository; the AI-assisted workflow guide includes both for
+you to copy and install.
+
+The deterministic engine lives in the new `adaptive/` package
+(`python -m adaptive.planner`). The planner, not the language model, estimates
+a VM ceiling from node allocatable resources and current pod requests (15%
+headroom by default), spreads VM totals across the requested rounds, and runs
+existing `virtbench` commands. An optional max-VM cap is reported as
+user-capped when the best stable result reaches it.
+
+- Adaptive scenarios: VM creation, boot storm, migration, the combined
+  create, boot storm, rebalance and migrate workflow, FIO max-IOPS and
+  max-bandwidth searches, and disk operations.
+- Assisted scenarios: Elbencho, chaos, failure recovery, and cluster
+  validation run through the skill without adaptive planning.
+- Each run writes `virtbench_ai_rounds.json` and a JSON and Markdown analysis
+  under `<results-folder>/ai-runs/`, and the results dashboard shows the round
+  decisions next to the matching results.
+
+See the [Optional AI-Assisted Workflow](reference/user-guide/ai-workflow.md) guide.
+
 #### Rewritten: Failure Recovery
 
 `failure-recovery/recovery-test.py` replaces the previous
@@ -160,7 +206,12 @@ Full MkDocs Material site under `docs/`, including:
   test driver.
 - New top-level `vm-ops/` directory containing the day-2 operation
   scripts.
-- Hotplug disk support removed from `vm-ops/` and from documentation.
+- New top-level `disk-ops-benchmark/` directory containing the disk
+  hotplug/coldplug benchmark script.
+- New top-level `adaptive/` package containing the planner and run analysis
+  used by the optional AI-assisted workflow.
+- Hotplug disk support removed from `vm-ops/`. Disk hotplug and coldplug
+  testing is now provided by the dedicated `virtbench disk-ops` benchmark.
 
 ### Breaking Changes
 

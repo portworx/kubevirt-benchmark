@@ -17,6 +17,10 @@ Usage:
 import html
 import json
 import argparse
+import base64
+import html
+import numbers
+import re
 import pandas as pd
 import yaml
 from pathlib import Path
@@ -27,6 +31,7 @@ from collections import defaultdict
 LABEL_MAP = {
     "running_time_sec": "Running Time",
     "ping_time_sec": "Ping Time",
+    "reachability_lag_sec": "Ping Lag",
     "clone_duration_sec": "Clone Duration",
     "observed_time_sec": "Observed Time",
     "vmim_time_sec": "VMIM Time",
@@ -43,6 +48,205 @@ FIO_LABEL_MAP = {
     "read_lat_p99_ms": "Read Latency P99 (ms)",
     "write_lat_p99_ms": "Write Latency P99 (ms)",
 }
+
+SCENARIO_LABEL_MAP = {
+    "vm-creation": "VM Creation",
+    "vm-bootstorm": "VM Boot Storm",
+    "boot-storm": "Boot Storm",
+    "live-migration": "Live Migration",
+    "migration": "Live Migration",
+    "vm-workflow-basic": "VM Workflow Basic",
+    "failure-recovery": "Failure Recovery",
+    "fio": "FIO",
+    "elbencho": "Elbencho",
+    "chaos": "Chaos",
+    "validate-cluster": "Validate Cluster",
+}
+
+
+def format_scenario_label(value: str) -> str:
+    """Convert scenario slugs into readable dashboard labels."""
+    if not value:
+        return ""
+
+    text = str(value)
+    if " / " in text:
+        return " / ".join(format_scenario_label(part) for part in text.split(" / "))
+
+    mapped = SCENARIO_LABEL_MAP.get(text)
+    if mapped:
+        return mapped
+
+    return text.replace("_", " ").replace("-", " ").title()
+
+
+def format_best_stable_total(summary: dict, capacity: dict, data: dict) -> str:
+    """Show stable VM count with the cap context that shaped the run."""
+    value = summary.get("best_stable_total_vms", summary.get("best_stable_batch"))
+    if value in (None, ""):
+        return "N/A"
+
+    reason = summary.get("recommendation_reason")
+    user_max = summary.get("user_max_vms", data.get("user_max_vms"))
+    effective_ceiling = summary.get("effective_vm_ceiling", data.get("effective_vm_ceiling"))
+    estimated_ceiling = capacity.get("estimated_vm_ceiling")
+    try:
+        value_num = int(value)
+        user_max_num = int(user_max) if user_max not in (None, "") else None
+        estimated_ceiling_num = int(estimated_ceiling) if estimated_ceiling not in (None, "") else None
+    except (TypeError, ValueError):
+        value_num = None
+        user_max_num = None
+        estimated_ceiling_num = None
+
+    if reason == "user_cap_reached":
+        return f"{value} (user cap {user_max})"
+    if reason == "cluster_ceiling_reached":
+        return f"{value} (cluster estimate)"
+    if reason == "effective_ceiling_reached" and effective_ceiling:
+        return f"{value} (effective cap {effective_ceiling})"
+    if reason == "below_effective_ceiling" and effective_ceiling:
+        return f"{value} (below cap {effective_ceiling})"
+
+    # Backward compatibility for older AI artifacts that do not include a reason.
+    if (
+        user_max_num is not None
+        and estimated_ceiling_num is not None
+        and value_num is not None
+        and user_max_num < estimated_ceiling_num
+        and value_num >= user_max_num
+    ):
+        return f"{value} (user cap {user_max})"
+    return str(value)
+
+
+def ai_metric_column_label(scenario: str, objective: str = "") -> str:
+    if scenario == "vm-workflow-basic":
+        return "Step Timing Summary"
+    if scenario in {"vm-creation", "bootstorm", "vm-bootstorm", "boot-storm", "migration", "live-migration"}:
+        return "Timing Summary"
+    if scenario == "fio" and objective:
+        return f"{objective.replace('-', ' ').title()} Summary"
+    return "Metric Summary"
+
+
+def format_ai_metric_summary(value: str) -> str:
+    """Render older internal metric names as readable dashboard text."""
+    if not value:
+        return ""
+    text = str(value)
+    regex_replacements = [
+        (r"creation:max_ping_time_sec=([0-9.]+)", r"creation: reachability max: \1s"),
+        (r"bootstorm:max_ping_time_sec=([0-9.]+)", r"bootstorm: reachability max: \1s"),
+        (r"migration:max_vmim_time_sec=([0-9.]+)", r"migration: VMIM duration max: \1s"),
+        (r"creation:reachability_max=([0-9.]+)s?", r"creation: reachability max: \1s"),
+        (r"bootstorm:reachability_max=([0-9.]+)s?", r"bootstorm: reachability max: \1s"),
+        (r"migration:vmim_duration_max=([0-9.]+)s?", r"migration: VMIM duration max: \1s"),
+        (r"max_ping_time_sec=([0-9.]+)", r"reachability max: \1s"),
+        (r"max_running_time_sec=([0-9.]+)", r"running max: \1s"),
+        (r"max_vmim_time_sec=([0-9.]+)", r"VMIM duration max: \1s"),
+        (r"max_observed_time_sec=([0-9.]+)", r"observed duration max: \1s"),
+        (r"reachability_max=([0-9.]+)s?", r"reachability max: \1s"),
+        (r"running_max=([0-9.]+)s?", r"running max: \1s"),
+        (r"vmim_duration_max=([0-9.]+)s?", r"VMIM duration max: \1s"),
+        (r"observed_duration_max=([0-9.]+)s?", r"observed duration max: \1s"),
+    ]
+    for pattern, replacement in regex_replacements:
+        text = re.sub(pattern, replacement, text)
+    text = re.sub(r"(?<!;)\s+bootstorm:", "; bootstorm:", text)
+    text = re.sub(r"(?<!;)\s+migration:", "; migration:", text)
+    return text
+
+
+def parse_result_dir_timestamp(path_value: str):
+    if not path_value:
+        return None
+    try:
+        timestamp = Path(path_value).name.split("_")[0]
+        return datetime.strptime(timestamp, "%Y%m%d-%H%M%S")
+    except Exception:
+        return None
+
+
+def summary_duration_from_dir(result_dir: str, filename: str, *keys: str):
+    if not result_dir:
+        return None
+    data = load_json(Path(result_dir) / filename)
+    if not data:
+        return None
+    for key in keys:
+        value = data.get(key)
+        if value is not None:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def workflow_durations_for_round(item: dict) -> dict:
+    durations = dict(item.get("workflow_durations_sec") or {})
+    result_dirs = item.get("result_dirs") or []
+
+    for result_dir in result_dirs:
+        path_name = Path(result_dir).name
+        if "live_migration" in path_name:
+            if durations.get("migration_duration_sec") is None:
+                durations["migration_duration_sec"] = summary_duration_from_dir(
+                    result_dir,
+                    "summary_migration_results.json",
+                    "total_migration_duration_sec",
+                )
+        elif durations.get("vm_creation_duration_sec") is None:
+            durations["vm_creation_duration_sec"] = summary_duration_from_dir(
+                result_dir,
+                "summary_vm_creation_results.json",
+                "total_test_duration_sec",
+            )
+        elif durations.get("bootstorm_duration_sec") is None:
+            durations["bootstorm_duration_sec"] = summary_duration_from_dir(
+                result_dir,
+                "summary_boot_storm_results.json",
+                "total_test_duration_sec",
+            )
+
+    if durations.get("total_workflow_duration_sec") is None:
+        first_start = parse_result_dir_timestamp(result_dirs[0]) if result_dirs else None
+        last_start = parse_result_dir_timestamp(result_dirs[-1]) if result_dirs else None
+        migration_duration = durations.get("migration_duration_sec")
+        if first_start and last_start and migration_duration is not None:
+            durations["total_workflow_duration_sec"] = (
+                last_start - first_start
+            ).total_seconds() + float(migration_duration)
+        else:
+            step_values = [
+                durations.get("vm_creation_duration_sec"),
+                durations.get("bootstorm_duration_sec"),
+                durations.get("migration_duration_sec"),
+            ]
+            if all(value is not None for value in step_values):
+                durations["total_workflow_duration_sec"] = sum(float(value) for value in step_values)
+
+    return durations
+
+
+def format_duration(value) -> str:
+    if value in (None, ""):
+        return ""
+    try:
+        return format_mmss(float(value))
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def get_logo_data_uri() -> str:
+    """Embed the VirtBench logo so generated dashboards are portable."""
+    logo_path = Path(__file__).resolve().parent.parent / "docs" / "virtbench-transparent.png"
+    try:
+        encoded = base64.b64encode(logo_path.read_bytes()).decode("ascii")
+        return f"data:image/png;base64,{encoded}"
+    except Exception:
+        return ""
 
 # ---------------- Utility Functions ----------------
 def load_json(path: Path):
@@ -114,12 +318,424 @@ def build_manual_results_tab(manual_results: list) -> str:
     numeric_cols = df.select_dtypes(include="number").columns
     df[numeric_cols] = df[numeric_cols].round(2)
 
-    return df.to_html(
-        classes="display compact nowrap",
-        table_id="table_manual_results",
-        index=False,
-        border=0
-    )
+    return df_to_html_table(df, "table_manual_results")
+
+
+def discover_ai_round_runs(base_dir: Path, cutoff: datetime) -> list:
+    """Find AI round artifacts under results/ai-runs."""
+    ai_root = base_dir / "ai-runs"
+    if not ai_root.exists():
+        return []
+
+    runs = []
+    for path in sorted(ai_root.glob("*/virtbench_ai_rounds.json")):
+        data = load_json(path)
+        if not data:
+            continue
+        try:
+            created_at = datetime.fromisoformat(data.get("created_at"))
+        except Exception:
+            try:
+                ts = path.parent.name.split("_")[0]
+                created_at = datetime.strptime(ts, "%Y%m%d-%H%M%S")
+            except Exception:
+                created_at = datetime.fromtimestamp(path.stat().st_mtime)
+        if created_at >= cutoff:
+            runs.append((path, data, created_at))
+    return runs
+
+
+def group_ai_runs_by_result_location(base_dir: Path, ai_runs: list) -> dict:
+    """Map AI runs to the PX/disk result tab that contains their raw result folders."""
+    grouped = defaultdict(list)
+    base_dir = base_dir.expanduser()
+
+    disk_roots = []
+    if base_dir.exists():
+        for px_dir in sorted([d for d in base_dir.iterdir() if d.is_dir() and d.name != "ai-runs"]):
+            for disk_dir in sorted([d for d in px_dir.iterdir() if d.is_dir()]):
+                try:
+                    disk_roots.append((px_dir.name, disk_dir.name, disk_dir.resolve()))
+                except Exception:
+                    continue
+
+    for run in ai_runs:
+        _, data, _ = run
+        locations = set()
+        for item in data.get("rounds", []):
+            raw_dirs = []
+            if item.get("result_dir"):
+                raw_dirs.append(item.get("result_dir"))
+            raw_dirs.extend(item.get("result_dirs") or [])
+            for result_dir in raw_dirs:
+                if not result_dir:
+                    continue
+                path = Path(result_dir).expanduser()
+                relative = None
+                try:
+                    relative = path.absolute().relative_to(base_dir.absolute())
+                except Exception:
+                    try:
+                        relative = path.resolve().relative_to(base_dir.resolve())
+                    except Exception:
+                        relative = None
+
+                if relative:
+                    parts = relative.parts
+                    if len(parts) >= 2:
+                        locations.add((parts[0], parts[1]))
+                    continue
+
+                # If a combined dashboard uses symlinked disk folders, resolving
+                # the result path may place it outside base_dir. Match against
+                # the resolved disk roots so AI panels still land on the right tab.
+                try:
+                    resolved_path = path.resolve()
+                except Exception:
+                    continue
+                for px_name, disk_name, disk_root in disk_roots:
+                    try:
+                        resolved_path.relative_to(disk_root)
+                    except Exception:
+                        continue
+                    locations.add((px_name, disk_name))
+                    break
+
+        for location in locations:
+            grouped[location].append(run)
+
+    return grouped
+
+
+def format_ai_decision(decision: str) -> str:
+    """Convert planner decision codes into dashboard-friendly labels."""
+    if not decision:
+        return ""
+
+    if decision.startswith("dry_run_plan_"):
+        base = format_ai_decision(decision.removeprefix("dry_run_plan_"))
+        return f"Dry-run: {base}" if base else "Dry-run plan"
+
+    labels = {
+        "increase_total_vms": "Increase total VMs",
+        "finish": "Complete",
+        "stop_after_failed_total": "Stop: capacity limit reached",
+        "increase": "Increase batch",
+        "hold_at_estimated_ceiling": "Hold at estimated ceiling",
+        "reduce_to_midpoint": "Reduce and retry midpoint",
+        "reduce": "Reduce batch",
+        "continue_fio_search": "Continue FIO search",
+        "stop": "Stop: setup issue",
+        "assist_execute": "Assisted run",
+    }
+    return labels.get(decision, decision.replace("_", " ").title())
+
+
+def format_ai_limited_by(value: str) -> str:
+    labels = {
+        "user_cap": "User cap",
+        "cluster_estimate": "Cluster estimate",
+        "observed_below_cap": "Observed below cap",
+        "no_stable_total": "No stable total",
+        "dry_run": "Dry run",
+        "observed": "Observed",
+    }
+    return labels.get(value, str(value or "").replace("_", " ").title())
+
+
+def first_display_value(*values):
+    for value in values:
+        if value not in (None, ""):
+            return value
+    return ""
+
+
+def build_ai_analysis_panel(analysis: dict) -> str:
+    """Render the interpreted AI analysis artifact."""
+    if not analysis:
+        return ""
+
+    hints = analysis.get("bottleneck_hints") or []
+    actions = analysis.get("action_items") or []
+    failures = analysis.get("failure_analysis") or []
+    duration = analysis.get("duration_analysis") or {}
+    slowest = duration.get("slowest_phase") or {}
+    trend = duration.get("total_workflow_trend") or {}
+
+    hint_items = []
+    for hint in hints:
+        parts = [
+            f"<strong>{html.escape(str(hint.get('severity', '')).title())}</strong>",
+            html.escape(str(hint.get("message", ""))),
+        ]
+        if hint.get("evidence"):
+            parts.append(f"<span class=\"text-muted\">{html.escape(str(hint.get('evidence')))}</span>")
+        if hint.get("next_check"):
+            parts.append(f"<span>{html.escape(str(hint.get('next_check')))}</span>")
+        hint_items.append(f"<li>{'<br>'.join(parts)}</li>")
+
+    action_items = "".join(f"<li>{html.escape(str(item))}</li>" for item in actions)
+    failure_items = []
+
+    def stacked_detail(label, values):
+        if not values:
+            return ""
+        lines = "".join(f"<span>{html.escape(str(value))}</span>" for value in values)
+        return (
+            f"<div class=\"failure-detail-stack\"><strong>{html.escape(label)}:</strong>"
+            f"<span class=\"stack-cell\">{lines}</span></div>"
+        )
+
+    for failure in failures:
+        details = [html.escape(str(failure.get("reason", "")))]
+        if failure.get("failure_reason"):
+            details.append(f"<strong>Failure reason:</strong> {html.escape(str(failure.get('failure_reason')))}")
+        if failure.get("failure_analysis"):
+            details.append(f"<strong>Analysis:</strong> {html.escape(str(failure.get('failure_analysis')))}")
+        if failure.get("cause_evidence"):
+            details.append(stacked_detail("Cause evidence", failure.get("cause_evidence")))
+        if failure.get("recommended_checks"):
+            details.append(stacked_detail("Recommended checks", failure.get("recommended_checks")))
+        if failure.get("duration_sec") not in (None, ""):
+            details.append(f"Duration: {html.escape(format_duration(failure.get('duration_sec')))}")
+        if failure.get("success_percent") not in (None, ""):
+            details.append(f"Success: {html.escape(str(failure.get('success_percent')))}%")
+        if failure.get("metrics"):
+            details.append(html.escape("; ".join(str(item) for item in failure.get("metrics"))))
+        if failure.get("failed_resources"):
+            resources = ", ".join(str(item) for item in failure.get("failed_resources")[:8])
+            details.append(f"Failed namespaces: {html.escape(resources)}")
+        if failure.get("result_dir"):
+            details.append(f"<code class=\"wrap-code\">{html.escape(str(failure.get('result_dir')))}</code>")
+        failure_items.append(f"<li>{'<br>'.join(details)}</li>")
+
+    failure_html = ""
+    if failure_items:
+        failure_html = f"""
+        <div class="col-12">
+          <h5>Failure Analysis</h5>
+          <ul>{''.join(failure_items)}</ul>
+        </div>
+        """
+
+    trend_text = trend.get("message") or "No workflow trend was available."
+    slowest_text = "N/A"
+    if slowest:
+        slowest_text = f"{slowest.get('label')} ({format_duration(slowest.get('average_sec'))} avg)"
+
+    return f"""
+    <div class="ai-analysis-panel mb-4">
+      <h4>AI Validation Analysis</h4>
+      <div class="row g-3">
+        <div class="col-12 col-md-3">
+          <div class="card border-secondary h-100">
+            <div class="card-body">
+              <div class="text-muted small">Status</div>
+              <div class="fw-bold">{html.escape(str(analysis.get('status', 'N/A')).title())}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-3">
+          <div class="card border-secondary h-100">
+            <div class="card-body">
+              <div class="text-muted small">Limited By</div>
+              <div class="fw-bold">{html.escape(format_ai_limited_by(analysis.get('limited_by')))}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-3">
+          <div class="card border-secondary h-100">
+            <div class="card-body">
+              <div class="text-muted small">Largest Stable Total VMs</div>
+              <div class="fw-bold">{html.escape(str(analysis.get('largest_stable_total_vms', 'N/A')))}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-3">
+          <div class="card border-secondary h-100">
+            <div class="card-body">
+              <div class="text-muted small">Slowest Phase</div>
+              <div class="fw-bold">{html.escape(str(slowest_text))}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="mt-3 mb-2"><strong>Analysis:</strong> {html.escape(str(analysis.get('headline', 'N/A')))}</p>
+      <p class="mb-2"><strong>Trend:</strong> {html.escape(str(trend_text))}</p>
+      <div class="row g-3">
+        <div class="col-12 col-lg-7">
+          <h5>Bottleneck Hints</h5>
+          <ul>{''.join(hint_items)}</ul>
+        </div>
+        <div class="col-12 col-lg-5">
+          <h5>Next Actions</h5>
+          <ul>{action_items}</ul>
+        </div>
+        {failure_html}
+      </div>
+    </div>
+    """
+
+
+def build_ai_rounds_tab(ai_runs: list) -> str:
+    """Render adaptive AI round decisions grouped by scenario."""
+    if not ai_runs:
+        return "<p>No AI round runs found.</p>"
+
+    assisted_scenarios = {"chaos", "failure-recovery", "elbencho", "validate-cluster"}
+    by_scenario = defaultdict(list)
+    for run in ai_runs:
+        _, data, _ = run
+        scenario = data.get("scenario", "unknown")
+        objective = data.get("objective")
+        group = f"{scenario} / {objective}" if scenario == "fio" and objective else scenario
+        by_scenario[group].append(run)
+
+    scenario_nav = []
+    scenario_body = []
+    for idx, scenario in enumerate(sorted(by_scenario.keys())):
+        scenario_label = format_scenario_label(scenario)
+        runs = sorted(by_scenario[scenario], key=lambda item: item[2])
+        latest_path = runs[-1][0]
+        latest = runs[-1][1]
+        latest_analysis = load_json(latest_path.parent / "virtbench_ai_analysis.json") or {}
+        latest_summary = latest.get("summary", {})
+        latest_capacity = latest.get("capacity", {})
+        latest_scenario = latest.get("scenario", scenario)
+        summary_rows = []
+        round_rows = []
+
+        for path, data, created_at in runs:
+            run_name = path.parent.name
+            objective = data.get("objective")
+            summary = data.get("summary", {})
+            capacity = data.get("capacity", {})
+            summary_row = {
+                "Run": run_name,
+                "Created": created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "Mode": data.get("mode") or ("execute" if data.get("execute") else "dry-run"),
+                "Rounds": data.get("rounds_requested"),
+                "Best Stable Total VMs": format_best_stable_total(summary, capacity, data),
+                "Recommendation": summary.get("final_recommendation"),
+                "Estimated Ceiling": capacity.get("estimated_vm_ceiling"),
+                "Free CPU": capacity.get("free_cpu_cores"),
+                "Free Memory GiB": capacity.get("free_memory_gib"),
+                "Storage Driver": data.get("storage_driver"),
+            }
+            analysis = load_json(path.parent / "virtbench_ai_analysis.json") or {}
+            if analysis:
+                summary_row["Analysis Status"] = str(analysis.get("status", "")).title()
+                summary_row["Limited By"] = format_ai_limited_by(analysis.get("limited_by"))
+            if objective:
+                summary_row["Objective"] = objective
+            summary_rows.append(summary_row)
+
+            data_scenario = data.get("scenario", latest_scenario)
+            failure_by_round = {
+                item.get("round"): item
+                for item in analysis.get("failure_analysis", [])
+                if isinstance(item, dict)
+            }
+            for item in data.get("rounds", []):
+                success = item.get("success_rate")
+                if isinstance(success, (int, float)):
+                    success = round(success * 100, 2)
+                failure = failure_by_round.get(item.get("round"))
+                if failure and success in (None, 0, 0.0) and failure.get("success_percent") not in (None, ""):
+                    success = failure.get("success_percent")
+                row = {
+                    "Run": run_name,
+                    "Round": item.get("round"),
+                    "Total VMs": first_display_value(
+                        item.get("total_vms"),
+                        failure.get("total_vms") if failure else None,
+                        item.get("batch_size"),
+                    ),
+                    "AI Decision": format_ai_decision(item.get("decision")),
+                    "Success %": success,
+                }
+                if data_scenario == "vm-workflow-basic":
+                    durations = workflow_durations_for_round(item)
+                    row.update({
+                        "Total Workflow Duration": format_duration(durations.get("total_workflow_duration_sec")),
+                        "VM Creation Duration": format_duration(durations.get("vm_creation_duration_sec")),
+                        "Bootstorm Duration": format_duration(durations.get("bootstorm_duration_sec")),
+                        "Migration Duration": format_duration(durations.get("migration_duration_sec")),
+                    })
+                else:
+                    metric_column = ai_metric_column_label(data_scenario, data.get("objective"))
+                    row[metric_column] = format_ai_metric_summary(item.get("key_metric"))
+                row.update({
+                    "Next Total VMs": item.get("next_total_vms", item.get("next_batch")),
+                    "Result Dir": item.get("result_dir"),
+                    "Command": item.get("command"),
+                })
+                round_rows.append(row)
+
+        cards = [
+            ("Scenario", scenario_label),
+            ("Runs", len(runs)),
+            ("Estimated Ceiling", latest_capacity.get("estimated_vm_ceiling", "N/A")),
+        ]
+        if latest_scenario not in assisted_scenarios:
+            cards.insert(
+                2,
+                (
+                    "Best Stable Total VMs",
+                    format_best_stable_total(latest_summary, latest_capacity, latest),
+                ),
+            )
+        else:
+            cards.append(("Mode", latest.get("mode") or ("execute" if latest.get("execute") else "dry-run")))
+        card_html = "".join(
+            f"""
+            <div class="col-12 col-md-3">
+              <div class="card border-secondary mb-3">
+                <div class="card-body">
+                  <div class="text-muted small">{html.escape(str(label))}</div>
+                  <div class="fw-bold">{html.escape(str(value))}</div>
+                </div>
+              </div>
+            </div>
+            """
+            for label, value in cards
+        )
+
+        scenario_id = f"ai_{scenario}".replace(".", "_").replace("-", "_").replace("/", "_").replace(" ", "_")
+        active_cls = "active" if idx == 0 else ""
+        show_cls = "show" if idx == 0 else ""
+        scenario_nav.append(
+            f'<li class="nav-item"><button class="nav-link {active_cls}" '
+            f'id="tab-{scenario_id}-tab" data-bs-toggle="tab" '
+            f'data-bs-target="#tab_{scenario_id}" type="button" role="tab">'
+            f'{html.escape(scenario_label)}</button></li>'
+        )
+        summary_table = df_to_html_table(
+            pd.DataFrame(summary_rows),
+            f"table_ai_{scenario_id}_summary"
+        )
+        rounds_table = df_to_html_table(
+            pd.DataFrame(round_rows),
+            f"table_ai_{scenario_id}_rounds"
+        )
+        recommendation = latest_summary.get("final_recommendation", "N/A")
+        scenario_body.append(f"""
+        <div class="tab-pane fade {show_cls} {active_cls}" id="tab_{scenario_id}" role="tabpanel">
+          <div class="row">{card_html}</div>
+          <p><strong>Latest recommendation:</strong> {html.escape(str(recommendation))}</p>
+          {build_ai_analysis_panel(latest_analysis)}
+          <h4>Runs</h4>
+          {summary_table}
+          <h4 class="mt-4">Round Decisions</h4>
+          {rounds_table}
+        </div>
+        """)
+
+    return f"""
+    <h3>AI Validation Rounds</h3>
+    <ul class="nav nav-pills mt-2" role="tablist">{''.join(scenario_nav)}</ul>
+    <div class="tab-content mt-3">{''.join(scenario_body)}</div>
+    """
 
 def format_folder_name(folder_name: str) -> str:
     """Convert '20251014-165952_kubevirt-perf-test_1-50' → '2025-10-14 16:59:52 — 50 VMs'"""
@@ -191,6 +807,7 @@ def df_to_html_table(df: pd.DataFrame, table_id: str) -> str:
         "namespace": "Namespace",
         "running_time_sec": "Running Time (s)",
         "ping_time_sec": "Ping Time (s)",
+        "reachability_lag_sec": "Ping Lag (s)",
         "clone_duration_sec": "Clone Duration (s)",
         "observed_time_sec": "Observed Time (s)",
         "vmim_time_sec": "VMIM Time (s)",
@@ -209,12 +826,92 @@ def df_to_html_table(df: pd.DataFrame, table_id: str) -> str:
     if "Success" in df.columns:
         df["Success"] = df["Success"].map({True: "True", False: "False"})
 
-    return df.to_html(
-        classes="display compact nowrap",
+    def is_scalar_missing(value):
+        if value is None:
+            return True
+        if not isinstance(value, (list, dict)):
+            try:
+                return bool(pd.isna(value))
+            except (TypeError, ValueError):
+                return False
+        return False
+
+    df = df.apply(lambda series: series.map(lambda value: "" if is_scalar_missing(value) else value))
+
+    def format_cell(value, column):
+        if value is None:
+            return ""
+
+        if isinstance(value, numbers.Real) and not isinstance(value, bool):
+            text = str(int(value)) if float(value).is_integer() else f"{float(value):.2f}"
+        elif isinstance(value, (list, dict)):
+            text = json.dumps(value, sort_keys=True)
+        else:
+            text = str(value)
+            if text in {"<NA>", "NaT", "nan"}:
+                return ""
+            try:
+                numeric_text = float(text)
+                if numeric_text.is_integer() and text.endswith(".0"):
+                    text = str(int(numeric_text))
+            except ValueError:
+                pass
+
+        escaped = html.escape(text)
+        title = html.escape(text, quote=True)
+
+        if column == "Command" and text:
+            compact = " ".join(text.split())
+            for token in (
+                " datasource-clone ",
+                " migration ",
+                " validate-cluster ",
+                " fio ",
+                " disk-ops ",
+                " chaos-benchmark ",
+                " failure-recovery ",
+                " elbencho ",
+            ):
+                idx = compact.find(token)
+                if idx >= 0:
+                    compact = compact[idx + 1:]
+                    break
+            preview = compact[:96] + ("..." if len(compact) > 96 else "")
+            return (
+                '<details class="cmd-cell">'
+                f"<summary>{html.escape(preview)}</summary>"
+                f"<pre>{escaped}</pre>"
+                "</details>"
+            )
+
+        if column in {"Result Dir", "Run", "Namespace", "Source Node", "Target Node"}:
+            return f'<code class="wrap-code" title="{title}">{escaped}</code>'
+
+        if column.endswith("Summary") and (";" in text or "\n" in text):
+            parts = [part.strip() for part in re.split(r";|\n", text) if part.strip()]
+            if len(parts) > 1:
+                lines = "".join(f"<span>{html.escape(part)}</span>" for part in parts)
+                return f'<span class="stack-cell" title="{title}">{lines}</span>'
+
+        if len(text) > 80:
+            return f'<span class="wrap-cell" title="{title}">{escaped}</span>'
+
+        return escaped
+
+    df = df.rename(columns={column: html.escape(str(column)) for column in df.columns})
+    rendered_df = df.copy()
+    for column in rendered_df.columns:
+        rendered_df[column] = rendered_df[column].map(lambda value, column=column: format_cell(value, column))
+
+    table_html = rendered_df.to_html(
+        classes="display compact virtbench-table",
         table_id=table_id,
         index=False,
-        border=0
+        border=0,
+        escape=False,
+        na_rep="",
     )
+    return f'<div class="table-frame">{table_html}</div>'
 
 def get_vm_count_from_folder(folder_name: str) -> int:
     """Extract VM count from folder suffix.
@@ -242,6 +939,33 @@ def get_vm_count_from_folder(folder_name: str) -> int:
         return 0
 
 
+def get_workflow_round_from_folder(folder_name: str):
+    """Return the workflow round number from names like ai-workflow-r1_1-80."""
+    match = re.search(r"(?:^|[_-])r(\d+)(?=[_-])", folder_name)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def get_run_label_from_folder(folder_name: str):
+    """Return a readable run label when the folder name carries a workflow round."""
+    round_number = get_workflow_round_from_folder(folder_name)
+    if round_number is None:
+        return None
+    return f"Run {round_number}"
+
+
+def vm_count_label(vm_count) -> str:
+    """Format a VM count for chart labels."""
+    suffix = "VM" if vm_count == 1 else "VMs"
+    return f"{vm_count} {suffix}"
+
+
+def html_id(value) -> str:
+    """Build a stable HTML id fragment from display values."""
+    return re.sub(r"[^A-Za-z0-9_]+", "_", str(value)).strip("_")
+
+
 def format_mmss(seconds: float) -> str:
     """Format seconds → mm:ss"""
     if seconds is None:
@@ -258,31 +982,44 @@ def build_bar_chart_mmss(records, title, color, chart_id):
     if not records:
         return f"<div class='col-12 col-md-4'><p>No data for {title}</p></div>"
 
-    df = pd.DataFrame(records).sort_values("VMs")
-    x_vals = df["VMs"].tolist()
+    df = pd.DataFrame(records).sort_values(["VMs", "Folder"])
+    vm_values = df["VMs"].tolist()
     y_secs = df["Seconds"].tolist()
     folder_labels = df["Folder"].tolist()  # used in hover only
+    duplicate_vm_counts = df["VMs"].duplicated(keep=False).any()
+
+    if duplicate_vm_counts:
+        seen_by_vm = defaultdict(int)
+        x_vals = []
+        for _, row in df.iterrows():
+            vm_count = row["VMs"]
+            seen_by_vm[vm_count] += 1
+            run_label = row.get("Run") or get_run_label_from_folder(row["Folder"]) or f"Run {seen_by_vm[vm_count]}"
+            x_vals.append(f"{vm_count_label(vm_count)} ({run_label})")
+    else:
+        x_vals = [vm_count_label(v) for v in vm_values]
 
     max_sec = max(y_secs) if y_secs else 0
     step = 10 if max_sec <= 60 else 30 if max_sec <= 180 else 60 if max_sec <= 600 else 120
     ticks = list(range(0, int(max_sec + step), step))
     ticktext = [format_mmss(t) for t in ticks]
+    duration_labels = [format_mmss(v) for v in y_secs]
 
     return f"""
     <div class="col-12 col-md-4">
       <div id="{chart_id}" class="plotly-chart" style="height:360px; width:100%;"></div>
       <script>
         Plotly.newPlot('{chart_id}', [{{
-          x: {x_vals},
-          y: {y_secs},
+          x: {json.dumps(x_vals)},
+          y: {json.dumps(y_secs)},
           type: 'bar',
           marker: {{
             color: '{color}',
             line: {{color: 'rgba(0,0,0,0.35)', width: 1}}
           }},
-          hovertemplate: 'Folder: %{{text}}<br>VMs: %{{x}}<br>Duration: %{{customdata}}<extra></extra>',
-          text: {folder_labels},
-          customdata: { [format_mmss(v) for v in y_secs] },
+          hovertemplate: 'Folder: %{{text}}<br>Total VMs: %{{x}}<br>Duration: %{{customdata}}<extra></extra>',
+          text: {json.dumps(folder_labels)},
+          customdata: {json.dumps(duration_labels)},
           textposition: 'none'
         }}], {{
           title: '{title}',
@@ -290,13 +1027,13 @@ def build_bar_chart_mmss(records, title, color, chart_id):
             title: 'Total VMs',
             type: 'category',
             categoryorder: 'array',
-            categoryarray: {x_vals}
+            categoryarray: {json.dumps(x_vals)}
           }},
           yaxis: {{
             title: 'Duration (mm:ss)',
             tickmode: 'array',
-            tickvals: {ticks},
-            ticktext: {ticktext}
+            tickvals: {json.dumps(ticks)},
+            ticktext: {json.dumps(ticktext)}
           }},
           margin: {{t: 50, l: 50, r: 20, b: 50}},
           bargap: 0.3
@@ -307,15 +1044,18 @@ def build_bar_chart_mmss(records, title, color, chart_id):
 
 
 # ---------------- Folder Builders ----------------
-def build_creation_boot_content(folder: Path, uid: str) -> str:
+def build_creation_boot_content(folder: Path = None, uid: str = "", boot_folder: Path = None) -> str:
     """Creation + Boot Storm section (original style)."""
-    creation_summary = load_json(folder / "summary_vm_creation_results.json")
-    boot_summary = load_json(folder / "summary_boot_storm_results.json")
-    creation_results = load_json(folder / "vm_creation_results.json")
-    boot_results = load_json(folder / "boot_storm_results.json")
+    boot_source = boot_folder or folder
+    creation_summary = load_json(folder / "summary_vm_creation_results.json") if folder else None
+    boot_summary = load_json(boot_source / "summary_boot_storm_results.json") if boot_source else None
+    creation_results = load_json(folder / "vm_creation_results.json") if folder else None
+    boot_results = load_json(boot_source / "boot_storm_results.json") if boot_source else None
 
     creation_df = pd.DataFrame(creation_results or [])
     boot_df = pd.DataFrame(boot_results or [])
+    if not creation_df.empty and {"running_time_sec", "ping_time_sec"}.issubset(creation_df.columns):
+        creation_df["reachability_lag_sec"] = creation_df["ping_time_sec"] - creation_df["running_time_sec"]
     if not creation_df.empty and "success" in creation_df.columns:
         cols = [c for c in creation_df.columns if c != "success"] + ["success"]
         creation_df = creation_df[cols]
@@ -327,11 +1067,31 @@ def build_creation_boot_content(folder: Path, uid: str) -> str:
 
     creation_total_time = creation_summary.get("total_test_duration_sec") if creation_summary else None
     boot_total_time = boot_summary.get("total_test_duration_sec") if boot_summary else None
+    creation_running_total_time = None
+    if creation_summary:
+        for metric in creation_summary.get("metrics", []):
+            if metric.get("metric") == "running_time_sec":
+                creation_running_total_time = metric.get("max")
+                break
+
+    total_vms = creation_total_info.get("total_vms") or boot_total_info.get("total_vms") or "?"
+    if folder and boot_source and folder != boot_source:
+        directory_html = (
+            f'<h6><strong>Creation Directory:</strong> {folder.name}</h6>'
+            f'<h6><strong>Boot Storm Directory:</strong> {boot_source.name}</h6>'
+        )
+    elif folder:
+        directory_html = f'<h6><strong>Results Directory:</strong> {folder.name}</h6>'
+    elif boot_source:
+        directory_html = f'<h6><strong>Boot Storm Directory:</strong> {boot_source.name}</h6>'
+    else:
+        directory_html = ""
 
     header_html = (
-        f'<h6><strong>Results Directory:</strong> {folder.name}</h6>'
-        f'<h6><strong>Total VMs:</strong> {creation_total_info.get("total_vms", "?")}</h6>'
-        f'{f"<h6><strong>Total Creation Duration:</strong> {creation_total_time:.2f} s</h6>" if creation_total_time else ""}'
+        f'{directory_html}'
+        f'<h6><strong>Total VMs:</strong> {total_vms}</h6>'
+        f'{f"<h6><strong>Total VM Creation Duration:</strong> {creation_total_time:.2f} s</h6>" if creation_total_time else ""}'
+        f'{f"<h6><strong>Total Running Duration:</strong> {creation_running_total_time:.2f} s</h6>" if creation_running_total_time is not None else ""}'
         f'{f"<h6><strong>Total Boot Storm Duration:</strong> {boot_total_time:.2f} s</h6>" if boot_total_time else ""}'
     )
 
@@ -1654,18 +2414,114 @@ def build_disk_ops_content(folder: Path, uid: str) -> str:
 
 
 # ---------------- Disk and PX Builders ----------------
-def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
+def build_creation_boot_sections(px_version: str, disk_name: str, vm_count: int, folders: list) -> str:
+    """Build Creation + Boot Storm sections, pairing split workflow folders by round."""
+    creation_folders = sorted(
+        [f for f in folders if (f / "summary_vm_creation_results.json").exists()],
+        key=lambda p: p.name,
+    )
+    boot_folders = sorted(
+        [f for f in folders if (f / "summary_boot_storm_results.json").exists()],
+        key=lambda p: p.name,
+    )
+    boot_by_round = defaultdict(list)
+    for boot_folder in boot_folders:
+        round_number = get_workflow_round_from_folder(boot_folder.name)
+        if round_number is not None:
+            boot_by_round[round_number].append(boot_folder)
+
+    used_boot_folders = set()
+    sections = []
+
+    for creation_folder in creation_folders:
+        boot_folder = None
+        if (creation_folder / "summary_boot_storm_results.json").exists():
+            boot_folder = creation_folder
+        else:
+            round_number = get_workflow_round_from_folder(creation_folder.name)
+            if round_number is not None and boot_by_round.get(round_number):
+                for candidate in boot_by_round[round_number]:
+                    if candidate not in used_boot_folders:
+                        boot_folder = candidate
+                        break
+            elif len(creation_folders) == 1 and len(boot_folders) == 1:
+                boot_folder = boot_folders[0]
+
+        if boot_folder:
+            used_boot_folders.add(boot_folder)
+
+        uid = f"{px_version}_{disk_name}_{vm_count}_{creation_folder.name}".replace(".", "_").replace("-", "_")
+        sections.append(build_creation_boot_content(creation_folder, uid=uid, boot_folder=boot_folder))
+
+    for boot_folder in boot_folders:
+        if boot_folder in used_boot_folders or (boot_folder / "summary_vm_creation_results.json").exists():
+            continue
+        uid = f"{px_version}_{disk_name}_{vm_count}_{boot_folder.name}".replace(".", "_").replace("-", "_")
+        sections.append(build_creation_boot_content(None, uid=uid, boot_folder=boot_folder))
+
+    return "".join(sections) or "<p>No Creation/Boot Storm data for this VM size.</p>"
+
+
+def build_detail_groups(by_vms: dict) -> list:
+    """Return detailed-result groups, splitting duplicate workflow VM counts by run."""
+    groups = []
+    for vm_count in sorted([v for v in by_vms.keys() if v > 0]):
+        folders = sorted(by_vms[vm_count], key=lambda p: p.name)
+        by_round = defaultdict(list)
+        without_round = []
+
+        for folder in folders:
+            round_number = get_workflow_round_from_folder(folder.name)
+            if round_number is None:
+                without_round.append(folder)
+            else:
+                by_round[round_number].append(folder)
+
+        if len(by_round) > 1:
+            for round_number in sorted(by_round):
+                groups.append({
+                    "vm_count": vm_count,
+                    "label": f"{vm_count_label(vm_count)} (Run {round_number})",
+                    "id": f"{vm_count}_run_{round_number}",
+                    "folders": by_round[round_number],
+                })
+            if without_round:
+                groups.append({
+                    "vm_count": vm_count,
+                    "label": vm_count_label(vm_count),
+                    "id": str(vm_count),
+                    "folders": without_round,
+                })
+        else:
+            groups.append({
+                "vm_count": vm_count,
+                "label": vm_count_label(vm_count),
+                "id": str(vm_count),
+                "folders": folders,
+            })
+
+    return groups
+
+
+def build_disk_tab(px_version: str, disk_name: str, folders: list, ai_runs: list = None) -> str:
     """Disk-level tab with charts and nested VM-size tabs."""
     creation_rec, boot_rec, mig_rec, cap_rec = [], [], [], []
     by_vms = defaultdict(list)
+    ai_runs = ai_runs or []
 
     for folder in sorted(folders, key=lambda p: p.name):
-        vms = get_vm_count_from_folder(folder.name)
-        by_vms[vms].append(folder)
         csum = load_json(folder / "summary_vm_creation_results.json")
         bsum = load_json(folder / "summary_boot_storm_results.json")
         msum = load_json(folder / "summary_migration_results.json")
         capsum = load_json(folder / "summary_chaos_benchmark.json")
+        vms = (
+            (csum or {}).get("total_vms")
+            or (bsum or {}).get("total_vms")
+            or (msum or {}).get("total_vms")
+            or (capsum or {}).get("total_vms")
+            or get_vm_count_from_folder(folder.name)
+        )
+        by_vms[vms].append(folder)
         if csum and csum.get("total_test_duration_sec"):
             creation_rec.append({"VMs": csum.get("total_vms", vms), "Seconds": csum["total_test_duration_sec"], "Folder": folder.name})
         if bsum and bsum.get("total_test_duration_sec"):
@@ -1678,7 +2534,7 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
 
     # Build charts - include capacity chart only if we have data
     chart_items = [
-        build_bar_chart_mmss(creation_rec, "Creation Duration", "rgb(26,118,255)", f"chart_{px_version}_{disk_name}_creation"),
+        build_bar_chart_mmss(creation_rec, "VM Creation Duration", "rgb(26,118,255)", f"chart_{px_version}_{disk_name}_creation"),
         build_bar_chart_mmss(boot_rec, "Boot Storm Duration", "rgb(0,204,150)", f"chart_{px_version}_{disk_name}_boot"),
         build_bar_chart_mmss(mig_rec, "Live Migration Duration", "rgb(255,99,71)", f"chart_{px_version}_{disk_name}_mig"),
     ]
@@ -1686,6 +2542,7 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
         chart_items.append(build_bar_chart_mmss(cap_rec, "Chaos Benchmark Duration", "rgb(153,102,255)", f"chart_{px_version}_{disk_name}_cap"))
 
     charts_html = f"""
+    <h3 class="section-heading">Summary Graphs</h3>
     <div class="container-fluid mt-3">
       <div class="row g-3">
         {''.join(chart_items)}
@@ -1693,48 +2550,55 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
       <hr>
     </div>
     """
+    ai_rounds_html = ""
+    if ai_runs:
+        ai_rounds_html = f"""
+        <section class="ai-rounds-section mb-4">
+          {build_ai_rounds_tab(ai_runs)}
+        </section>
+        """
 
-    # VM-size nested tabs
-    vm_sizes_sorted = sorted([v for v in by_vms.keys() if v > 0])
-    if not vm_sizes_sorted:
+    # Detailed-result tabs. If the same VM count appears in multiple workflow
+    # rounds, split it into per-run tabs instead of collapsing everything.
+    detail_groups = build_detail_groups(by_vms)
+    if not detail_groups:
         return charts_html + "<p>No result folders found under this disk.</p>"
 
     vm_tabs_nav, vm_tabs_body = [], []
-    for idx, vm_count in enumerate(vm_sizes_sorted):
-        vm_id = f"{px_version}_{disk_name}_{vm_count}".replace(".", "_").replace("-", "_")
+    for idx, group in enumerate(detail_groups):
+        vm_count = group["vm_count"]
+        group_folders = group["folders"]
+        vm_id = html_id(f"{px_version}_{disk_name}_{group['id']}")
         active_cls = "active" if idx == 0 else ""
         show_cls = "show" if idx == 0 else ""
         vm_tabs_nav.append(
             f'<li class="nav-item"><button class="nav-link {active_cls}" id="tab-{vm_id}-tab" data-bs-toggle="tab" '
-            f'data-bs-target="#tab_{vm_id}" type="button" role="tab">{vm_count} VMs</button></li>'
+            f'data-bs-target="#tab_{vm_id}" type="button" role="tab">{group["label"]}</button></li>'
         )
 
-        cb_sections = "".join(
-            build_creation_boot_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "summary_vm_creation_results.json").exists()
-        ) or "<p>No Creation/Boot Storm data for this VM size.</p>"
+        cb_sections = build_creation_boot_sections(px_version, disk_name, vm_count, group_folders)
 
         mig_sections = "".join(
             build_migration_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "summary_migration_results.json").exists()
+            for f in group_folders if (f / "summary_migration_results.json").exists()
         ) or "<p>No Live Migration data for this VM size.</p>"
 
         cap_sections = "".join(
             build_capacity_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "summary_chaos_benchmark.json").exists()
+            for f in group_folders if (f / "summary_chaos_benchmark.json").exists()
         ) or "<p>No Chaos Benchmark data for this VM size.</p>"
 
         fio_sections = "".join(
             build_fio_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists()
+            for f in group_folders if (f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists()
         ) or "<p>No FIO Benchmark data for this VM size.</p>"
 
         elbencho_sections = "".join(
             build_elbencho_content(f, uid=f"{px_version}_{disk_name}_{vm_count}_{f.name}".replace(".", "_").replace("-", "_"))
-            for f in by_vms[vm_count] if (f / "aggregated_results.json").exists()
+            for f in group_folders if (f / "aggregated_results.json").exists()
         ) or "<p>No Elbencho Benchmark data for this VM size.</p>"
 
-        disk_ops_folders = [f for f in by_vms[vm_count] if (f / "disk_ops_results.json").exists()]
+        disk_ops_folders = [f for f in group_folders if (f / "disk_ops_results.json").exists()]
         if disk_ops_folders:
             accordion_items = []
             for aidx, f in enumerate(disk_ops_folders):
@@ -1760,12 +2624,12 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
             disk_ops_sections = "<p>No Disk Operations benchmark data for this VM size.</p>"
 
         # Check if we have capacity/fio/elbencho data to show the tabs
-        has_capacity_data = any((f / "summary_capacity_benchmark.json").exists() for f in by_vms[vm_count])
-        has_fio_data = any((f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists() for f in by_vms[vm_count])
-        has_elbencho_data = any((f / "aggregated_results.json").exists() for f in by_vms[vm_count])
-        has_disk_ops_data = any((f / "disk_ops_results.json").exists() for f in by_vms[vm_count])
+        has_capacity_data = any((f / "summary_capacity_benchmark.json").exists() for f in group_folders)
+        has_fio_data = any((f / "summary_fio_benchmark.json").exists() or (f / "fio_benchmark_results.json").exists() for f in group_folders)
+        has_elbencho_data = any((f / "aggregated_results.json").exists() for f in group_folders)
+        has_disk_ops_data = any((f / "disk_ops_results.json").exists() for f in group_folders)
         # Check if we have chaos data to show the tab
-        has_capacity_data = any((f / "summary_chaos_benchmark.json").exists() for f in by_vms[vm_count])
+        has_capacity_data = any((f / "summary_chaos_benchmark.json").exists() for f in group_folders)
 
         # Build tab navigation - include capacity/fio tabs only if data exists
         tab_nav_items = [
@@ -1824,13 +2688,18 @@ def build_disk_tab(px_version: str, disk_name: str, folders: list) -> str:
 
     return f"""
     {charts_html}
-    <ul class="nav nav-tabs" role="tablist">{''.join(vm_tabs_nav)}</ul>
-    <div class="tab-content mt-3">{''.join(vm_tabs_body)}</div>
+    {ai_rounds_html}
+    <section class="detailed-results-section">
+      <h3 class="section-heading">Detailed Results</h3>
+      <ul class="nav nav-tabs" role="tablist">{''.join(vm_tabs_nav)}</ul>
+      <div class="tab-content mt-3">{''.join(vm_tabs_body)}</div>
+    </section>
     """
 
 
-def build_px_tab(px_version: str, disk_map: dict) -> str:
+def build_px_tab(px_version: str, disk_map: dict, ai_runs_by_location: dict = None) -> str:
     """Top-level PX version tab with disk subtabs."""
+    ai_runs_by_location = ai_runs_by_location or {}
     disk_names = sorted(disk_map.keys(), key=lambda d: (int(d.split('-')[0]) if d.split('-')[0].isdigit() else 0, d))
     if not disk_names:
         return "<p>No disk groups found for this PX version.</p>"
@@ -1841,14 +2710,818 @@ def build_px_tab(px_version: str, disk_map: dict) -> str:
         active_cls = "active" if idx == 0 else ""
         show_cls = "show" if idx == 0 else ""
         nav.append(f'<li class="nav-item"><button class="nav-link {active_cls}" id="tab-{did}-tab" data-bs-toggle="tab" data-bs-target="#tab_{did}" type="button" role="tab">{dname}</button></li>')
-        body.append(f'<div class="tab-pane fade {show_cls} {active_cls}" id="tab_{did}" role="tabpanel">{build_disk_tab(px_version, dname, disk_map[dname])}</div>')
+        disk_ai_runs = ai_runs_by_location.get((px_version, dname), [])
+        body.append(f'<div class="tab-pane fade {show_cls} {active_cls}" id="tab_{did}" role="tabpanel">{build_disk_tab(px_version, dname, disk_map[dname], disk_ai_runs)}</div>')
 
     return f"<ul class='nav nav-tabs mt-2' role='tablist'>{''.join(nav)}</ul><div class='tab-content mt-3'>{''.join(body)}</div>"
+
+
+DASHBOARD_CSS = r"""
+:root {
+  --page-bg: #fff8f1;
+  --panel: rgba(255, 255, 255, 0.52);
+  --panel-solid: #ffffff;
+  --panel-soft: rgba(255, 250, 244, 0.38);
+  --ink: #2b1f16;
+  --muted: #826d5b;
+  --line: rgba(219, 151, 88, 0.24);
+  --line-strong: rgba(197, 104, 24, 0.34);
+  --orange: #ff7900;
+  --orange-dark: #b84d00;
+  --shadow: 0 24px 70px rgba(139, 68, 0, 0.11);
+  --glass-shadow: 0 18px 50px rgba(139, 68, 0, 0.10), inset 0 1px 0 rgba(255,255,255,0.74), inset 0 -1px 0 rgba(255,255,255,0.24);
+  --radius: 8px;
+}
+
+body.theme-dark {
+  --page-bg: #180f09;
+  --panel: rgba(43, 31, 22, 0.42);
+  --panel-solid: #241810;
+  --panel-soft: rgba(55, 36, 22, 0.36);
+  --ink: #fff7ed;
+  --muted: #d5b99f;
+  --line: rgba(255, 174, 50, 0.20);
+  --line-strong: rgba(255, 174, 50, 0.36);
+  --orange: #ff8a1f;
+  --orange-dark: #ffb15e;
+  --shadow: 0 26px 78px rgba(0, 0, 0, 0.32);
+  --glass-shadow: 0 18px 50px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -1px 0 rgba(255,255,255,0.06);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 14% 10%, rgba(255,255,255,0.98) 0 13%, rgba(255,255,255,0) 31%),
+    radial-gradient(circle at 90% 8%, rgba(255, 121, 0, 0.07) 0 13%, rgba(255,255,255,0) 38%),
+    radial-gradient(circle at 68% 52%, rgba(255, 255, 255, 0.82) 0 12%, rgba(255,255,255,0) 34%),
+    radial-gradient(circle at 16% 76%, rgba(255, 174, 50, 0.07) 0 12%, rgba(255,255,255,0) 36%),
+    linear-gradient(135deg, #ffffff 0%, #fffdfb 34%, #fff7ee 62%, #ffffff 100%);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+}
+
+body.theme-dark { background: #000; }
+
+.dashboard-shell {
+  width: min(100%, 1600px);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.dashboard-hero,
+.nav-tabs,
+.plotly-chart,
+.col-12.col-md-4 > p,
+.table-frame,
+.card,
+.ai-rounds-section,
+.detailed-results-section,
+.recommendation-callout,
+.theme-toggle,
+.brand-mark,
+h6 {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.64), rgba(255,255,255,0.28)),
+    linear-gradient(135deg, rgba(255, 121, 0, 0.10), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.66);
+  border-radius: var(--radius);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(26px) saturate(1.34);
+  -webkit-backdrop-filter: blur(26px) saturate(1.34);
+}
+
+body.theme-dark .dashboard-hero,
+body.theme-dark .nav-tabs,
+body.theme-dark .plotly-chart,
+body.theme-dark .col-12.col-md-4 > p,
+body.theme-dark .table-frame,
+body.theme-dark .card,
+body.theme-dark .ai-rounds-section,
+body.theme-dark .detailed-results-section,
+body.theme-dark .recommendation-callout,
+body.theme-dark .theme-toggle,
+body.theme-dark .brand-mark,
+body.theme-dark h6 {
+  background:
+    linear-gradient(135deg, rgba(44, 28, 17, 0.56), rgba(18, 12, 8, 0.30)),
+    linear-gradient(135deg, rgba(255, 121, 0, 0.12), rgba(255,255,255,0.025));
+  border-color: rgba(255,255,255,0.12);
+}
+
+.dashboard-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 11px;
+  padding: 9px 13px;
+  color: var(--ink);
+}
+
+.dashboard-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff7900, #ffae32, rgba(255,255,255,0));
+}
+
+.brand-mark {
+  position: relative;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+}
+
+.brand-mark img {
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-logo-fallback {
+  color: var(--orange-dark);
+  font-weight: 820;
+  font-size: 1rem;
+}
+
+.brand-copy { min-width: 0; }
+
+.brand-label {
+  margin-bottom: 2px;
+  color: var(--orange-dark);
+  font-size: 0.58rem;
+  font-weight: 820;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  position: relative;
+  margin: 0;
+  font-size: clamp(1.04rem, 1.65vw, 1.55rem);
+  line-height: 1;
+  font-weight: 760;
+  letter-spacing: 0;
+  max-width: 920px;
+}
+
+.dashboard-hero p {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.dashboard-hero p strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.dashboard-actions {
+  margin-left: auto;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 3px 7px 3px 4px;
+  border-radius: 999px;
+  color: var(--orange-dark);
+  font-weight: 780;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.theme-toggle:focus-visible {
+  outline: 3px solid rgba(255, 121, 0, .25);
+  outline-offset: 2px;
+}
+
+.theme-toggle-knob {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff7900, #ffbd57);
+  box-shadow: 0 5px 12px rgba(197, 87, 0, .24);
+}
+
+h3, h4 {
+  color: var(--ink);
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+h3 {
+  margin: 30px 0 14px;
+  font-size: 1.28rem;
+}
+
+.section-heading {
+  margin: 20px 0 12px;
+  color: var(--ink);
+  font-size: 1.12rem;
+  font-weight: 760;
+}
+
+h4 {
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+}
+
+h6 {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin: 0 8px 8px 0;
+  padding: 7px 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+h6 strong {
+  color: var(--ink);
+  margin-right: 4px;
+}
+
+hr {
+  margin: 14px 0;
+  border-color: var(--line);
+  opacity: 1;
+}
+
+.nav {
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+#pxTab::before,
+#pxTabContent > .tab-pane > .nav-tabs::before,
+.detailed-results-section > .nav-tabs::before,
+.detailed-results-section .tab-pane > .nav-pills::before {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 10px 0 2px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#pxTab::before { content: "Storage driver"; }
+#pxTabContent > .tab-pane > .nav-tabs::before { content: "Disk profile"; }
+.detailed-results-section > .nav-tabs::before { content: "Total VMs"; }
+.detailed-results-section .tab-pane > .nav-pills::before { content: "Scenario"; }
+
+.nav-tabs,
+.detailed-results-section .tab-pane > .nav-pills {
+  border: 0;
+  padding: 7px;
+  border-radius: var(--radius);
+}
+
+#pxTab { margin-top: 14px; }
+
+#pxTabContent > .tab-pane > .nav-tabs {
+  margin-top: 10px !important;
+  margin-left: 0;
+  max-width: 100%;
+}
+
+.nav-pills { gap: 0.45rem; }
+
+.nav-tabs .nav-link,
+.nav-pills .nav-link {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #44524d;
+  font-size: 0.9rem;
+  font-weight: 680;
+  padding: 0.48rem 0.72rem;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+body.theme-dark .nav-tabs .nav-link,
+body.theme-dark .nav-pills .nav-link {
+  color: var(--muted);
+}
+
+.nav-tabs .nav-link:hover,
+.nav-pills .nav-link:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+  background: rgba(255,255,255,.74);
+}
+
+body.theme-dark .nav-tabs .nav-link:hover,
+body.theme-dark .nav-pills .nav-link:hover {
+  background: rgba(255,255,255,.08);
+}
+
+.nav-tabs .nav-link.active,
+.nav-pills .nav-link.active {
+  border-color: rgba(255, 121, 0, .25);
+  background: rgba(255,255,255,0.48) !important;
+  color: var(--orange-dark);
+  box-shadow: 0 10px 24px rgba(168, 86, 17, 0.12);
+  backdrop-filter: blur(18px) saturate(1.24);
+  -webkit-backdrop-filter: blur(18px) saturate(1.24);
+}
+
+body.theme-dark .nav-tabs .nav-link.active,
+body.theme-dark .nav-pills .nav-link.active {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255, 174, 50, .30);
+}
+
+.tab-content { max-width: 100%; }
+
+#pxTabContent > .tab-pane,
+.tab-content > .tab-pane > .tab-content,
+.ai-rounds-section,
+.detailed-results-section,
+.mb-4 {
+  border-radius: var(--radius);
+}
+
+.container-fluid { padding: 0; }
+.row.g-3 { align-items: stretch; }
+
+.plotly-chart { overflow: hidden; }
+
+.col-12.col-md-4 > p,
+p.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 24px;
+  color: var(--muted);
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255,255,255,.20),
+      rgba(255,255,255,.20) 10px,
+      rgba(255, 121, 0, .075) 10px,
+      rgba(255, 121, 0, .075) 20px
+    ),
+    linear-gradient(135deg, rgba(255,255,255,0.46), rgba(255,255,255,0.16));
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  text-align: center;
+  font-weight: 650;
+}
+
+body.theme-dark .col-12.col-md-4 > p,
+body.theme-dark p.empty-state {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255,255,255,.045),
+      rgba(255,255,255,.045) 10px,
+      rgba(255, 121, 0, .075) 10px,
+      rgba(255, 121, 0, .075) 20px
+    ),
+    linear-gradient(135deg, rgba(44, 28, 17, 0.54), rgba(18, 12, 8, 0.28));
+}
+
+.col-12.col-md-4 > p { min-height: 360px; }
+p.empty-state { min-height: 150px; }
+
+.card { border-color: var(--line) !important; }
+.card-body { padding: 14px 16px; }
+
+.card .small {
+  color: var(--muted) !important;
+  font-weight: 720;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.card .fw-bold {
+  margin-top: 6px;
+  color: var(--ink);
+  font-size: clamp(1.05rem, 1.65vw, 1.45rem);
+  line-height: 1.05;
+}
+
+.ai-rounds-section,
+.detailed-results-section {
+  margin: 6px 0 24px;
+  padding: 14px 22px 22px;
+}
+
+.ai-rounds-section h3,
+.detailed-results-section .section-heading {
+  margin-top: 0;
+  margin-bottom: 14px;
+  font-size: 1.28rem;
+}
+
+.recommendation-callout {
+  margin: 18px 0 22px;
+  padding: 14px 16px;
+  border-left: 4px solid var(--orange);
+  color: #7a3600;
+  font-weight: 620;
+}
+
+body.theme-dark .recommendation-callout { color: #ffd3aa; }
+
+.table-frame {
+  max-width: 100%;
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.table-frame .dataTables_wrapper {
+  width: 100%;
+  margin: 0 auto;
+  overflow-x: visible;
+  padding: 12px;
+}
+
+.dataTables_length,
+.dataTables_filter,
+.dataTables_info,
+.dataTables_paginate {
+  margin: 0.35rem 0;
+  color: var(--muted) !important;
+  font-size: 0.82rem;
+}
+
+[id^="table_ai_"][id$="_summary_wrapper"] .dataTables_length,
+[id^="table_ai_"][id$="_summary_wrapper"] .dataTables_filter {
+  display: none;
+}
+
+.dataTables_filter input,
+.dataTables_length select {
+  min-height: 34px;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 7px !important;
+  background: rgba(255,255,255,0.48) !important;
+  color: var(--ink) !important;
+  outline: none;
+  backdrop-filter: blur(18px) saturate(1.24);
+  -webkit-backdrop-filter: blur(18px) saturate(1.24);
+}
+
+.dataTables_filter input:focus,
+.dataTables_length select:focus {
+  border-color: var(--orange) !important;
+  box-shadow: 0 0 0 3px rgba(255, 121, 0, .14);
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  border: 1px solid transparent !important;
+  border-radius: 7px !important;
+  color: #40504a !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+  border-color: rgba(255, 121, 0, .25) !important;
+  background: rgba(255,255,255,0.48) !important;
+  color: var(--orange-dark) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  border-color: var(--line-strong) !important;
+  background: rgba(255,255,255,.60) !important;
+  color: var(--ink) !important;
+}
+
+.dataTables_wrapper,
+table.virtbench-table,
+table.virtbench-table tbody,
+table.virtbench-table tbody tr,
+table.virtbench-table tbody td {
+  background: transparent !important;
+}
+
+table.virtbench-table {
+  width: 100% !important;
+  max-width: 100%;
+  table-layout: auto;
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+
+table.virtbench-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border: 0 !important;
+  border-bottom: 1px solid var(--line-strong) !important;
+  background: rgba(255, 238, 217, .54) !important;
+  color: #5c3720;
+  font-size: 0.76rem;
+  font-weight: 780;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+  overflow-wrap: break-word;
+  word-break: normal;
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+}
+
+body.theme-dark table.virtbench-table thead th {
+  background: rgba(64, 39, 20, .54) !important;
+  color: #ffd8b0;
+}
+
+table.virtbench-table th,
+table.virtbench-table td {
+  white-space: normal !important;
+  vertical-align: top;
+}
+
+table.virtbench-table td {
+  border-top: 1px solid rgba(219, 151, 88, 0.18) !important;
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+table.virtbench-table tbody tr:hover td {
+  background: rgba(255,255,255,0.26) !important;
+}
+
+body.theme-dark table.virtbench-table tbody tr:hover td {
+  background: rgba(255,255,255,0.06) !important;
+}
+
+.wrap-code {
+  display: inline-block;
+  max-width: 100%;
+  color: var(--ink);
+  background: rgba(255,255,255,0.48) !important;
+  border: 1px solid rgba(130, 109, 91, .22);
+  border-radius: 6px;
+  padding: 2px 6px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  backdrop-filter: blur(18px) saturate(1.24);
+  -webkit-backdrop-filter: blur(18px) saturate(1.24);
+}
+
+body.theme-dark .wrap-code {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,.12);
+}
+
+.wrap-cell {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.stack-cell {
+  display: grid;
+  gap: 3px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.stack-cell span {
+  display: block;
+}
+
+.failure-detail-stack {
+  display: grid;
+  gap: 3px;
+}
+
+.cmd-cell { max-width: 38ch; }
+
+.cmd-cell summary {
+  cursor: pointer;
+  color: var(--ink);
+  list-style-position: outside;
+  overflow-wrap: anywhere;
+  font-weight: 680;
+}
+
+.cmd-cell pre {
+  margin: 0.6rem 0 0;
+  max-width: 100%;
+  max-height: 12rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  border: 1px solid #cfdad5;
+  border-radius: var(--radius);
+  background: #2b1f16;
+  color: #fff7ed;
+  font-size: 0.78rem;
+  padding: 12px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 54px;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-weight: 760;
+  font-size: 0.74rem;
+  background: rgba(255,255,255,0.48) !important;
+  backdrop-filter: blur(18px) saturate(1.24);
+  -webkit-backdrop-filter: blur(18px) saturate(1.24);
+}
+
+.status-pill.ok {
+  color: #15803d;
+  border: 1px solid rgba(21, 128, 61, .24);
+}
+
+body.theme-dark .status-pill.ok {
+  border-color: rgba(74, 222, 128, .28);
+  color: #4ade80;
+}
+
+.status-pill.fail {
+  color: #dc2626;
+  border: 1px solid rgba(220, 38, 38, .24);
+}
+
+body.theme-dark .status-pill.fail {
+  border-color: rgba(248, 113, 113, .30);
+  color: #f87171;
+}
+
+@media (max-width: 768px) {
+  .dashboard-shell { padding: 12px; }
+  .dashboard-hero {
+    align-items: flex-start;
+    padding: 10px;
+    gap: 8px;
+  }
+  .dashboard-actions {
+    width: 100%;
+    margin-left: 68px;
+    margin-top: -4px;
+  }
+  .brand-mark {
+    width: 62px;
+    height: 62px;
+  }
+  .brand-mark img {
+    width: 54px;
+    height: 54px;
+  }
+  h1 {
+    font-size: 0.95rem;
+    line-height: 1.05;
+  }
+  table.virtbench-table th,
+  table.virtbench-table td {
+    font-size: 0.76rem;
+    padding: 0.42rem;
+  }
+  .card .fw-bold { font-size: 1.35rem; }
+}
+"""
+
+
+DASHBOARD_JS = r"""
+$(document).ready(function() {
+  const themeToggle = document.getElementById('themeToggle');
+
+  function applyPlotlyTheme() {
+    const isDark = document.body.classList.contains('theme-dark');
+    document.querySelectorAll('.plotly-chart').forEach(function (el) {
+      try {
+        Plotly.relayout(el, {
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: {family: 'Inter, Segoe UI, sans-serif', color: isDark ? '#fff7ed' : '#25302d'},
+          'title.font.size': 18,
+          'title.font.color': isDark ? '#fff7ed' : '#25302d',
+          'xaxis.gridcolor': isDark ? 'rgba(255,174,50,.14)' : '#eef2f0',
+          'xaxis.zerolinecolor': isDark ? 'rgba(255,174,50,.22)' : '#d9e0dd',
+          'xaxis.title.font.color': isDark ? '#d5b99f' : '#44524d',
+          'yaxis.gridcolor': isDark ? 'rgba(255,174,50,.14)' : '#eef2f0',
+          'yaxis.zerolinecolor': isDark ? 'rgba(255,174,50,.22)' : '#d9e0dd',
+          'yaxis.title.font.color': isDark ? '#d5b99f' : '#44524d'
+        });
+      } catch(e) {}
+    });
+  }
+
+  function syncThemeToggle() {
+    const isDark = document.body.classList.contains('theme-dark');
+    if (themeToggle) {
+      themeToggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+      const label = themeToggle.querySelector('.theme-toggle-text');
+      if (label) label.textContent = isDark ? 'Light' : 'Dark';
+    }
+  }
+
+  try {
+    if (localStorage.getItem('virtbench-theme') === 'dark') {
+      document.body.classList.add('theme-dark');
+    }
+  } catch(e) {}
+
+  syncThemeToggle();
+
+  if (themeToggle) {
+    themeToggle.addEventListener('click', function() {
+      document.body.classList.toggle('theme-dark');
+      const isDark = document.body.classList.contains('theme-dark');
+      try { localStorage.setItem('virtbench-theme', isDark ? 'dark' : 'light'); } catch(e) {}
+      syncThemeToggle();
+      applyPlotlyTheme();
+    });
+  }
+
+  $('p').each(function() {
+    const text = $(this).text().trim();
+    if (text.startsWith('No data') || text.startsWith('No Live Migration data')) {
+      $(this).addClass('empty-state');
+    }
+    if (text.startsWith('Latest recommendation:')) {
+      $(this).addClass('recommendation-callout');
+    }
+  });
+
+  $('table.virtbench-table td').each(function() {
+    const text = $(this).text().trim();
+    if (text === 'True' || text === 'False') {
+      $(this).html('<span class="status-pill ' + (text === 'True' ? 'ok' : 'fail') + '">' + text + '</span>');
+    }
+  });
+
+  $('table.display').DataTable({
+    scrollX: false,
+    autoWidth: false,
+    pageLength: 25
+  });
+
+  $('a[data-bs-toggle="tab"], button[data-bs-toggle="tab"]').on('shown.bs.tab', function () {
+    $.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
+    setTimeout(function () {
+      applyPlotlyTheme();
+      document.querySelectorAll('.tab-pane.active .plotly-chart').forEach(function (el) {
+        try { Plotly.Plots.resize(el); } catch(e) {}
+      });
+    }, 100);
+  });
+
+  const topTabs = document.querySelectorAll('#pxTab .nav-link');
+  if (topTabs.length > 0) {
+    const first = new bootstrap.Tab(topTabs[0]);
+    first.show();
+  }
+
+  setTimeout(function () {
+    applyPlotlyTheme();
+    document.querySelectorAll('.plotly-chart').forEach(function (el) {
+      try { Plotly.Plots.resize(el); } catch(e) {}
+    });
+  }, 400);
+});
+"""
 
 
 # ---------------- Main HTML ----------------
 def build_html_page(px_nav, px_body):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logo_uri = get_logo_data_uri()
+    logo_markup = (
+        f'<img src="{logo_uri}" alt="VirtBench logo">'
+        if logo_uri
+        else '<div class="brand-logo-fallback">VB</div>'
+    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1862,44 +3535,32 @@ def build_html_page(px_nav, px_body):
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-body {{ margin: 20px; }}
-h3 {{ margin-top: 30px; }}
-.dataTables_wrapper {{ width: 100%; margin: 0 auto; }}
-table.dataTable {{ width: 100% !important; }}
+{DASHBOARD_CSS}
 </style>
 </head>
 <body>
+<main class="dashboard-shell">
+<header class="dashboard-hero">
+<div class="brand-mark">{logo_markup}</div>
+<div class="brand-copy">
+<div class="brand-label">VirtBench</div>
 <h1 class="mb-2">KubeVirt Performance Dashboard</h1>
 <p><strong>Generated:</strong> {now}</p>
+</div>
+<div class="dashboard-actions">
+<button class="theme-toggle" id="themeToggle" type="button" aria-pressed="false" title="Toggle dark mode">
+<span class="theme-toggle-knob" aria-hidden="true"></span>
+<span class="theme-toggle-text">Dark</span>
+</button>
+</div>
+</header>
 
 <ul class="nav nav-tabs" id="pxTab" role="tablist">{''.join(px_nav)}</ul>
 <div class="tab-content" id="pxTabContent" style="margin-top: 1rem;">{''.join(px_body)}</div>
+</main>
 
 <script>
-$(document).ready(function() {{
-  $('table.display').DataTable({{ scrollX: true, autoWidth: false, pageLength: 25 }});
-
-  $('a[data-bs-toggle="tab"], button[data-bs-toggle="tab"]').on('shown.bs.tab', function () {{
-    $.fn.dataTable.tables({{visible: true, api: true}}).columns.adjust();
-    setTimeout(function () {{
-      document.querySelectorAll('.tab-pane.active .plotly-chart').forEach(function (el) {{
-        try {{ Plotly.Plots.resize(el); }} catch(e) {{}}
-      }});
-    }}, 100);
-  }});
-
-  const topTabs = document.querySelectorAll('#pxTab .nav-link');
-  if (topTabs.length > 0) {{
-    const first = new bootstrap.Tab(topTabs[0]);
-    first.show();
-  }}
-
-  setTimeout(function () {{
-    document.querySelectorAll('.plotly-chart').forEach(function (el) {{
-      try {{ Plotly.Plots.resize(el); }} catch(e) {{}}
-    }});
-  }}, 400);
-}});
+{DASHBOARD_JS}
 </script>
 </body>
 </html>
@@ -1920,20 +3581,23 @@ def main():
     base_dir = Path(args.base_dir)
     cutoff = datetime.now() - timedelta(days=args.days)
     px_map = {}
+    ai_runs = discover_ai_round_runs(base_dir, cutoff)
+    ai_runs_by_location = group_ai_runs_by_result_location(base_dir, ai_runs)
 
-    for px in sorted([d for d in base_dir.iterdir() if d.is_dir()]):
-        disk_map = defaultdict(list)
-        for disk_dir in sorted([d for d in px.iterdir() if d.is_dir()]):
-            for run in sorted([r for r in disk_dir.iterdir() if r.is_dir()], key=lambda p: p.name):
-                try:
-                    ts = run.name.split("_")[0]
-                    dt = datetime.strptime(ts, "%Y%m%d-%H%M%S")
-                    if dt >= cutoff:
-                        disk_map[disk_dir.name].append(run)
-                except Exception:
-                    continue
-        if disk_map:
-            px_map[px.name] = disk_map
+    if base_dir.exists():
+        for px in sorted([d for d in base_dir.iterdir() if d.is_dir() and d.name != "ai-runs"]):
+            disk_map = defaultdict(list)
+            for disk_dir in sorted([d for d in px.iterdir() if d.is_dir()]):
+                for run in sorted([r for r in disk_dir.iterdir() if r.is_dir()], key=lambda p: p.name):
+                    try:
+                        ts = run.name.split("_")[0]
+                        dt = datetime.strptime(ts, "%Y%m%d-%H%M%S")
+                        if dt >= cutoff:
+                            disk_map[disk_dir.name].append(run)
+                    except Exception:
+                        continue
+            if disk_map:
+                px_map[px.name] = disk_map
 
     if not px_map:
         print("No results found within the timeframe.")
@@ -1945,7 +3609,7 @@ def main():
         active_cls = "active" if idx == 0 else ""
         show_cls = "show" if idx == 0 else ""
         px_nav.append(f'<li class="nav-item"><button class="nav-link {active_cls}" id="tab-{px_id}-tab" data-bs-toggle="tab" data-bs-target="#tab_{px_id}" type="button" role="tab">{px_version}</button></li>')
-        px_body.append(f'<div class="tab-pane fade {show_cls} {active_cls}" id="tab_{px_id}" role="tabpanel">{build_px_tab(px_version, disk_map)}</div>')
+        px_body.append(f'<div class="tab-pane fade {show_cls} {active_cls}" id="tab_{px_id}" role="tabpanel">{build_px_tab(px_version, disk_map, ai_runs_by_location)}</div>')
 
     cluster_info = load_cluster_info(args.cluster_info) if args.cluster_info else None
 

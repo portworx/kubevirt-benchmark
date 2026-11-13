@@ -18,7 +18,7 @@ spec:
             requests:
               storage: 30Gi
           # Update with your StorageClass name
-          storageClassName: {{STORAGE_CLASS_NAME}}
+          storageClassName: portworx-raw-sc
           volumeMode: Block
   runStrategy: Always
   template:
