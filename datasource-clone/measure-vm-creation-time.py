@@ -19,6 +19,7 @@ import sys
 import signal
 from datetime import datetime, timedelta
 import subprocess, json, time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Tuple, List, Optional
 
@@ -40,6 +41,11 @@ DEFAULT_SSH_POD = 'ssh-test-pod'
 DEFAULT_SSH_POD_NS = 'default'
 DEFAULT_POLL_INTERVAL = 1
 DEFAULT_CONCURRENCY = 50
+DEFAULT_VM_READY_TIMEOUT = 600
+DEFAULT_CLONE_TIMEOUT = 1800
+DEFAULT_IP_TIMEOUT = 300
+DEFAULT_WATCH_READY_TIMEOUT = 30
+KUBECTL_CALL_TIMEOUT = 30
 DEFAULT_PING_TIMEOUT = 600  # 10 minutes
 DEFAULT_NAMESPACE_PREFIX = 'kubevirt-perf-test'
 
@@ -124,7 +130,19 @@ Examples:
         default=DEFAULT_PING_TIMEOUT,
         help=f'Ping timeout in seconds (default: {DEFAULT_PING_TIMEOUT})'
     )
-    
+    parser.add_argument(
+        '--vm-ready-timeout', type=int, default=DEFAULT_VM_READY_TIMEOUT,
+        help=f'Seconds to wait for Running after clone tracking (default: {DEFAULT_VM_READY_TIMEOUT})'
+    )
+    parser.add_argument(
+        '--clone-timeout', type=int, default=DEFAULT_CLONE_TIMEOUT,
+        help=f'Seconds per monitoring worker to track clone completion (default: {DEFAULT_CLONE_TIMEOUT})'
+    )
+    parser.add_argument(
+        '--ip-timeout', type=int, default=DEFAULT_IP_TIMEOUT,
+        help='Seconds to acquire an IP after Running (default: 300)'
+    )
+
     # SSH pod for ping tests
     parser.add_argument(
         '--ssh-pod',
@@ -250,6 +268,9 @@ Examples:
         parser.error("--end must be >= --start")
     if args.concurrency < 1:
         parser.error("--concurrency must be >= 1")
+    for option in ('poll_interval', 'vm_ready_timeout', 'clone_timeout', 'ip_timeout'):
+        if getattr(args, option) <= 0:
+            parser.error(f"--{option.replace('_', '-')} must be > 0")
     if not os.path.exists(args.vm_template):
         parser.error(f"VM template file not found: {args.vm_template}")
     if args.secret_yaml and not os.path.exists(args.secret_yaml):
@@ -549,56 +570,60 @@ def get_vm_disk_count(ns: str, vm_name: str, logger) -> int:
         return 1
 
 
-def wait_for_vm_running(ns: str, vm_name: str, start_ts: datetime, poll_interval: int, logger) -> Tuple[str, float]:
-    """
-    Wait for VM to reach Running state.
-    
-    Args:
-        ns: Namespace
-        vm_name: VM name
-        start_ts: Creation timestamp
-        poll_interval: Polling interval in seconds
-        logger: Logger instance
-    
-    Returns:
-        Tuple of (namespace, elapsed_seconds)
-    """
-    logger.info(f"[{ns}] Waiting for VM {vm_name} to reach Running state...")
-    
-    while True:
-        status = get_vm_status(vm_name, ns, logger)
-        
-        if status == 'Running':
-            elapsed = (datetime.now() - start_ts).total_seconds()
-            logger.info(f"[{ns}] VM Running after {elapsed:.2f}s")
-            return ns, elapsed
-        
-        time.sleep(poll_interval)
+def remaining_time(deadline: float) -> float:
+    """Return the remaining monotonic budget or raise on expiry."""
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError("Monitoring deadline exceeded")
+    return remaining
 
 
-def wait_for_vmi_ip(ns: str, vm_name: str, poll_interval: int, logger) -> str:
-    """
-    Wait for VMI to have an IP address.
-    
-    Args:
-        ns: Namespace
-        vm_name: VM name (same as VMI name)
-        poll_interval: Polling interval in seconds
-        logger: Logger instance
-    
-    Returns:
-        IP address
-    """
-    logger.info(f"[{ns}] Waiting for VMI to get IP address...")
-    
+def poll_until(poll, is_ready, deadline: float, poll_interval: float):
+    """Poll until a result is ready, enforcing the deadline after each call."""
     while True:
-        ip = get_vmi_ip(vm_name, ns, logger)
-        
-        if ip:
-            logger.info(f"[{ns}] VMI IP: {ip}")
-            return ip
-        
-        time.sleep(poll_interval)
+        result = poll(min(KUBECTL_CALL_TIMEOUT, remaining_time(deadline)))
+        remaining = remaining_time(deadline)
+        if is_ready(result):
+            return result
+        time.sleep(min(poll_interval, remaining))
+
+
+def wait_for_vm_running(ns: str, vm_name: str, start_ts: datetime, poll_interval: int, logger,
+                        timeout: float = DEFAULT_VM_READY_TIMEOUT) -> Tuple[str, float]:
+    """Wait at most timeout seconds for Running, allowing scheduling recovery."""
+    logger.info(f"[{ns}] Waiting for VM {vm_name} to reach Running state (timeout: {timeout}s)...")
+    deadline = time.monotonic() + timeout
+    status = None
+
+    def poll(timeout):
+        nonlocal status
+        status = get_vm_status(vm_name, ns, logger, timeout=timeout)
+        return status
+
+    try:
+        poll_until(poll, lambda result: result == 'Running', deadline, poll_interval)
+        elapsed = (datetime.now() - start_ts).total_seconds()
+        logger.info(f"[{ns}] VM Running after {elapsed:.2f}s")
+        return ns, elapsed
+    except TimeoutError:
+        raise TimeoutError(f"VM readiness timeout after {timeout}s; last status: {status}")
+
+
+def wait_for_vmi_ip(ns: str, vm_name: str, poll_interval: int, logger,
+                    timeout: float = DEFAULT_IP_TIMEOUT) -> str:
+    """Wait at most timeout seconds for the VMI IP address."""
+    logger.info(f"[{ns}] Waiting for VMI to get IP address (timeout: {timeout}s)...")
+    deadline = time.monotonic() + timeout
+
+    def poll(call_timeout):
+        return get_vmi_ip(vm_name, ns, logger, timeout=call_timeout)
+
+    try:
+        ip = poll_until(poll, bool, deadline, poll_interval)
+        logger.info(f"[{ns}] VMI IP: {ip}")
+        return ip
+    except TimeoutError:
+        raise TimeoutError(f"VMI IP timeout after {timeout}s")
 
 
 def wait_for_ping(ns: str, ip: str, start_ts: datetime, ssh_pod: str, ssh_pod_ns: str,
@@ -639,7 +664,10 @@ def wait_for_ping(ns: str, ip: str, start_ts: datetime, ssh_pod: str, ssh_pod_ns
 
 def monitor_vm(ns: str, vm_name: str, start_ts: datetime, ssh_pod: str, ssh_pod_ns: str,
                poll_interval: int, ping_timeout: int, logger, skip_dv_clone_tracking=False,
-               vm_template_path: Optional[str] = None) -> Tuple[str, float, float, float, bool]:
+               vm_template_path: Optional[str] = None, clone_watch=None,
+               vm_ready_timeout: float = DEFAULT_VM_READY_TIMEOUT,
+               clone_timeout: float = DEFAULT_CLONE_TIMEOUT,
+               ip_timeout: float = DEFAULT_IP_TIMEOUT) -> Tuple:
     """
     Monitor a single VM through its lifecycle and record clone timing.
 
@@ -654,22 +682,31 @@ def monitor_vm(ns: str, vm_name: str, start_ts: datetime, ssh_pod: str, ssh_pod_
         logger: Logger instance
         skip_dv_clone_tracking: Flag to control DataVolume Clone
         vm_template_path: Path to VM template YAML (optional, for DV name extraction)
+        clone_watch: DataVolume watch established before VM creation
+        vm_ready_timeout: Time budget for the VM to reach Running after clone tracking
+        clone_timeout: Time budget for clone tracking
+        ip_timeout: Time budget for acquiring a VMI IP
+
     Returns:
         Tuple of (namespace, running_time, ping_time, clone_duration, success)
     """
+    running_time = None
+    clone_duration = None
     try:
         # Track clone timing
         if not skip_dv_clone_tracking:
             clone_start, clone_end, clone_duration = track_clone_progress(
-                ns, vm_name, start_ts, poll_interval, logger, vm_template_path=vm_template_path
+                ns, vm_name, start_ts, poll_interval, logger, vm_template_path=vm_template_path,
+                timeout=clone_timeout, clone_watch=clone_watch
             )
-        else:
-            clone_duration = None
         # Wait for VM to become Running
-        _, running_time = wait_for_vm_running(ns, vm_name, start_ts, poll_interval, logger)
+        ready_deadline = time.monotonic() + vm_ready_timeout
+        _, running_time = wait_for_vm_running(
+            ns, vm_name, start_ts, poll_interval, logger, timeout=remaining_time(ready_deadline)
+        )
 
         # Wait for VMI IP
-        ip = wait_for_vmi_ip(ns, vm_name, poll_interval, logger)
+        ip = wait_for_vmi_ip(ns, vm_name, poll_interval, logger, timeout=ip_timeout)
 
         # Wait until ping works
         _, ping_time, success = wait_for_ping(
@@ -680,7 +717,7 @@ def monitor_vm(ns: str, vm_name: str, start_ts: datetime, ssh_pod: str, ssh_pod_
 
     except Exception as e:
         logger.error(f"[{ns}] Error monitoring VM: {e}")
-        return ns, None, None, None, False
+        return ns, running_time, None, clone_duration, False
 
 
 
@@ -750,8 +787,130 @@ def extract_datavolume_name_from_yaml(vm_template_path: str, logger) -> Optional
         return None
 
 
+class DataVolumeWatch:
+    """Collect DataVolume phase changes from a kubectl watch stream."""
+    def __init__(self, namespace: str, name: str, logger):
+        self.namespace = namespace
+        self.name = name
+        self.logger = logger
+        self.lock = threading.Lock()
+        self.ready = threading.Event()
+        self.finished = threading.Event()
+        self.stderr_tail = []
+        self.clone_start = None
+        self.clone_end = None
+        self.last_phase = "unknown"
+        self.quality = "unavailable"
+        self.terminal_failure = False
+        self.watch_failed = False
+        self.process = subprocess.Popen(
+            ["kubectl", "get", "dv", "-n", namespace, "--watch-only",
+             "--output-watch-events", "-o", "json", "--v=6"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1
+        )
+        self.reader = threading.Thread(target=self._read, daemon=True)
+        self.stderr_reader = threading.Thread(target=self._read_stderr, daemon=True)
+        self.reader.start()
+        self.stderr_reader.start()
+        deadline = time.monotonic() + DEFAULT_WATCH_READY_TIMEOUT
+        while not self.ready.wait(timeout=0.1):
+            if self.process.poll() is not None:
+                error = self._stderr_summary()
+                raise RuntimeError(error or f"DataVolume watch exited before connecting in {namespace}")
+            if time.monotonic() >= deadline:
+                self.stop()
+                error = self._stderr_summary()
+                raise RuntimeError(error or f"Timed out waiting for DataVolume watch in {namespace}")
+        if self.process.poll() is not None:
+            error = self._stderr_summary()
+            raise RuntimeError(error or f"DataVolume watch exited while starting in {namespace}")
+        self.logger.info(f"[{self.namespace}] DataVolume watch API request accepted before VM creation")
+
+    def _record(self, resource):
+        if not isinstance(resource, dict) or resource.get("metadata", {}).get("name") != self.name:
+            return
+        phase = resource.get("status", {}).get("phase", "").lower()
+        now = datetime.now()
+        with self.lock:
+            self.last_phase = phase or "unknown"
+            if phase == "clonescheduled" and self.clone_start is None:
+                self.clone_start = now
+                self.quality = "observed"
+                self.logger.info(f"[{self.namespace}] {self.name} entered CloneScheduled (watch observed)")
+            elif phase in {
+                "csicloneinprogress", "clonefromsnapshotsourceinprogress",
+                "smartclonepcvinprogress", "snapshotforsmartclone"
+            } and self.clone_start is None:
+                # This phase confirms that cloning started, but its exact start was missed.
+                self.clone_start = now
+                self.quality = "inferred"
+                self.logger.info(f"[{self.namespace}] {self.name} entered {phase} (clone start inferred)")
+            elif phase == "succeeded":
+                self.clone_end = now
+                if self.clone_start is None:
+                    self.quality = "inferred"
+                self.logger.info(f"[{self.namespace}] {self.name} entered Succeeded (watch observed)")
+                self.finished.set()
+            elif phase == "failed":
+                self.terminal_failure = True
+                self.finished.set()
+
+    def _consume(self, value):
+        if isinstance(value, dict):
+            self._record(value.get("object", value))
+
+    def _stderr_summary(self):
+        with self.lock:
+            return " ".join(self.stderr_tail)
+
+    def _read_stderr(self):
+        for line in self.process.stderr:
+            with self.lock:
+                self.stderr_tail.append(line.strip())
+                del self.stderr_tail[:-10]
+            if "watch=true" in line and "200 OK" in line:
+                self.ready.set()
+
+    def _read(self):
+        pending = ""
+        decoder = json.JSONDecoder()
+        try:
+            for line in self.process.stdout:
+                pending += line
+                while pending.strip():
+                    leading = len(pending) - len(pending.lstrip())
+                    try:
+                        value, end = decoder.raw_decode(pending, leading)
+                    except json.JSONDecodeError:
+                        break
+                    self._consume(value)
+                    pending = pending[end:]
+        except Exception as exc:
+            self.logger.warning(f"[{self.namespace}] DataVolume watch failed: {exc}")
+        finally:
+            if not self.finished.is_set():
+                self.watch_failed = True
+            self.finished.set()
+
+    def stop(self):
+        if self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=2)
+
+
+def start_datavolume_watch(ns: str, vm_name: str, vm_template_path: Optional[str], logger):
+    dv_name = extract_datavolume_name_from_yaml(vm_template_path, logger) if vm_template_path else None
+    dv_name = dv_name or f"{vm_name}-volume"
+    return DataVolumeWatch(ns, dv_name, logger)
+
+
 def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interval: int, logger,
-                        vm_template_path: Optional[str] = None, timeout: int = 1800):
+                        vm_template_path: Optional[str] = None, timeout: int = 1800,
+                        clone_watch=None):
     """
     Track DataVolume/PVC clone timing for a given VM, including inferred clone start logic.
 
@@ -769,6 +928,42 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
         or (None, None, None) if not detected
     """
 
+    deadline = time.monotonic() + timeout
+    last_phase = clone_watch.last_phase if clone_watch is not None else "unknown"
+    if clone_watch is not None:
+        try:
+            watch_finished = clone_watch.finished.wait(timeout=remaining_time(deadline))
+            with clone_watch.lock:
+                clone_start = clone_watch.clone_start
+                clone_end = clone_watch.clone_end
+                last_phase = clone_watch.last_phase
+                if clone_end and not clone_start:
+                    clone_start = max(start_ts, clone_end - timedelta(seconds=poll_interval))
+                    clone_watch.quality = "inferred"
+                elif clone_start and not clone_end:
+                    clone_watch.quality = "incomplete"
+                elif not clone_start:
+                    clone_watch.quality = "unavailable"
+            if clone_start and clone_end:
+                duration = round((clone_end - clone_start).total_seconds(), 2)
+                logger.info(f"[{ns}] DataVolume clone duration: {duration} seconds ({clone_watch.quality})")
+                return clone_start, clone_end, duration
+            if not watch_finished:
+                raise TimeoutError(
+                    f"Clone tracking timed out after {timeout}s; deadline reached. Last DataVolume phase: {last_phase}. "
+                    "Increase --clone-timeout to allow more time."
+                )
+            if clone_watch.terminal_failure:
+                return None, None, None
+            logger.warning(f"[{ns}] DataVolume watch ended early; falling back to polling")
+        except TimeoutError as exc:
+            raise TimeoutError(
+                f"Clone tracking timed out after {timeout}s; deadline reached. Last DataVolume phase: {last_phase}. "
+                "Increase --clone-timeout to allow more time."
+            ) from exc
+        finally:
+            clone_watch.stop()
+
     # Try to get boot disk name from the VM template YAML
     dv_name = None
     if vm_template_path:
@@ -783,10 +978,28 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
 
     # Check if it's a DataVolume or PVC
     # First try DataVolume, then fall back to PVC
-    result = subprocess.run(
-        ["kubectl", "get", "dv", dv_name, "-n", ns, "--no-headers"],
-        capture_output=True, text=True, check=False
-    )
+    while True:
+        try:
+            result = subprocess.run(
+                ["kubectl", "get", "dv", dv_name, "-n", ns, "--no-headers"],
+                capture_output=True, text=True, check=False,
+                timeout=min(KUBECTL_CALL_TIMEOUT, remaining_time(deadline))
+            )
+            break
+        except subprocess.TimeoutExpired:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Clone tracking timed out after {timeout}s; deadline reached. Last DataVolume phase: {last_phase}. "
+                    "Increase --clone-timeout to allow more time."
+                )
+            logger.warning(f"[{ns}] DataVolume lookup timed out; retrying")
+            time.sleep(min(poll_interval, remaining))
+        except TimeoutError as exc:
+            raise TimeoutError(
+                f"Clone tracking timed out after {timeout}s; deadline reached. Last DataVolume phase: {last_phase}. "
+                "Increase --clone-timeout to allow more time."
+            ) from exc
     is_datavolume = result.returncode == 0
 
     if is_datavolume:
@@ -794,92 +1007,98 @@ def track_clone_progress(ns: str, vm_name: str, start_ts: datetime, poll_interva
     else:
         logger.info(f"[{ns}] Tracking PVC clone progress for {dv_name}")
 
-    clone_start = None
+    clone_start = clone_watch.clone_start if clone_watch is not None else None
     clone_end = None
-    clone_inferred = False
-    elapsed = 0
+    clone_inferred = clone_watch.quality == "inferred" if clone_start and clone_watch is not None else False
 
     # Use appropriate resource type for kubectl commands
     resource_type = "dv" if is_datavolume else "pvc"
 
-    while elapsed < timeout:
+    while time.monotonic() < deadline:
         try:
             result = subprocess.run(
                 ["kubectl", "get", resource_type, dv_name, "-n", ns, "-o", "json"],
-                capture_output=True, text=True, check=False
+                capture_output=True, text=True, check=False,
+                timeout=min(KUBECTL_CALL_TIMEOUT, remaining_time(deadline))
             )
             if result.returncode != 0 or not result.stdout:
-                time.sleep(poll_interval)
-                elapsed = (datetime.now() - start_ts).total_seconds()
-                continue
-
-            data = json.loads(result.stdout)
-
-            # Get phase - DataVolume uses status.phase, PVC uses annotations
-            if is_datavolume:
-                phase = data.get("status", {}).get("phase", "").lower()
+                phase = None
             else:
-                # For PVC, check if it's bound (clone complete)
-                pvc_phase = data.get("status", {}).get("phase", "").lower()
-                if pvc_phase == "bound":
-                    phase = "succeeded"
+                data = json.loads(result.stdout)
+                if is_datavolume:
+                    phase = data.get("status", {}).get("phase", "").lower()
                 else:
-                    phase = pvc_phase
+                    pvc_phase = data.get("status", {}).get("phase", "").lower()
+                    phase = "succeeded" if pvc_phase == "bound" else pvc_phase
 
-            # CloneScheduled observed
-            if phase == "clonescheduled" and not clone_start:
-                clone_start = datetime.now()
-                logger.info(f"[{ns}] {dv_name} entered CloneScheduled ({(clone_start - start_ts).total_seconds():.2f}s after VM creation)")
+            if phase:
+                last_phase = phase
 
-            # Clone in progress but no CloneScheduled observed (inferred)
-            elif phase == "csicloneinprogress" and not clone_start:
-                # Infer clone started shortly after VM creation
-                current_time = datetime.now()
-                elapsed_now = (current_time - start_ts).total_seconds()
-                if elapsed_now > poll_interval:
-                    # Infer it started one poll interval ago
-                    clone_start = current_time - timedelta(seconds=poll_interval)
-                else:
-                    # Started right after VM creation
-                    clone_start = start_ts
-                clone_inferred = True
-                clone_start_delta = (clone_start - start_ts).total_seconds()
-                logger.info(f"[{ns}] {dv_name} in CSICloneInProgress (inferred clone start: {clone_start_delta:.2f}s after VM creation)")
-
-            # Clone succeeded (DataVolume) or Bound (PVC)
-            elif phase == "succeeded":
-                clone_end = datetime.now()
-                if not clone_start:
-                    # Infer clone started one poll interval ago, but not before VM creation
-                    inferred_start = clone_end - timedelta(seconds=poll_interval)
-                    if inferred_start < start_ts:
-                        clone_start = start_ts
+                if phase == "clonescheduled" and not clone_start:
+                    clone_start = datetime.now()
+                    logger.info(f"[{ns}] {dv_name} entered CloneScheduled ({(clone_start - start_ts).total_seconds():.2f}s after VM creation)")
+                elif phase in {
+                    "csicloneinprogress", "clonefromsnapshotsourceinprogress",
+                    "smartclonepcvinprogress", "snapshotforsmartclone"
+                } and not clone_start:
+                    current_time = datetime.now()
+                    elapsed_now = (current_time - start_ts).total_seconds()
+                    if elapsed_now > poll_interval:
+                        clone_start = current_time - timedelta(seconds=poll_interval)
                     else:
-                        clone_start = inferred_start
+                        clone_start = start_ts
                     clone_inferred = True
-                    logger.info(f"[{ns}] {dv_name} clone was fast (inferred clone start: {(clone_start - start_ts).total_seconds():.2f}s after VM creation)")
-                logger.info(f"[{ns}] {dv_name} clone succeeded ({(clone_end - start_ts).total_seconds():.2f}s after VM creation)")
+                    clone_start_delta = (clone_start - start_ts).total_seconds()
+                    logger.info(f"[{ns}] {dv_name} in CSICloneInProgress (inferred clone start: {clone_start_delta:.2f}s after VM creation)")
+                elif phase == "succeeded":
+                    clone_end = datetime.now()
+                    if not clone_start:
+                        inferred_start = clone_end - timedelta(seconds=poll_interval)
+                        clone_start = max(start_ts, inferred_start)
+                        clone_inferred = True
+                        logger.info(f"[{ns}] {dv_name} clone was fast (inferred clone start: {(clone_start - start_ts).total_seconds():.2f}s after VM creation)")
+                    logger.info(f"[{ns}] {dv_name} clone succeeded ({(clone_end - start_ts).total_seconds():.2f}s after VM creation)")
+                    break
+                elif phase == "failed":
+                    logger.error(f"[{ns}] {dv_name} entered Failed state")
+                    if clone_watch is not None:
+                        clone_watch.quality = "incomplete" if clone_start else "unavailable"
+                    return None, None, None
+
+        except subprocess.TimeoutExpired:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
                 break
-
-            elif phase == "failed":
-                logger.error(f"[{ns}] {dv_name} entered Failed state")
-                return None, None, None
-
+            logger.warning(f"[{ns}] {dv_name} status poll timed out; retrying (last phase: {last_phase})")
+            time.sleep(min(poll_interval, remaining))
+            continue
+        except TimeoutError as exc:
+            raise TimeoutError(
+                f"Clone tracking timed out after {timeout}s; deadline reached. Last DataVolume phase: {last_phase}. "
+                "Increase --clone-timeout to allow more time."
+            ) from exc
         except Exception as e:
             logger.error(f"[{ns}] Error tracking clone progress: {e}")
             return None, None, None
 
-        time.sleep(poll_interval)
-        elapsed = (datetime.now() - start_ts).total_seconds()
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(poll_interval, remaining))
 
     if clone_start and clone_end:
         duration = round((clone_end - clone_start).total_seconds(), 2)
         inferred_text = " (inferred)" if clone_inferred else ""
         logger.info(f"[{ns}] {dv_name} CloneScheduled to Succeeded duration: {duration} seconds{inferred_text}")
+        if clone_watch is not None:
+            clone_watch.quality = "inferred" if clone_inferred else "observed"
         return clone_start, clone_end, duration
     else:
-        logger.warning(f"[{ns}] Clone tracking incomplete or timed out")
-        return None, None, None
+        if clone_watch is not None:
+            clone_watch.quality = "incomplete" if clone_start else "unavailable"
+        raise TimeoutError(
+            f"Clone tracking timed out after {timeout}s; deadline reached. Last DataVolume phase: {last_phase}. "
+            "Increase --clone-timeout to allow more time."
+        )
 
 
 def main():
@@ -946,6 +1165,9 @@ def main():
     logger.info(f"VM template: {args.vm_template}")
     logger.info(f"Concurrency: {args.concurrency}")
     logger.info(f"Poll interval: {args.poll_interval}s")
+    logger.info(f"Clone timeout: {args.clone_timeout}s")
+    logger.info(f"VM readiness timeout after clone: {args.vm_ready_timeout}s")
+    logger.info(f"IP timeout: {args.ip_timeout}s")
     logger.info(f"Ping timeout: {args.ping_timeout}s")
     logger.info("=" * 80)
     num_disks_per_vm = 1
@@ -1054,6 +1276,29 @@ def main():
             logger.info(f"Using secret YAML: {args.secret_yaml}")
         create_start = datetime.now()
         start_times = {}
+        clone_watches = {}
+        watch_start_errors = []
+
+        # Watch DataVolumes before VM creation so short CloneScheduled phases are captured.
+        with ThreadPoolExecutor(max_workers=min(args.concurrency, len(namespaces))) as executor:
+            watch_futures = {
+                executor.submit(start_datavolume_watch, ns, args.vm_name, args.vm_template, logger): ns
+                for ns in namespaces
+            }
+            for future in as_completed(watch_futures):
+                ns = watch_futures[future]
+                try:
+                    clone_watches[ns] = future.result()
+                except Exception as e:
+                    logger.error(f"[{ns}] DataVolume watch did not become ready: {e}")
+                    watch_start_errors.append((ns, e))
+
+        if watch_start_errors:
+            for watch in clone_watches.values():
+                watch.stop()
+            failed_namespaces = ", ".join(ns for ns, _ in watch_start_errors)
+            logger.error(f"Aborting VM creation because DataVolume watches were not ready in: {failed_namespaces}")
+            sys.exit(1)
 
         with ThreadPoolExecutor(max_workers=len(namespaces)) as executor:
             futures = {
@@ -1069,6 +1314,10 @@ def main():
                     ns = futures[future]
                     logger.error(f"[{ns}] Failed to create VM: {e}")
 
+        for ns, watch in clone_watches.items():
+            if ns not in start_times:
+                watch.stop()
+
         create_elapsed = (datetime.now() - create_start).total_seconds()
         logger.info(f"Phase 1 completed in {create_elapsed:.2f}s")
 
@@ -1080,7 +1329,10 @@ def main():
             futures = {
                 executor.submit(
                     monitor_vm, ns, args.vm_name, ts, args.ssh_pod, args.ssh_pod_ns,
-                    args.poll_interval, args.ping_timeout, logger, False, args.vm_template
+                    args.poll_interval, args.ping_timeout, logger, False, args.vm_template,
+                    clone_watches.get(ns), vm_ready_timeout=args.vm_ready_timeout,
+                    clone_timeout=args.clone_timeout,
+                    ip_timeout=args.ip_timeout
                 ): ns
                 for ns, ts in start_times.items()
             }
@@ -1088,11 +1340,11 @@ def main():
             for future in as_completed(futures):
                 ns = futures[future]
                 try:
-                    result = future.result()  # now returns (ns, run_time, ping_time, clone_time, success)
+                    result = future.result()
                     results.append(result)
                 except Exception as e:
                     logger.error(f"[{ns}] Monitoring failed: {e}")
-                    results.append((ns, None, None, None, False))
+                    results.append((ns, None, None, None, False, "unavailable"))
 
         monitor_elapsed = (datetime.now() - monitor_start).total_seconds()
         total_elapsed = (datetime.now() - create_start).total_seconds()
@@ -1203,7 +1455,9 @@ def main():
                 executor.submit(
                     monitor_vm, ns, args.vm_name, ts, args.ssh_pod, args.ssh_pod_ns,
                     args.poll_interval, args.ping_timeout, logger, skip_dv_clone_tracking=True,
-                    vm_template_path=args.vm_template
+                    vm_template_path=args.vm_template,
+                    vm_ready_timeout=args.vm_ready_timeout, clone_timeout=args.clone_timeout,
+                    ip_timeout=args.ip_timeout
                 ): ns
                 for ns, ts in boot_start_times.items()
             }
@@ -1215,7 +1469,7 @@ def main():
                 except Exception as e:
                     ns = boot_futures[future]
                     logger.error(f"[{ns}] Boot storm monitoring failed: {e}")
-                    boot_storm_results.append((ns, None, None, False))
+                    boot_storm_results.append((ns, None, None, None, False))
 
         boot_monitor_elapsed = (datetime.now() - monitor_start).total_seconds()
         boot_total_elapsed = (datetime.now() - boot_start).total_seconds()
@@ -1229,7 +1483,7 @@ def main():
             save_results(args, boot_storm_results, base_dir=out_dir, prefix="boot_storm_results", logger=logger,
                          skip_clone=True, total_time=boot_total_elapsed)
 
-    failed_count = sum(1 for r in results if len(r) > 4 and not r[4]) if results else 0
+    failed_count = sum(1 for r in results + boot_storm_results if not r[4])
     should_cleanup = args.cleanup or (args.cleanup_on_failure and failed_count > 0)
 
     # Cleanup if requested
@@ -1265,7 +1519,7 @@ def main():
                 logger.error(f"Error during cleanup: {e}")
                 logger.warning("Some resources may not have been cleaned up")
 
-    logger.info("\nTest completed successfully!")
+    logger.info("\nTest completed with failures." if failed_count else "\nTest completed successfully!")
 
     # Exit with error code if any VMs failed
     sys.exit(0 if failed_count == 0 else 1)
