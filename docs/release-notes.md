@@ -1,5 +1,31 @@
 # Release Notes
 
+## Unreleased
+
+### FIO benchmark
+
+- **Balanced VM placement (default).** FIO VMs are pinned evenly across the
+  eligible nodes and the placement is verified and saved with the results
+  (`vm_node_placement.json`, `placement` in the summary, `node` CSV column).
+  Nodes can be excluded with a label (`virtbench.io/no-fio`, or
+  `--exclude-node-label`), by name (`--exclude-nodes`), or chosen with
+  `--node-selector`. `--no-balance` restores scheduler placement.
+- **4 vCPUs per FIO VM.** The shipped FIO templates now use 4 vCPUs with a CPU
+  request of 4 (was 2 vCPUs, request 1). This needs about 4x the CPU per VM;
+  balanced placement checks free capacity before deploying.
+  `--vm-cpus` now defaults to 4 for any template (instancetype templates keep
+  their own size); `--vm-cpus 2 --vm-cpu-request 1` reproduces the old size.
+- **Failed FIO runs are no longer reported as successful.** A VM now fails
+  when FIO exits nonzero, any FIO job reports a nonzero `error`, or the output
+  has no jobs. The guest templates record the FIO exit status in
+  `/tmp/fio_exit_code`. Failed VMs are excluded from the metrics, listed under
+  `failures` in the summary, and make `gather-results` and `run-all` exit
+  with status 1.
+- `deploy` and `run-all` exit with status 1 when a VM fails to apply or
+  balanced placement is not achieved.
+- The FIO CSV gains a `node` column at the end. The summary records
+  `vm_cpus` and `vm_cpu_request`, and the dashboard shows them.
+
 ## v2.0.0
 
 This is a major release that introduces a unified `virtbench` CLI, three new

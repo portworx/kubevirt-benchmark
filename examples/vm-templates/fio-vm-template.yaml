@@ -51,7 +51,7 @@ spec:
     spec:
       domain:
         cpu:
-          cores: 2
+          cores: 4
         devices:
           disks:
             - name: rootdisk
@@ -75,7 +75,7 @@ spec:
           guest: 2Gi
         resources:
           requests:
-            cpu: "1"
+            cpu: "4"
       networks:
         - name: default
           pod: {}
@@ -135,5 +135,8 @@ spec:
                   FIOJOB
                   # Run FIO
                   fio /tmp/fio.job --output-format=json --output=/tmp/fio_results.json
+                  # Record the FIO exit status before the completion marker, so the harness
+                  # can tell a failed run from a successful one.
+                  echo $? > /tmp/fio_exit_code
                   echo "completed" > /tmp/fio_complete
 

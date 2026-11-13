@@ -14,6 +14,7 @@ Usage:
   python3 generate_dashboard.py [--days N] [--base-dir PATH] [--output-html FILE]
 """
 
+import html
 import json
 import argparse
 import pandas as pd
@@ -526,6 +527,28 @@ def build_fio_content(folder: Path, uid: str) -> str:
         return build_fio_single_vm_content(folder, uid, data)
 
 
+def _fmt_vm_cpus(summary: dict) -> str:
+    """vCPUs (and CPU request) per FIO VM; older runs did not record it."""
+    cpus = summary.get("vm_cpus")
+    if cpus is None:
+        return "not recorded (older runs used 2)"
+    text = ", ".join(map(str, cpus)) if isinstance(cpus, list) else str(cpus)
+    req = summary.get("vm_cpu_request")
+    if req is not None:
+        text += f" (CPU request {', '.join(map(str, req)) if isinstance(req, list) else req})"
+    return text
+
+
+def _fmt_placement(summary: dict) -> str:
+    """Placement policy, whether it was verified, and VMs per node."""
+    p = summary.get("placement")
+    if not p:
+        return "not recorded"
+    status = {True: "verified even", False: "NOT even", None: "not enforced"}.get(p.get("balanced"), "unknown")
+    counts = ", ".join(f"{n}: {c}" for n, c in (p.get("per_node_counts") or {}).items())
+    return f"{p.get('policy', 'unknown')} ({status}){' &mdash; ' + counts if counts else ''}"
+
+
 def build_fio_multi_vm_content(folder: Path, uid: str, summary: dict, per_vm_results: list) -> str:
     """Build FIO content for multi-VM benchmark results."""
     config = summary.get("config", {})
@@ -553,6 +576,8 @@ def build_fio_multi_vm_content(folder: Path, uid: str, summary: dict, per_vm_res
         f"<tr><th>Num Jobs</th><td>{config.get('numjobs', 'N/A')}</td></tr>",
         f"<tr><th>Runtime</th><td>{config.get('runtime', 'N/A')} s</td></tr>",
         f"<tr><th>File Size</th><td>{config.get('size', 'N/A')}</td></tr>",
+        f"<tr><th>vCPUs per VM</th><td>{_fmt_vm_cpus(summary)}</td></tr>",
+        f"<tr><th>VM Placement</th><td>{_fmt_placement(summary)}</td></tr>",
     ])
     config_table = f'<table class="table table-bordered w-auto"><tbody>{config_rows}</tbody></table>'
 
@@ -614,7 +639,7 @@ def build_fio_multi_vm_content(folder: Path, uid: str, summary: dict, per_vm_res
 
             per_vm_rows += f"""
             <tr class="vm-row-clickable" style="cursor: pointer;" onclick="showVmChart_{uid}({idx})">
-              <td>{status_badge} <a href="#" onclick="event.preventDefault(); showVmChart_{uid}({idx});">{ns}</a></td>
+              <td>{status_badge} <a href="#" onclick="event.preventDefault(); showVmChart_{uid}({idx});">{ns}</a>{f' <small class="text-muted">({html.escape(str(r["node"]))})</small>' if r.get("node") else ""}</td>
               <td>{read_iops:,.0f}</td>
               <td>{write_iops:,.0f}</td>
               <td>{read_bw:,.2f}</td>
