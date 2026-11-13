@@ -19,7 +19,7 @@ FIO is baked into the VM template and runs on boot. The benchmark workflow has f
 
 The shipped FIO templates (`fio-vm-template.yaml`, `fio-vm-template-containerdisk.yaml`) give each VM **4 guest vCPUs** with a **CPU request of 4**, so the four FIO jobs, guest I/O completion and virtio device processing are not squeezed onto fewer CPUs. Memory and FIO parameters are unchanged.
 
-By default the harness uses whatever the template says. To override it:
+The harness uses **4 vCPUs by default** for any template, setting both the cores and the CPU request, so a custom template with a different size is changed to 4 too. To use another size:
 
 ```bash
 # 2 vCPUs, CPU request 2
@@ -28,7 +28,7 @@ virtbench fio -a run-all -s 1 -e 10 --storage-class YOUR-STORAGE-CLASS --vm-cpus
 virtbench fio -a run-all -s 1 -e 10 --storage-class YOUR-STORAGE-CLASS --vm-cpus 2 --vm-cpu-request 1
 ```
 
-`--vm-cpus` sets `domain.cpu.cores` (1 socket, 1 thread) and the CPU request (default: equal to `--vm-cpus`; set it separately with `--vm-cpu-request`). An existing CPU limit in the template is kept consistent. It cannot be used with templates that size the VM through `spec.instancetype`; choose a different instancetype instead.
+`--vm-cpus` (default 4) sets `domain.cpu.cores` (1 socket, 1 thread) and the CPU request (default: equal to the vCPU count; set it separately with `--vm-cpu-request`). An existing CPU limit in the template is kept consistent. Templates that size the VM through `spec.instancetype` keep the instancetype's size; passing `--vm-cpus` or `--vm-cpu-request` with them is rejected, so choose a different instancetype instead.
 
 The vCPU count and CPU request of the **running** VMs are recorded as `vm_cpus` and `vm_cpu_request` in `summary_fio_benchmark.json` and shown in the dashboard. Results from before this change have no `vm_cpus` (those VMs had 2 vCPUs and a CPU request of 1).
 
@@ -133,8 +133,8 @@ virtbench fio --action cleanup -s 1 -e 10
 | `--vm-name` | `fio-vm` | VM resource name in each namespace |
 | `--vm-template` | `examples/vm-templates/fio-vm-template.yaml` | Path to VM template YAML |
 | `--concurrency`, `-c` | `20` | Max parallel threads for deploy/status/cleanup |
-| `--vm-cpus` | (template) | Override guest vCPUs per FIO VM; the CPU request matches unless `--vm-cpu-request` is set. Not allowed with `spec.instancetype` templates |
-| `--vm-cpu-request` | (= `--vm-cpus`) | CPU request per VM when `--vm-cpus` is set |
+| `--vm-cpus` | `4` | Guest vCPUs per FIO VM; the CPU request matches unless `--vm-cpu-request` is set. `spec.instancetype` templates keep their own size and reject this flag |
+| `--vm-cpu-request` | (= vCPUs) | CPU request per VM |
 | `--node-selector` | (none) | Label selector (`key` or `key=value`, comma-separated) choosing candidate nodes |
 | `--exclude-node-label` | `virtbench.io/no-fio` | Node label (`key` or `key=value`) marking nodes FIO VMs must not use; `""` disables |
 | `--exclude-nodes` | (none) | Comma-separated node names to keep FIO VMs off |
@@ -215,6 +215,12 @@ Results include per-VM and aggregated metrics:
 - **IOPS**: Read/Write operations per second
 - **Bandwidth**: Read/Write throughput in MiB/s
 - **Latency**: Read/Write latency in milliseconds
+
+### Failed runs
+
+A VM counts as **failed** when FIO exits with a nonzero status, when any FIO job reports a nonzero `error`, when the FIO output has no jobs, or when no results can be collected. The guest template writes the FIO exit status to `/tmp/fio_exit_code` before the `/tmp/fio_complete` marker. VMs built from an older template have no exit-status file; for them only the job errors are checked.
+
+Failed VMs are left out of the aggregated metrics. The summary lists them under `failures` with the reason, the CSV shows `success` as `False`, and `gather-results` and `run-all` print the reasons and exit with status 1.
 
 ### Output Structure
 

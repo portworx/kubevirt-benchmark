@@ -135,5 +135,8 @@ spec:
                   FIOJOB
                   # Run FIO
                   fio /tmp/fio.job --output-format=json --output=/tmp/fio_results.json
+                  # Record the FIO exit status before the completion marker, so the harness
+                  # can tell a failed run from a successful one.
+                  echo $? > /tmp/fio_exit_code
                   echo "completed" > /tmp/fio_complete
 

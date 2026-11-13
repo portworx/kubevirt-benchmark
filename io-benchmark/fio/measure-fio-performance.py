@@ -64,6 +64,7 @@ DEFAULT_FIO_IODEPTH = 64
 DEFAULT_FIO_NUMJOBS = 4
 DEFAULT_FIO_SIZE = '10G'
 DEFAULT_PLACEMENT_TIMEOUT = 600
+DEFAULT_VM_CPUS = 4
 
 
 def parse_args():
@@ -117,11 +118,11 @@ Examples:
     parser.add_argument('--namespace-prefix', type=str, default=DEFAULT_NAMESPACE_PREFIX)
     parser.add_argument('--concurrency', type=int, default=DEFAULT_CONCURRENCY)
     parser.add_argument('--vm-cpus', type=positive_int, default=None,
-                        help='Override guest vCPUs per FIO VM (sets cores, 1 socket/1 thread). '
-                             'Default: keep the template value (the shipped FIO templates use 4). '
-                             'Not allowed with templates that use spec.instancetype.')
+                        help=f'Guest vCPUs per FIO VM (sets cores, 1 socket/1 thread, and the CPU '
+                             f'request). Default: {DEFAULT_VM_CPUS}. Templates that use spec.instancetype '
+                             f'keep their own size unless --vm-cpus is given, which is then rejected.')
     parser.add_argument('--vm-cpu-request', type=str, default=None,
-                        help='CPU request per VM when --vm-cpus is set (default: equal to --vm-cpus), '
+                        help='CPU request per VM (default: equal to the vCPU count), '
                              'e.g. "1" to reproduce the older 2-vCPU/1-CPU-request setup')
 
     # Placement
@@ -385,7 +386,15 @@ def collect_fio_results(namespace: str, vm_name: str, ssh_config: Dict,
             with open(local_path, 'w') as f:
                 f.write(json_content)
 
-            return json.loads(json_content)
+            data = json.loads(json_content)
+            exit_out = run_ssh_command(
+                vm_ip, 'cat /tmp/fio_exit_code 2>/dev/null',
+                ssh_config['pod'], ssh_config['pod_ns'],
+                ssh_config['user'], ssh_config['password'],
+                timeout=60
+            )
+            data[FIO_EXIT_KEY] = parse_exit_code(exit_out)
+            return data
         except Exception as e:
             logger.warning(f"[{namespace}] Retry {attempt+1}/{max_retries}: {e}")
             time.sleep(retry_delay)
@@ -394,11 +403,50 @@ def collect_fio_results(namespace: str, vm_name: str, ssh_config: Dict,
     return None
 
 
-def parse_fio_results(namespace: str, raw_data: Dict) -> Dict:
-    """Parse raw FIO JSON into summary metrics."""
-    ri = wi = rb = wb = rl = wl = 0
+FIO_EXIT_KEY = "_virtbench_fio_exit_code"
 
-    for job in raw_data.get("jobs", []):
+
+def parse_exit_code(text: Optional[str]) -> Optional[int]:
+    """Exit code written by the guest to /tmp/fio_exit_code; None when absent or unreadable."""
+    try:
+        return int((text or "").strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        return None
+
+
+def fio_failure_reason(raw_data: Dict) -> Optional[str]:
+    """Why a FIO run failed, or None if it succeeded.
+
+    Fails on a nonzero FIO exit status, a nonzero error on any job, or no jobs at all.
+    A missing exit status (VM built from an older template) is not a failure by itself.
+    """
+    reasons = []
+    exit_code = raw_data.get(FIO_EXIT_KEY)
+    if exit_code not in (None, 0):
+        reasons.append(f"fio exited with status {exit_code}")
+    jobs = raw_data.get("jobs")
+    if not isinstance(jobs, list) or not jobs:
+        reasons.append("no jobs in FIO output")
+    else:
+        for i, job in enumerate(jobs):
+            try:
+                err = int(job.get("error", 0) or 0)
+            except (TypeError, ValueError, AttributeError):
+                err = -1
+            if err != 0:
+                name = job.get("jobname", f"job {i}") if isinstance(job, dict) else f"job {i}"
+                reasons.append(f"{name}: error {err}")
+    return "; ".join(reasons) or None
+
+
+def parse_fio_results(namespace: str, raw_data: Dict) -> Dict:
+    """Parse raw FIO JSON into summary metrics. success is False if FIO reported any error."""
+    ri = wi = rb = wb = rl = wl = 0
+    error = fio_failure_reason(raw_data)
+
+    for job in raw_data.get("jobs") or []:
+        if not isinstance(job, dict):
+            continue
         r, w = job.get("read", {}), job.get("write", {})
         ri += r.get("iops", 0)
         wi += w.get("iops", 0)
@@ -417,7 +465,8 @@ def parse_fio_results(namespace: str, raw_data: Dict) -> Dict:
         "write_bw_mibps": round(wb / 1024 / 1024, 2),
         "read_lat_ms": round(rl / 1e6, 3),
         "write_lat_ms": round(wl / 1e6, 3),
-        "success": True
+        "success": error is None,
+        "error": error,
     }
 
 
@@ -443,6 +492,8 @@ def aggregate_results(results: List[Dict], fio_config: Dict,
         "total_vms": len(results),
         "successful": len(successful),
         "failed": len(failed),
+        "failures": [{"namespace": r.get("namespace"), "error": r.get("error") or "no results collected"}
+                     for r in failed],
         "total_test_duration_sec": round(total_duration, 2),
         "config": fio_config,
         "metrics": [
@@ -566,11 +617,15 @@ def prepare_deployment(args, namespaces, fio_config, vm_password, logger) -> Tup
     vm_yaml = prepare_vm_yaml(template_path, args.vm_name, args.storage_class,
                               fio_config, vm_password, logger)
     try:
-        if args.vm_cpus is not None:
-            vm_yaml = set_vm_cpus(vm_yaml, args.vm_cpus, args.vm_cpu_request)
-        elif args.vm_cpu_request is not None:
-            raise ValueError("--vm-cpu-request needs --vm-cpus")
         info = get_vm_template_info(vm_yaml)
+        cpus = args.vm_cpus
+        if cpus is None and not info['instancetype']:
+            cpus = DEFAULT_VM_CPUS
+        if cpus is not None:
+            vm_yaml = set_vm_cpus(vm_yaml, cpus, args.vm_cpu_request)
+            info = get_vm_template_info(vm_yaml)
+        elif args.vm_cpu_request is not None:
+            raise ValueError("--vm-cpu-request cannot be used with an instancetype template")
     except ValueError as e:
         raise DeploymentError(str(e))
 
@@ -578,7 +633,7 @@ def prepare_deployment(args, namespaces, fio_config, vm_password, logger) -> Tup
         print(f"VM size: from instancetype {info['instancetype']}")
     else:
         print(f"VM size: {info['vcpus'] or 'default'} vCPU, CPU request {info['cpu_request']:g}"
-              f"{' (from --vm-cpus)' if args.vm_cpus is not None else ' (from template)'}")
+              f"{' (from --vm-cpus)' if args.vm_cpus is not None else ' (default)'}")
 
     plan = build_placement_plan(args, namespaces, info, logger)
     manifests = {
@@ -890,10 +945,11 @@ def action_gather_results(args, namespaces, fio_config, ssh_config, logger):
             ns = futures[future]
             raw_data = future.result()
             if raw_data:
-                all_results.append(parse_fio_results(ns, raw_data))
-                print(f"  ✓ {ns}")
+                parsed = parse_fio_results(ns, raw_data)
+                all_results.append(parsed)
+                print(f"  ✓ {ns}" if parsed["success"] else f"  ✗ {ns}: {parsed['error']}")
             else:
-                all_results.append({"namespace": ns, "success": False})
+                all_results.append({"namespace": ns, "success": False, "error": "no results collected"})
                 print(f"  ✗ {ns}")
 
     # Aggregate and save
@@ -918,6 +974,18 @@ def action_gather_results(args, namespaces, fio_config, ssh_config, logger):
 
     if args.save_results:
         print(f"Results saved to: {output_dir}/")
+
+    return report_fio_failures(summary)
+
+
+def report_fio_failures(summary: Dict) -> int:
+    """Print failed VMs; return 1 if any VM's FIO run failed or was not collected."""
+    if not summary.get('failed'):
+        return 0
+    print(f"ERROR: FIO failed on {summary['failed']} of {summary['total_vms']} VM(s):")
+    for f in summary.get('failures', []):
+        print(f"  {f['namespace']}: {f['error']}")
+    return 1
 
 
 def action_cleanup(args, namespaces, logger):
@@ -1014,9 +1082,9 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
             if raw_data:
                 parsed = parse_fio_results(ns, raw_data)
                 all_results.append(parsed)
-                print(f"  ✓ {ns}")
+                print(f"  ✓ {ns}" if parsed["success"] else f"  ✗ {ns}: {parsed['error']}")
             else:
-                all_results.append({"namespace": ns, "success": False})
+                all_results.append({"namespace": ns, "success": False, "error": "no results collected"})
                 print(f"  ✗ {ns}")
 
     # Aggregate and save
@@ -1048,13 +1116,14 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
             )
             print(f"Cleaned up {len(namespaces)} namespaces")
 
+    rc = report_fio_failures(summary)
     if failed:
         print(f"ERROR: {len(failed)} VM(s) failed to apply: {', '.join(failed)}")
-        return 1
+        rc = 1
     if placement and placement.get('balanced') is False:
         print("ERROR: balanced placement was not achieved; see the placement report above.")
-        return 1
-    return 0
+        rc = 1
+    return rc
 
 
 def main():
@@ -1089,7 +1158,7 @@ def main():
     elif args.action == 'status':
         action_status(args, namespaces, ssh_config, logger)
     elif args.action == 'gather-results':
-        action_gather_results(args, namespaces, fio_config, ssh_config, logger)
+        rc = action_gather_results(args, namespaces, fio_config, ssh_config, logger)
     elif args.action == 'cleanup':
         action_cleanup(args, namespaces, logger)
     elif args.action == 'run-all':

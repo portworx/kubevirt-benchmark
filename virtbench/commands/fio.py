@@ -26,9 +26,10 @@ console = Console()
 @click.option('--namespace-prefix', default='fio-benchmark', help='Namespace prefix')
 @click.option('--concurrency', '-c', default=20, type=int, help='Max parallel threads')
 @click.option('--vm-cpus', default=None, type=click.IntRange(min=1),
-              help='Override guest vCPUs per FIO VM (default: keep template value; shipped FIO templates use 4)')
+              help='Guest vCPUs per FIO VM, also used as the CPU request (default: 4; '
+                   'instancetype templates keep their own size)')
 @click.option('--vm-cpu-request', default=None,
-              help='CPU request per VM when --vm-cpus is set (default: equal to --vm-cpus)')
+              help='CPU request per VM (default: equal to the vCPU count)')
 @click.option('--node-selector', default='',
               help='Label selector (key or key=value, comma-separated) choosing candidate nodes')
 @click.option('--exclude-nodes', default='',

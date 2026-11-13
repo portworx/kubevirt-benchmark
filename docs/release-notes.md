@@ -13,8 +13,14 @@
 - **4 vCPUs per FIO VM.** The shipped FIO templates now use 4 vCPUs with a CPU
   request of 4 (was 2 vCPUs, request 1). This needs about 4x the CPU per VM;
   balanced placement checks free capacity before deploying.
-  `--vm-cpus`/`--vm-cpu-request` override the template
-  (`--vm-cpus 2 --vm-cpu-request 1` reproduces the old size).
+  `--vm-cpus` now defaults to 4 for any template (instancetype templates keep
+  their own size); `--vm-cpus 2 --vm-cpu-request 1` reproduces the old size.
+- **Failed FIO runs are no longer reported as successful.** A VM now fails
+  when FIO exits nonzero, any FIO job reports a nonzero `error`, or the output
+  has no jobs. The guest templates record the FIO exit status in
+  `/tmp/fio_exit_code`. Failed VMs are excluded from the metrics, listed under
+  `failures` in the summary, and make `gather-results` and `run-all` exit
+  with status 1.
 - `deploy` and `run-all` exit with status 1 when a VM fails to apply or
   balanced placement is not achieved.
 - The FIO CSV gains a `node` column at the end. The summary records
