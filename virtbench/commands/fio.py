@@ -43,6 +43,8 @@ console = Console()
 @click.option('--placement-timeout', default=600, type=int,
               help='Seconds to wait for VMIs to be scheduled before checking placement')
 @click.option('--fio-runtime', default=300, type=int, help='FIO runtime in seconds')
+@click.option('--fio-timeout', type=click.IntRange(min=1), default=None,
+              help='Completion timeout in seconds (default: fio-runtime + 600)')
 @click.option('--fio-bs', default='4k', help='Block size (e.g., 4k, 8k, 64k)')
 @click.option('--fio-rw', default='randwrite',
               type=click.Choice(['read', 'write', 'randread', 'randwrite', 'randrw', 'rw']),
@@ -166,6 +168,8 @@ def fio(ctx, **kwargs):
         cmd.append('--no-balance')
     cmd.extend(['--placement-timeout', str(kwargs['placement_timeout'])])
     cmd.extend(['--fio-runtime', str(kwargs['fio_runtime'])])
+    if kwargs['fio_timeout'] is not None:
+        cmd.extend(['--fio-timeout', str(kwargs['fio_timeout'])])
     cmd.extend(['--fio-bs', kwargs['fio_bs']])
     cmd.extend(['--fio-rw', kwargs['fio_rw']])
     cmd.extend(['--fio-iodepth', str(kwargs['fio_iodepth'])])

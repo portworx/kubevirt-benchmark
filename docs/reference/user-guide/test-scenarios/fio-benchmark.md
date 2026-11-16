@@ -15,6 +15,20 @@ FIO is baked into the VM template and runs on boot. The benchmark workflow has f
 
 `run-all` (default) chains all four with a wait between deploy and gather.
 
+## Result Validation
+
+Results are successful only when the VM records a zero FIO command exit status
+and every raw FIO job has a valid `error: 0` field. The bundled VM template
+writes the command status before writing the completion marker. Missing or
+invalid job error fields and nonzero command or job errors fail the result.
+
+Older VMs and custom templates that do not record `/tmp/fio_exit_code` are
+reported as **unverified**. Their metrics are omitted, and `gather-results`
+and `run-all` return a nonzero exit status when any result is unverified.
+Update custom templates to save the FIO command exit status before
+the completion marker, then redeploy those VMs before collecting certification
+results.
+
 ## VM Size
 
 The shipped FIO templates (`fio-vm-template.yaml`, `fio-vm-template-containerdisk.yaml`) give each VM **4 guest vCPUs** with a **CPU request of 4**, so the four FIO jobs, guest I/O completion and virtio device processing are not squeezed onto fewer CPUs. Memory and FIO parameters are unchanged.
@@ -147,6 +161,7 @@ virtbench fio --action cleanup -s 1 -e 10
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--fio-runtime` | `300` | FIO test duration in seconds |
+| `--fio-timeout` | `--fio-runtime + 600` | Positive timeout in seconds for VM startup and FIO completion in `run-all` and `gather-results` |
 | `--fio-rw` | `randwrite` | I/O pattern: `read`, `write`, `randread`, `randwrite`, `randrw`, `rw` |
 | `--fio-bs` | `4k` | Block size (e.g., `4k`, `8k`, `64k`, `1M`) |
 | `--fio-iodepth` | `64` | I/O queue depth |
@@ -218,7 +233,7 @@ Results include per-VM and aggregated metrics:
 
 ### Failed runs
 
-A VM counts as **failed** when FIO exits with a nonzero status, when any FIO job reports a nonzero `error`, when the FIO output has no jobs, or when no results can be collected. The guest template writes the FIO exit status to `/tmp/fio_exit_code` before the `/tmp/fio_complete` marker. VMs built from an older template have no exit-status file; for them only the job errors are checked.
+A VM counts as **failed** when FIO exits with a nonzero status, when any FIO job reports a nonzero `error`, when the FIO output has no jobs, or when no results can be collected. The guest template writes the FIO exit status to `/tmp/fio_exit_code` before the `/tmp/fio_complete` marker. A missing exit-status file makes otherwise successful results unverified. Both `run-all` and `gather-results` require `/tmp/fio_complete` to contain `completed` before collecting results; custom templates must write this marker or the wait times out. Failed exit-status reads are retried using the collection retry settings.
 
 Failed VMs are left out of the aggregated metrics. The summary lists them under `failures` with the reason, the CSV shows `success` as `False`, and `gather-results` and `run-all` print the reasons and exit with status 1.
 
