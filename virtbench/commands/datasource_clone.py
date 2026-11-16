@@ -26,7 +26,13 @@ console = Console()
 @click.option('--storage-class', help='Storage class name (overrides template value)')
 @click.option('--namespace-prefix', default='datasource-clone', help='Namespace prefix')
 @click.option('--concurrency', '-c', default=50, type=int, help='Max parallel threads for monitoring')
-@click.option('--poll-interval', default=1, type=int, help='Seconds between status checks')
+@click.option('--poll-interval', default=1, type=click.IntRange(min=1), help='Seconds between status checks')
+@click.option('--vm-ready-timeout', default=600, type=click.IntRange(min=1),
+              help='Seconds to wait for Running after clone tracking')
+@click.option('--clone-timeout', default=1800, type=click.IntRange(min=1),
+              help='Seconds per worker to track clone completion')
+@click.option('--ip-timeout', default=300, type=click.IntRange(min=1),
+              help='Seconds to acquire an IP after Running')
 @click.option('--ping-timeout', default=300, type=int, help='Timeout for ping tests in seconds')
 @click.option('--ssh-pod', default='ssh-test-pod', help='Pod name for ping tests')
 @click.option('--ssh-pod-ns', default='default', help='Namespace for SSH test pod')
@@ -130,6 +136,9 @@ def datasource_clone(ctx, **kwargs):
         'concurrency': kwargs['concurrency'],
         'poll-interval': kwargs['poll_interval'],
         'ping-timeout': kwargs['ping_timeout'],
+        'vm-ready-timeout': kwargs['vm_ready_timeout'],
+        'clone-timeout': kwargs['clone_timeout'],
+        'ip-timeout': kwargs['ip_timeout'],
         'ssh-pod': kwargs['ssh_pod'],
         'ssh-pod-ns': kwargs['ssh_pod_ns'],
         'namespace-batch-size': kwargs['namespace_batch_size'],
