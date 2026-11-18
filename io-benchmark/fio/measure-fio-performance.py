@@ -146,6 +146,8 @@ Examples:
 
     # FIO config
     parser.add_argument('--fio-runtime', type=int, default=DEFAULT_FIO_RUNTIME, help='FIO runtime (seconds)')
+    parser.add_argument('--fio-timeout', type=positive_int, default=None,
+                        help='Completion timeout in seconds (default: fio-runtime + 600)')
     parser.add_argument('--fio-bs', type=str, default=DEFAULT_FIO_BS, help='Block size')
     parser.add_argument('--fio-rw', type=str, default=DEFAULT_FIO_RW,
                         choices=['read', 'write', 'randread', 'randwrite', 'randrw', 'rw'])
@@ -274,11 +276,11 @@ def run_ssh_command(vm_ip: str, command: str, ssh_pod: str, ssh_pod_ns: str,
                     vm_user: str, vm_password: str, timeout: int = 60) -> Optional[str]:
     """Run SSH command on VM via the shared helper. Returns stdout, or None on exec failure."""
     try:
-        _, stdout, _ = ssh_exec_command(
+        returncode, stdout, _ = ssh_exec_command(
             vm_ip, command, ssh_pod, ssh_pod_ns, vm_user, vm_password,
             timeout=timeout
         )
-        return stdout
+        return stdout if returncode == 0 else None
     except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
         return None
 
@@ -289,7 +291,7 @@ def wait_for_fio_complete(namespace: str, vm_name: str, ssh_config: Dict,
     start = time.time()
 
     # First wait for VM to be Running
-    while time.time() - start < 300:
+    while time.time() - start < min(300, timeout):
         vm_status, vmi_phase = get_vm_and_vmi_status(namespace, vm_name)
         if vmi_phase == "Running":
             break
@@ -297,22 +299,22 @@ def wait_for_fio_complete(namespace: str, vm_name: str, ssh_config: Dict,
             pvc_status = get_pvc_status(namespace, logger)
             logger.error(f"[{namespace}] VM failed to start. VM={vm_status}, VMI={vmi_phase}, PVCs={pvc_status}")
             return False
-        time.sleep(15)
+        time.sleep(min(15, max(0, timeout - (time.time() - start))))
     else:
         vm_status, vmi_phase = get_vm_and_vmi_status(namespace, vm_name)
         pvc_status = get_pvc_status(namespace, logger)
-        logger.warning(f"[{namespace}] VM not running after 5 min. VM={vm_status}, VMI={vmi_phase}, PVCs={pvc_status}")
+        logger.warning(f"[{namespace}] VM did not reach Running within the startup wait. VM={vm_status}, VMI={vmi_phase}, PVCs={pvc_status}")
         return False
 
     # Wait for VM to get an IP
     vm_ip = None
-    while time.time() - start < 360 and not vm_ip:
+    while time.time() - start < min(360, timeout) and not vm_ip:
         vm_ip = get_vmi_ip(vm_name, namespace, logger)
         if not vm_ip:
-            time.sleep(10)
+            time.sleep(min(10, max(0, timeout - (time.time() - start))))
 
     if not vm_ip:
-        logger.warning(f"[{namespace}] VM running but no IP after 6 minutes")
+        logger.warning(f"[{namespace}] VM running but no IP within the startup wait")
         return False
 
     logger.info(f"[{namespace}] VM running with IP {vm_ip}, waiting for FIO...")
@@ -323,11 +325,11 @@ def wait_for_fio_complete(namespace: str, vm_name: str, ssh_config: Dict,
             vm_ip, 'cat /tmp/fio_complete 2>/dev/null',
             ssh_config['pod'], ssh_config['pod_ns'],
             ssh_config['user'], ssh_config['password'],
-            timeout=90
+            timeout=max(1, min(90, timeout - (time.time() - start)))
         )
         if output and 'completed' in output:
             return True
-        time.sleep(30)
+        time.sleep(min(30, max(0, timeout - (time.time() - start))))
 
     logger.warning(f"[{namespace}] FIO did not complete within timeout")
     return False
@@ -354,7 +356,7 @@ def extract_json_object(text: str) -> Optional[str]:
 def collect_fio_results(namespace: str, vm_name: str, ssh_config: Dict,
                         output_dir: str, logger,
                         max_retries: int = 8, retry_delay: int = 20) -> Optional[Dict]:
-    """Collect FIO results from VM via SSH with retries."""
+    """Collect raw FIO output and its guest-recorded command status."""
     vm_results_dir = os.path.join(output_dir, "per-vm-results", namespace)
     os.makedirs(vm_results_dir, exist_ok=True)
     local_path = os.path.join(vm_results_dir, "fio_raw.json")
@@ -366,6 +368,18 @@ def collect_fio_results(namespace: str, vm_name: str, ssh_config: Dict,
 
     for attempt in range(max_retries):
         try:
+            exit_out = run_ssh_command(
+                vm_ip, 'if [ -e /tmp/fio_exit_code ]; then cat /tmp/fio_exit_code; else echo VIRTbench_EXIT_CODE_MISSING; fi',
+                ssh_config['pod'], ssh_config['pod_ns'],
+                ssh_config['user'], ssh_config['password'],
+                timeout=60
+            )
+            exit_code = parse_exit_code(exit_out)
+            if exit_out is None or (exit_code is None and exit_out.strip() != "VIRTbench_EXIT_CODE_MISSING"):
+                logger.warning(f"[{namespace}] Retry {attempt+1}/{max_retries}: Failed to read FIO exit status")
+                if attempt + 1 < max_retries:
+                    time.sleep(retry_delay)
+                continue
             output = run_ssh_command(
                 vm_ip, 'cat /tmp/fio_results.json',
                 ssh_config['pod'], ssh_config['pod_ns'],
@@ -373,12 +387,16 @@ def collect_fio_results(namespace: str, vm_name: str, ssh_config: Dict,
                 timeout=120
             )
             if not output:
+                if exit_code not in (None, 0):
+                    return {FIO_EXIT_KEY: exit_code, "jobs": []}
                 logger.warning(f"[{namespace}] Retry {attempt+1}/{max_retries}: No output")
                 time.sleep(retry_delay)
                 continue
 
             json_content = extract_json_object(output)
             if not json_content:
+                if exit_code not in (None, 0):
+                    return {FIO_EXIT_KEY: exit_code, "jobs": []}
                 logger.warning(f"[{namespace}] Retry {attempt+1}/{max_retries}: No valid JSON")
                 time.sleep(retry_delay)
                 continue
@@ -387,13 +405,7 @@ def collect_fio_results(namespace: str, vm_name: str, ssh_config: Dict,
                 f.write(json_content)
 
             data = json.loads(json_content)
-            exit_out = run_ssh_command(
-                vm_ip, 'cat /tmp/fio_exit_code 2>/dev/null',
-                ssh_config['pod'], ssh_config['pod_ns'],
-                ssh_config['user'], ssh_config['password'],
-                timeout=60
-            )
-            data[FIO_EXIT_KEY] = parse_exit_code(exit_out)
+            data[FIO_EXIT_KEY] = exit_code
             return data
         except Exception as e:
             logger.warning(f"[{namespace}] Retry {attempt+1}/{max_retries}: {e}")
@@ -414,39 +426,59 @@ def parse_exit_code(text: Optional[str]) -> Optional[int]:
         return None
 
 
-def fio_failure_reason(raw_data: Dict) -> Optional[str]:
-    """Why a FIO run failed, or None if it succeeded.
-
-    Fails on a nonzero FIO exit status, a nonzero error on any job, or no jobs at all.
-    A missing exit status (VM built from an older template) is not a failure by itself.
-    """
-    reasons = []
-    exit_code = raw_data.get(FIO_EXIT_KEY)
-    if exit_code not in (None, 0):
-        reasons.append(f"fio exited with status {exit_code}")
+def fio_job_errors(raw_data: Dict) -> Tuple[List[Dict], Optional[str]]:
+    """Return every nonzero or invalid raw FIO job error."""
     jobs = raw_data.get("jobs")
     if not isinstance(jobs, list) or not jobs:
-        reasons.append("no jobs in FIO output")
-    else:
-        for i, job in enumerate(jobs):
-            try:
-                err = int(job.get("error", 0) or 0)
-            except (TypeError, ValueError, AttributeError):
-                err = -1
-            if err != 0:
-                name = job.get("jobname", f"job {i}") if isinstance(job, dict) else f"job {i}"
-                reasons.append(f"{name}: error {err}")
-    return "; ".join(reasons) or None
+        return [], "FIO result has no jobs"
 
-
-def parse_fio_results(namespace: str, raw_data: Dict) -> Dict:
-    """Parse raw FIO JSON into summary metrics. success is False if FIO reported any error."""
-    ri = wi = rb = wb = rl = wl = 0
-    error = fio_failure_reason(raw_data)
-
-    for job in raw_data.get("jobs") or []:
+    errors = []
+    for index, job in enumerate(jobs):
         if not isinstance(job, dict):
+            errors.append({"job": index, "error": None})
             continue
+        error = job.get("error")
+        if isinstance(error, bool) or not isinstance(error, int) or error < 0:
+            errors.append({"job": index, "error": error})
+        elif error != 0:
+            errors.append({"job": index, "error": error})
+    return errors, None
+
+
+def failed_fio_result(namespace: str, error: str, exit_code: Optional[int] = None,
+                      fio_errors: Optional[List[Dict]] = None) -> Dict:
+    return {"namespace": namespace, "exit_code": exit_code,
+            "fio_errors": fio_errors or [], "error": error, "success": False}
+
+
+def unverified_fio_result(namespace: str, error: str) -> Dict:
+    return {"namespace": namespace, "exit_code": None, "fio_errors": [],
+            "error": error, "success": False, "unverified": True}
+
+
+def parse_fio_results(namespace: str, raw_data: Dict,
+                      exit_code: Optional[int] = None) -> Dict:
+    """Validate command and per-job status before returning performance metrics."""
+    if not isinstance(raw_data, dict):
+        return failed_fio_result(namespace, "FIO result is not a JSON object", exit_code)
+    if exit_code is None:
+        exit_code = raw_data.get(FIO_EXIT_KEY)
+    fio_errors, job_error = fio_job_errors(raw_data)
+    if isinstance(exit_code, int) and not isinstance(exit_code, bool) and exit_code != 0:
+        reasons = [f"FIO command exited with status {exit_code}"]
+        if job_error:
+            reasons.append(job_error)
+        if fio_errors:
+            reasons.append("One or more FIO jobs failed or had invalid error fields")
+        return failed_fio_result(namespace, "; ".join(reasons), exit_code, fio_errors)
+    if job_error:
+        return failed_fio_result(namespace, job_error, exit_code, fio_errors)
+    if fio_errors:
+        return failed_fio_result(namespace, "One or more FIO jobs failed", exit_code, fio_errors)
+    if isinstance(exit_code, bool) or not isinstance(exit_code, int) or not 0 <= exit_code <= 255:
+        return unverified_fio_result(namespace, "FIO command exit status is unavailable; result cannot be verified")
+    ri = wi = rb = wb = rl = wl = 0
+    for job in raw_data["jobs"]:
         r, w = job.get("read", {}), job.get("write", {})
         ri += r.get("iops", 0)
         wi += w.get("iops", 0)
@@ -465,8 +497,9 @@ def parse_fio_results(namespace: str, raw_data: Dict) -> Dict:
         "write_bw_mibps": round(wb / 1024 / 1024, 2),
         "read_lat_ms": round(rl / 1e6, 3),
         "write_lat_ms": round(wl / 1e6, 3),
-        "success": error is None,
-        "error": error,
+        "exit_code": exit_code,
+        "fio_errors": [],
+        "success": True,
     }
 
 
@@ -474,7 +507,8 @@ def aggregate_results(results: List[Dict], fio_config: Dict,
                       total_duration: float) -> Dict:
     """Aggregate results from all VMs into summary."""
     successful = [r for r in results if r.get("success")]
-    failed = [r for r in results if not r.get("success")]
+    unverified = [r for r in results if r.get("unverified")]
+    failed = [r for r in results if not r.get("success") and not r.get("unverified")]
 
     def calc_stats(key):
         values = [r[key] for r in successful if r.get(key, 0) > 0]
@@ -492,8 +526,13 @@ def aggregate_results(results: List[Dict], fio_config: Dict,
         "total_vms": len(results),
         "successful": len(successful),
         "failed": len(failed),
-        "failures": [{"namespace": r.get("namespace"), "error": r.get("error") or "no results collected"}
+        "unverified": len(unverified),
+        "failures": [{"namespace": r.get("namespace"), "exit_code": r.get("exit_code"),
+                      "fio_errors": r.get("fio_errors", []),
+                      "error": r.get("error") or "no results collected"}
                      for r in failed],
+        "unverified_results": [{"namespace": r.get("namespace"), "error": r.get("error")}
+                                for r in unverified],
         "total_test_duration_sec": round(total_duration, 2),
         "config": fio_config,
         "metrics": [
@@ -918,6 +957,14 @@ def action_status(args, namespaces, ssh_config, logger):
     print("=" * 70 + "\n")
 
 
+def wait_and_collect_fio_results(namespace, vm_name, ssh_config, output_dir, logger,
+                                 fio_timeout, max_retries, retry_delay):
+    if not wait_for_fio_complete(namespace, vm_name, ssh_config, fio_timeout, logger):
+        return {"_virtbench_completion_timeout": True}
+    return collect_fio_results(namespace, vm_name, ssh_config, output_dir, logger,
+                               max_retries, retry_delay)
+
+
 def action_gather_results(args, namespaces, fio_config, ssh_config, logger):
     """Collect FIO results from existing VMs."""
     print("\n" + "=" * 60)
@@ -932,19 +979,23 @@ def action_gather_results(args, namespaces, fio_config, ssh_config, logger):
 
     all_results = []
 
-    # Collect from all VMs concurrently (honors --collect-concurrency), reusing the
-    # same retrying collector as the run-all workflow.
+    fio_timeout = args.fio_timeout if args.fio_timeout is not None else fio_config['runtime'] + 600
+
+    # Wait for completion before collecting each VM.
     with ThreadPoolExecutor(max_workers=max(1, args.collect_concurrency)) as executor:
         futures = {
             executor.submit(
-                collect_fio_results, ns, args.vm_name, ssh_config, output_dir, logger,
-                args.collect_retries, args.collect_retry_delay
+                wait_and_collect_fio_results, ns, args.vm_name, ssh_config, output_dir, logger,
+                fio_timeout, args.collect_retries, args.collect_retry_delay
             ): ns for ns in namespaces
         }
         for future in as_completed(futures):
             ns = futures[future]
             raw_data = future.result()
-            if raw_data:
+            if raw_data and raw_data.get("_virtbench_completion_timeout"):
+                all_results.append({"namespace": ns, "success": False, "error": "FIO completion timed out or VM unavailable"})
+                print(f"  ✗ {ns}: FIO completion timed out or VM unavailable")
+            elif raw_data:
                 parsed = parse_fio_results(ns, raw_data)
                 all_results.append(parsed)
                 print(f"  ✓ {ns}" if parsed["success"] else f"  ✗ {ns}: {parsed['error']}")
@@ -979,12 +1030,15 @@ def action_gather_results(args, namespaces, fio_config, ssh_config, logger):
 
 
 def report_fio_failures(summary: Dict) -> int:
-    """Print failed VMs; return 1 if any VM's FIO run failed or was not collected."""
-    if not summary.get('failed'):
+    """Print failed or unverified VMs; return 1 unless every run is verified."""
+    if not summary.get('failed') and not summary.get('unverified'):
         return 0
-    print(f"ERROR: FIO failed on {summary['failed']} of {summary['total_vms']} VM(s):")
+    print(f"ERROR: FIO failed on {summary.get('failed', 0)} of {summary['total_vms']} VM(s); "
+          f"{summary.get('unverified', 0)} result(s) unverified:")
     for f in summary.get('failures', []):
-        print(f"  {f['namespace']}: {f['error']}")
+        print(f"  {f['namespace']}: {f.get('error')}")
+    for r in summary.get('unverified_results', []):
+        print(f"  {r['namespace']}: {r.get('error')}")
     return 1
 
 
@@ -1040,7 +1094,7 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
 
     # Step 3: Wait for VMs and FIO to complete
     print(f"[3/4] Waiting for VMs to boot and FIO to complete (polling every 30s)...")
-    fio_timeout = fio_config['runtime'] + 600  # FIO runtime + boot time + buffer
+    fio_timeout = args.fio_timeout if args.fio_timeout is not None else fio_config['runtime'] + 600
 
     completed = []
     with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
@@ -1068,13 +1122,14 @@ def action_run_all(args, namespaces, fio_config, ssh_config, logger):
     output_dir = get_output_dir(args, namespaces, logger)
     print(f"Output directory: {output_dir}")
 
-    all_results = []
+    all_results = [{"namespace": ns, "success": False, "error": "FIO completion timed out or VM unavailable"}
+                   for ns, success in completed if not success]
     with ThreadPoolExecutor(max_workers=args.collect_concurrency) as executor:
         futures = {
             executor.submit(
                 collect_fio_results, ns, args.vm_name, ssh_config, output_dir, logger,
                 args.collect_retries, args.collect_retry_delay
-            ): ns for ns in namespaces
+            ): ns for ns, success in completed if success
         }
         for future in as_completed(futures):
             ns = futures[future]
