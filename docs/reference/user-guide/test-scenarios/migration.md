@@ -169,6 +169,8 @@ discovers the matching VMIs on those nodes, clears VM/VMI `nodeSelector`
 settings left by rebalance, and then submits migrations in an interleaved
 order across the source nodes. If you want to target every worker that has
 matching VMIs, you can use `--source-nodes all`.
+Adaptive workflows can also add `--source-nodes-use-range` with `--start`
+and `--end` to restrict multi-source discovery to a selected namespace range.
 
 Each saved run writes its log, JSON, and CSV files into one run folder:
 

@@ -1,0 +1,78 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: {{VM_NAME}}
+  labels:
+    app: disk-ops-benchmark
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        name: {{VM_NAME}}-rootdisk
+      spec:
+        sourceRef:
+          kind: DataSource
+          name: fedora
+          namespace: openshift-virtualization-os-images
+        storage:
+          resources:
+            requests:
+              storage: 30Gi
+          storageClassName: {{STORAGE_CLASS_NAME}}
+          volumeMode: Block
+  runStrategy: Always
+  template:
+    metadata:
+      labels:
+        app: disk-ops-benchmark
+    spec:
+      domain:
+        cpu:
+          cores: 1
+        devices:
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+        features:
+          acpi: {}
+          smm:
+            enabled: true
+        memory:
+          guest: 2Gi
+        resources:
+          requests:
+            cpu: "1"
+      networks:
+        - name: default
+          pod: {}
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: {{VM_NAME}}-rootdisk
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              user: cloud-user
+              password: {{VM_PASSWORD}}
+              chpasswd:
+                expire: false
+              ssh_pwauth: true
+              packages:
+                - qemu-guest-agent
+              runcmd:
+                - systemctl enable --now qemu-guest-agent

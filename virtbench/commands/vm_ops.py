@@ -133,6 +133,9 @@ def drain_nodes(ctx, **kwargs):
 
 @vm_ops.command('rebalance-vms', context_settings={'help_option_names': ['-h', '--help']})
 @click.option('--vm-name', default=None, help='VM name to rebalance (default: rhel-elbencho-1)')
+@click.option('--namespace-prefix', default=None, help='Only rebalance VMIs in namespaces named <prefix>-N')
+@click.option('--start', type=int, default=None, help='Start namespace index when --namespace-prefix is set')
+@click.option('--end', type=int, default=None, help='End namespace index when --namespace-prefix is set')
 @click.option('--target-min', type=int, default=None, help='Minimum VMs per target node (default: auto)')
 @click.option('--target-max', type=int, default=None, help='Maximum VMs per target node (default: auto)')
 @click.option('--include-master-nodes', is_flag=True,
@@ -143,7 +146,7 @@ def rebalance_vms(ctx, **kwargs):
     """Rebalance KubeVirt VMs evenly across nodes."""
     print_banner("VM-Ops: Rebalance VMs")
     args = {}
-    for k in ('vm_name', 'target_min', 'target_max'):
+    for k in ('vm_name', 'namespace_prefix', 'start', 'end', 'target_min', 'target_max'):
         if kwargs[k] is not None:
             args[k.replace('_', '-')] = kwargs[k]
     if kwargs['include_master_nodes']:

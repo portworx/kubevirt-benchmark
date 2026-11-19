@@ -9,6 +9,7 @@
 - **Multi-level Organization**: Results organized by PX Version → Disk Count → VM Size
 - **Interactive Charts**: Plotly-based bar charts showing duration metrics in mm:ss format
 - **Detailed Tables**: DataTables-powered interactive tables with sorting and filtering
+- **AI Rounds**: Display adaptive VirtBench AI decisions from `results/ai-runs` inside the matching PX/disk result tab
 - **Cluster Information**: Display cluster metadata and configuration details
 - **Manual Results**: Include manually collected test results alongside automated ones
 - **Time-based Filtering**: Filter results by date range (e.g., last N days)
@@ -191,6 +192,7 @@ The script generates a single HTML file (`results_dashboard.html` by default) co
    - Live Migration subtab with summary and detailed results
 6. **Cluster Info Tab**: (if `--cluster-info` provided) Displays cluster metadata
 7. **Manual Results Tab**: (if `--manual-results` provided) Displays manual test results
+8. **AI Rounds Section**: (if matching `results/ai-runs/*/virtbench_ai_rounds.json` exists) Displays immediately beneath the charts in the corresponding PX/disk tab, before the VM-size sections. It shows one subtab per scenario, with FIO split by objective, selected total VM counts, AI decisions, and best stable total VM count when applicable.
 
 ### Dashboard Features
 
@@ -263,4 +265,3 @@ The script generates a single HTML file (`results_dashboard.html` by default) co
 ## Support
 
 For issues or questions about the dashboard generator, please refer to the main project documentation or contact the development team.
-

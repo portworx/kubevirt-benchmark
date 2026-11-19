@@ -41,6 +41,8 @@ def _normalize_source_nodes(values):
                    '--source-nodes all to target every worker. VMs are discovered directly '
                    'from each node (no --start/--end range required) and submitted in an '
                    'interleaved order so load is spread across source nodes from the start.')
+@click.option('--source-nodes-use-range', is_flag=True,
+              help='With --source-nodes, restrict discovered namespaces to --start/--end.')
 @click.option('--target-node', help='Target node name to migrate VMs to')
 @click.option('--create-vms', is_flag=True, help='Create VMs on source node before migration (requires --storage-class)')
 @click.option('--parallel', is_flag=True, help='Migrate all VMs in parallel')
@@ -176,6 +178,8 @@ def migration(ctx, **kwargs):
         python_args['round-robin'] = True
     if kwargs['interleaved_scheduling']:
         python_args['interleaved-scheduling'] = True
+    if kwargs['source_nodes_use_range']:
+        python_args['source-nodes-use-range'] = True
     if kwargs['cleanup']:
         python_args['cleanup'] = True
     if kwargs['yes']:

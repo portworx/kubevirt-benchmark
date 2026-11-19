@@ -37,6 +37,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -132,6 +133,9 @@ Examples:
                             'interleaved order (VM1 from node1, VM1 from node2, ..., VM2 from node1, '
                             'VM2 from node2, ...). Pass "all" as the sole value to target every '
                             'worker node in the cluster.')
+    parser.add_argument('--source-nodes-use-range', action='store_true',
+                       help='When using --source-nodes, restrict discovered namespaces to --start/--end. '
+                            'This is useful for adaptive runs that migrate a selected prefix range.')
     parser.add_argument('--target-node', type=str, default=None,
                        help='Target node name (optional, auto-select if not specified)')
     parser.add_argument('--parallel', action='store_true',
@@ -234,6 +238,9 @@ def validate_migration_args(args, logger):
                            "--source-nodes takes precedence for multi-node mode")
         if args.evacuate or args.round_robin or args.parallel:
             logger.error("--source-nodes cannot be combined with --evacuate, --round-robin, or --parallel")
+            return False
+        if args.source_nodes_use_range and args.start > args.end:
+            logger.error("--start cannot be greater than --end")
             return False
         logger.info(f"Multi-node evacuation mode: will migrate VMs from nodes: {args.source_nodes}")
         return True
@@ -576,8 +583,32 @@ def _fetch_all_vmis(logger) -> list:
         return []
 
 
+def namespace_index(namespace: str, namespace_prefix: str) -> Optional[int]:
+    if not namespace_prefix:
+        return None
+    match = re.match(rf"^{re.escape(namespace_prefix)}-(\d+)$", namespace)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def namespace_in_range(namespace: str, namespace_prefix: str,
+                       start: Optional[int], end: Optional[int]) -> bool:
+    if start is None and end is None:
+        return True
+    idx = namespace_index(namespace, namespace_prefix)
+    if idx is None:
+        return False
+    if start is not None and idx < start:
+        return False
+    if end is not None and idx > end:
+        return False
+    return True
+
+
 def discover_vms_on_node(node_name: str, vm_name: str, namespace_prefix: str,
-                         logger) -> List[str]:
+                         logger, start: Optional[int] = None,
+                         end: Optional[int] = None) -> List[str]:
     """
     Discover all namespaces that have a VMI named *vm_name* running on *node_name*.
 
@@ -588,8 +619,11 @@ def discover_vms_on_node(node_name: str, vm_name: str, namespace_prefix: str,
     Returns a sorted list of namespace names whose VMI matches *vm_name* on
     *node_name*.
     """
+    range_filter = ""
+    if start is not None or end is not None:
+        range_filter = f", range: {start or '*'}-{end or '*'}"
     logger.info(f"Discovering VMIs named '{vm_name}' on node '{node_name}' "
-                f"(prefix filter: '{namespace_prefix or '<none>'}')...")
+                f"(prefix filter: '{namespace_prefix or '<none>'}'{range_filter})...")
     try:
         all_items = _fetch_all_vmis(logger)
         namespaces: List[str] = []
@@ -605,6 +639,8 @@ def discover_vms_on_node(node_name: str, vm_name: str, namespace_prefix: str,
             if node != node_name:
                 continue
             if namespace_prefix and not ns.startswith(namespace_prefix):
+                continue
+            if not namespace_in_range(ns, namespace_prefix, start, end):
                 continue
             namespaces.append(ns)
 
@@ -719,6 +755,8 @@ def main():
     if args.source_nodes:
         logger.info(f"Migration mode: Multi-node evacuation from {len(args.source_nodes)} nodes")
         logger.info(f"  Source nodes: {', '.join(args.source_nodes)}")
+        if args.source_nodes_use_range:
+            logger.info(f"  Namespace range filter: {args.namespace_prefix}-{args.start} through {args.namespace_prefix}-{args.end}")
     elif args.round_robin:
         logger.info("Migration mode: Round-robin")
     elif args.evacuate:
@@ -910,7 +948,12 @@ def main():
         # that currently exists by probing the first source node.
         if args.source_nodes:
             _probe_ns_list = discover_vms_on_node(
-                args.source_nodes[0], args.vm_name, args.namespace_prefix, logger
+                args.source_nodes[0],
+                args.vm_name,
+                args.namespace_prefix,
+                logger,
+                args.start if args.source_nodes_use_range else None,
+                args.end if args.source_nodes_use_range else None,
             )
             sample_ns = _probe_ns_list[0] if _probe_ns_list else None
         else:
@@ -1158,7 +1201,12 @@ def main():
         per_node_vms: Dict[str, List[str]] = {}
         for source_node in args.source_nodes:
             vms_on_node = discover_vms_on_node(
-                source_node, args.vm_name, args.namespace_prefix, logger
+                source_node,
+                args.vm_name,
+                args.namespace_prefix,
+                logger,
+                args.start if args.source_nodes_use_range else None,
+                args.end if args.source_nodes_use_range else None,
             )
             per_node_vms[source_node] = vms_on_node
             if vms_on_node:

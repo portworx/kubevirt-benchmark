@@ -14,11 +14,13 @@ move:
 Usage:
   python3 rebalance-vms.py                          # execute all moves
   python3 rebalance-vms.py --dry-run                # print commands only
+  python3 rebalance-vms.py --namespace-prefix perf --start 1 --end 50
   python3 rebalance-vms.py --target-min 0 --target-max 1
   python3 rebalance-vms.py --include-master-nodes
 """
 
 import argparse
+import re
 import subprocess
 import sys
 
@@ -72,7 +74,29 @@ def fetch_all_nodes():
     return nodes
 
 
-def fetch_vmi(all_nodes, vm_name):
+def namespace_index(namespace, namespace_prefix):
+    if not namespace_prefix:
+        return None
+    match = re.match(rf"^{re.escape(namespace_prefix)}-(\d+)$", namespace)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def namespace_in_scope(namespace, namespace_prefix=None, start=None, end=None):
+    if not namespace_prefix:
+        return True
+    idx = namespace_index(namespace, namespace_prefix)
+    if idx is None:
+        return False
+    if start is not None and idx < start:
+        return False
+    if end is not None and idx > end:
+        return False
+    return True
+
+
+def fetch_vmi(all_nodes, vm_name, namespace_prefix=None, start=None, end=None):
     """Return {node: [namespace, ...]} from live 'oc get vmi -A'."""
     out = _oc(["get", "vmi", "-A", "--no-headers", "-o",
                "custom-columns="
@@ -86,6 +110,8 @@ def fetch_vmi(all_nodes, vm_name):
             continue
         ns, name, node = cols[0], cols[1], cols[2]
         if name != vm_name:
+            continue
+        if not namespace_in_scope(ns, namespace_prefix, start, end):
             continue
         if node in node_vms:
             node_vms[node].append(ns)
@@ -207,6 +233,12 @@ def main():
                     help="Print commands without executing them")
     ap.add_argument("--vm-name", default=VM_NAME,
                     help=f"VM name to rebalance (default: {VM_NAME})")
+    ap.add_argument("--namespace-prefix", default=None,
+                    help="Only rebalance VMIs in namespaces named <prefix>-N")
+    ap.add_argument("--start", type=int, default=None,
+                    help="Start namespace index when --namespace-prefix is set")
+    ap.add_argument("--end", type=int, default=None,
+                    help="End namespace index when --namespace-prefix is set")
     ap.add_argument("--target-min", type=int, default=None,
                     help="Minimum VMs per target node (default: auto)")
     ap.add_argument("--target-max", type=int, default=None,
@@ -222,8 +254,20 @@ def main():
 
     all_nodes = fetch_all_nodes()
 
-    print(f"Fetching VMI list for '{args.vm_name}'...")
-    node_vms  = fetch_vmi(all_nodes, args.vm_name)
+    if (args.start is not None or args.end is not None) and not args.namespace_prefix:
+        ap.error("--start/--end require --namespace-prefix")
+    if args.start is not None and args.end is not None and args.start > args.end:
+        ap.error("--start cannot be greater than --end")
+
+    scope = ""
+    if args.namespace_prefix:
+        if args.start is not None or args.end is not None:
+            scope = f" in namespaces {args.namespace_prefix}-{args.start or '*'} through {args.namespace_prefix}-{args.end or '*'}"
+        else:
+            scope = f" in namespaces matching {args.namespace_prefix}-N"
+
+    print(f"Fetching VMI list for '{args.vm_name}'{scope}...")
+    node_vms  = fetch_vmi(all_nodes, args.vm_name, args.namespace_prefix, args.start, args.end)
     total_vms = sum(len(v) for v in node_vms.values())
     print(f"  {total_vms} VMIs found\n")
 
